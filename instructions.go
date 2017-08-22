@@ -26,19 +26,24 @@ var OPCODE_CYCLES = []int{
 	3, 3, 2, 1, 1, 4, 2, 4, 3, 2, 4, 1, 0, 1, 2, 4, // f
 }
 
-const BREAKPOINT = 0x00
+func (gb *Gameboy) HALT(txt string) {
+	reader := bufio.NewReader(os.Stdin)
+	log.Print(txt)
+	reader.ReadString('\n')
+}
+
+// TODO: NEXT - byte 0xffb8 is wrong at this point
+const BREAKPOINT = 0xffb8 + 3
 
 func (gb *Gameboy) ExecuteNextOpcode() int {
 	pc := gb.CPU.PC
 	if pc == BREAKPOINT {
-		reader := bufio.NewReader(os.Stdin)
-		log.Print("BREAKPOINT")
-		reader.ReadString('\n')
+		gb.HALT("BREAKPOINT")
 	}
 
 	opcode := gb.popPC()
-	log.Printf("[%#2x]:  %-12v %#4x", opcode, GetOpcodeName(opcode), pc)
-	log.Printf("AF %#4x; BC %#4x", gb.CPU.AF.HiLo(), gb.CPU.BC.HiLo())
+	log.Printf("[%0#2x]:  %-12v %0#4x", opcode, GetOpcodeName(opcode), pc)
+	//log.Printf("AF %#4x; BC %#4x", gb.CPU.AF.HiLo(), gb.CPU.BC.HiLo())
 
 	gb.ExecuteOpcode(opcode)
 
