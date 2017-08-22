@@ -5,7 +5,7 @@ import "github.com/humpheh/gob/bits"
 type Memory struct {
 	GB   *Gameboy
 	Cart *Cartridge
-	Data [0xFFFF]byte
+	Data [0x10000]byte
 
 	EnableRAM  bool
 	ROMBanking bool
@@ -31,6 +31,14 @@ func (mem *Memory) Write(address uint16, value byte) {
 	// Trap divider register
 	case address == 0xFF04:
 		mem.Data[0xFF04] = 0
+
+	// Trap scanline register
+	case address == 0xFF44:
+		mem.Data[0xFF44] = 0
+
+	// DMA transfer
+	case address == 0xFF46:
+		mem.DMATransfer(value)
 
 	// ROM
 	case address < 0x8000:
@@ -60,6 +68,9 @@ func (mem *Memory) Write(address uint16, value byte) {
 
 func (mem *Memory) Read(address uint16) byte {
 	switch {
+	case address < 0x4000:
+		return mem.Cart.Data[address]
+
 	// Reading from ROM memory bank
 	case address >= 0x4000 && address <= 0x7FFF:
 		new_address := address - 0x4000
@@ -158,5 +169,15 @@ func (mem *Memory) changeROMRAMMode(value byte) {
 		mem.Cart.RAMBank = 0
 	} else {
 		mem.ROMBanking = false
+	}
+}
+
+func (mem *Memory) DMATransfer(value byte) {
+	address := uint16(value) << 8 // (data * 100)
+
+	var i uint16
+	for i = 0; i < 0xA0; i++ {
+		// TODO: Check this doesn't prevent
+		mem.Write(0xFE00 + i, mem.Read(address + i))
 	}
 }
