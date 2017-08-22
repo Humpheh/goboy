@@ -1,6 +1,8 @@
 package gob
 
-import "github.com/humpheh/gob/bits"
+import (
+	"github.com/humpheh/gob/bits"
+)
 
 const (
 	CLOCK_SPEED   = 4194304
@@ -135,8 +137,8 @@ func (gb *Gameboy) ServiceInterrupt(interrupt byte) {
 
 func (gb *Gameboy) PushStack(address uint16) {
 	sp := gb.CPU.SP.HiLo()
-	gb.Memory.Data[sp] = byte((sp & 0xFF00) >> 8)
-	gb.Memory.Data[sp + 1] = byte(sp & 0xFF)
+	gb.Memory.Data[sp] = byte(uint16(address & 0xFF00) >> 8)
+	gb.Memory.Data[sp + 1] = byte(address & 0xFF)
 	gb.CPU.SP.Set(gb.CPU.SP.HiLo() - 2)
 }
 
