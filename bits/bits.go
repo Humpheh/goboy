@@ -31,3 +31,11 @@ func HalfCarryAdd16(val1 uint16, val2 uint16) bool {
 func CarryAdd16(val1 uint16, val2 uint16) bool {
 	return (uint32(val1&0xf000)+uint32(val2&0xf000))&0x10000 == 1
 }
+
+func B(val bool) byte {
+	if val {
+		return 1
+	} else {
+		return 0
+	}
+}

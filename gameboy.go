@@ -30,6 +30,8 @@ type Gameboy struct {
 	ScreenData [160][144][3]int
 
 	InterruptsOn bool
+
+	CBInst map[byte]func()
 }
 
 // Should be called 60 times/second
@@ -137,16 +139,16 @@ func (gb *Gameboy) ServiceInterrupt(interrupt byte) {
 
 func (gb *Gameboy) PushStack(address uint16) {
 	sp := gb.CPU.SP.HiLo()
-	gb.Memory.Data[sp] = byte(uint16(address & 0xFF00) >> 8)
-	gb.Memory.Data[sp + 1] = byte(address & 0xFF)
+	gb.Memory.Data[sp - 1] = byte(uint16(address & 0xFF00) >> 8)
+	gb.Memory.Data[sp - 2] = byte(address & 0xFF)
 	gb.CPU.SP.Set(gb.CPU.SP.HiLo() - 2)
 }
 
 func (gb *Gameboy) PopStack() uint16 {
-	sp := gb.CPU.SP.HiLo() + 2
+	sp := gb.CPU.SP.HiLo()
 	// TODO: Check this works!
-	byte1 := uint16(gb.Memory.Data[sp + 1])
-	byte2 := uint16(gb.Memory.Data[sp]) << 8
+	byte1 := uint16(gb.Memory.Data[sp])
+	byte2 := uint16(gb.Memory.Data[sp + 1]) << 8
 	gb.CPU.SP.Set(gb.CPU.SP.HiLo() + 2)
 	return byte1 | byte2
 }
@@ -468,6 +470,8 @@ func (gb *Gameboy) RenderSprites(lcdControl byte) {
 }
 
 func (gb *Gameboy) Init() {
+	gb.CBInst = gb.CBInstructions()
+
 	gb.CPU.PC = 0x100
 	gb.CPU.AF.Set(0x01B0)
 	gb.CPU.BC.Set(0x0013)
