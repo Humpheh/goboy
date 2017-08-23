@@ -1,5 +1,7 @@
 package gob
 
+import "github.com/humpheh/gob/bits"
+
 type Register struct {
 	val uint16
 }
@@ -41,11 +43,12 @@ type CPU struct {
 }
 
 func (cpu *CPU) SetFlag(index byte, on bool) {
-	var x uint16 = 0
 	if on {
-		x = 1
+		cpu.AF.SetLo(bits.Set(cpu.AF.Lo(), index))
+	} else {
+		cpu.AF.SetLo(bits.Reset(cpu.AF.Lo(), index))
 	}
-	cpu.AF.Set(cpu.AF.HiLo() ^ (-x ^ uint16(cpu.AF.HiLo()) & (1 << index)))
+
 }
 
 func (cpu *CPU) SetZ(on bool) {

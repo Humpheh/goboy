@@ -2,6 +2,7 @@ package gob
 
 import (
 	"github.com/humpheh/gob/bits"
+	"log"
 )
 
 func (gb *Gameboy) instAdd(set func(byte), val1 byte, val2 byte, addCarry bool) {
@@ -77,6 +78,8 @@ func (gb *Gameboy) instInc(set func(byte), org byte) {
 func (gb *Gameboy) instDec(set func(byte), org byte) {
 	total := org - 1
 	set(total)
+
+	log.Print("total:", total)
 
 	gb.CPU.SetZ(total == 0)
 	gb.CPU.SetN(true)

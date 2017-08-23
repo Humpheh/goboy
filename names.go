@@ -222,7 +222,7 @@ func init() {
 	names[0xCA] = "JP Z,nn"
 	names[0xD2] = "JP NC,nn"
 	names[0xDA] = "JP C,nn"
-	names[0xE9] = "JP (HL)"
+	names[0xE9] = "JP HL"
 	names[0x18] = "JR n"
 	names[0x20] = "JR NZ,n"
 	names[0x28] = "JR Z,n"

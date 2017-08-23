@@ -33,17 +33,25 @@ func (gb *Gameboy) HALT(txt string) {
 }
 
 // TODO: NEXT - byte 0xffb8 is wrong at this point
-const BREAKPOINT = 0xffb8 + 3
+const BREAKPOINT = 0x00// 0x0352// + 3 //0x030E + 1 //
+var stepON = false
 
 func (gb *Gameboy) ExecuteNextOpcode() int {
 	pc := gb.CPU.PC
-	if pc == BREAKPOINT {
-		gb.HALT("BREAKPOINT")
-	}
-
 	opcode := gb.popPC()
-	log.Printf("[%0#2x]:  %-12v %0#4x", opcode, GetOpcodeName(opcode), pc)
-	//log.Printf("AF %#4x; BC %#4x", gb.CPU.AF.HiLo(), gb.CPU.BC.HiLo())
+
+	log.Printf("[%0#2x]:  %-20v %0#4x", opcode, GetOpcodeName(opcode), pc)
+
+	if pc == BREAKPOINT || stepON {
+		log.Printf("AF: %0#4x", gb.CPU.AF.HiLo())
+		log.Printf("BC: %0#4x", gb.CPU.BC.HiLo())
+		log.Printf("DE: %0#4x", gb.CPU.DE.HiLo())
+		log.Printf("HL: %0#4x", gb.CPU.HL.HiLo())
+		log.Printf("SP: %0#4x", gb.CPU.SP.HiLo())
+		//log.Printf("%08b", gb.CPU.AF.Lo())
+		gb.HALT("BREAKPOINT")
+		stepON = true
+	}
 
 	gb.ExecuteOpcode(opcode)
 
@@ -927,6 +935,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	// DAA
 	case 0x27:
 		log.Print("0x27 (DAA) is not implemented.")
+		gb.HALT("unimplemented!")
 
 	// CPL
 	case 0x2F:
@@ -953,10 +962,12 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	// HALT
 	case 0x76:
 		log.Print("0x76 (HALT) called (unimplemented).")
+		gb.HALT("unimplemented!")
 
 	// STOP
 	case 0x10:
 		log.Print("0x10 (STOP) unimplemented (is 0x00 follows)")
+		gb.HALT("unimplemented!")
 
 	// DI
 	case 0xF3:
@@ -1046,9 +1057,9 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 			gb.instJump(next)
 		}
 
-	// JP (HL)
+	// JP HL
 	case 0xE9:
-		gb.instJump(uint16(gb.Memory.Read(gb.CPU.HL.HiLo())))
+		gb.instJump(uint16(gb.CPU.HL.HiLo()))
 
 	// JR n
 	case 0x18:
@@ -1186,10 +1197,11 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// CB!
 	case 0xCB:
-		log.Print("0xCB unimplemented!!!")
+		gb.CBInst[gb.popPC()]()
 
 	default:
 		log.Printf("Unimplemented opcode: %#2x", opcode)
+		gb.HALT("unimplemented!")
 	}
 }
 

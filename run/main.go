@@ -3,8 +3,6 @@ package main
 import (
 	"github.com/humpheh/gob"
 	"log"
-	"bufio"
-	"os"
 )
 
 func main() {
@@ -20,13 +18,9 @@ func main() {
 
 	gb.Init()
 
-	reader := bufio.NewReader(os.Stdin)
-
 	cycles := 0
 	for true {
 		cycles += gb.Update()
 		log.Print(cycles)
-
-		reader.ReadString('\n')
 	}
 }
