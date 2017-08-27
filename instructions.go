@@ -2,8 +2,10 @@ package gob
 
 import (
 	"log"
-	"bufio"
-	"os"
+	//"bufio"
+	//"os"
+	//"fmt"
+	//"math"
 )
 
 var OPCODE_CYCLES = []int{
@@ -27,28 +29,65 @@ var OPCODE_CYCLES = []int{
 }
 
 func (gb *Gameboy) HALT(txt string) {
-	reader := bufio.NewReader(os.Stdin)
-	log.Print(txt)
-	reader.ReadString('\n')
+	//for x := 0; x < 160; x++ {
+	//	for y := 0; y < 144; y++ {
+	//		if gb.ScreenData[x][y][0] == 255 {
+	//			fmt.Print("#")
+	//		} else {
+	//			fmt.Print(" ")
+	//		}
+	//	}
+	//	fmt.Printf("\n")
+	//}
+
+	//log.Print( gb.ScreenData)
+
+	//for i := 0x8000 + 1; i < 0x8000 + 40; i++ {
+	//	fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
+	//}
+	//fmt.Print(" \n")
+
+	log.Printf("AF: %0#4x  LCDC: %0#2x", gb.CPU.AF.HiLo(), gb.Memory.Read(0xFF40))
+	log.Printf("BC: %0#4x  STAT: %0#2x", gb.CPU.BC.HiLo(), gb.Memory.Read(0xFF41))
+	log.Printf("DE: %0#4x    LY: %0#2x", gb.CPU.DE.HiLo(), gb.Memory.Read(0xFF44))
+	log.Printf("HL: %0#4x   CNT: %0#2x", gb.CPU.HL.HiLo(), gb.Memory.Read(0xFF44))
+	log.Printf("SP: %0#4x", gb.CPU.SP.HiLo())
+	log.Printf("0xFF80: %0#4x", gb.Memory.Read(0xFF80))
+
+	//reader := bufio.NewReader(os.Stdin)
+	//log.Print(txt)
+	//reader.ReadString('\n')
 }
 
-// TODO: NEXT - byte 0xffb8 is wrong at this point
-const BREAKPOINT = 0x00// 0x0352// + 3 //0x030E + 1 //
+// goes wrong at 0x034C so
+// never reaches 0x036F loop
+// test from 0405 onwards to screen turning on
+// end of data = 0x282a
+const BREAKPOINT = 0x9999//28B// 0x030E //0x2a19 + 1 //
 var stepON = false
 
 func (gb *Gameboy) ExecuteNextOpcode() int {
 	pc := gb.CPU.PC
 	opcode := gb.popPC()
 
-	log.Printf("[%0#2x]:  %-20v %0#4x", opcode, GetOpcodeName(opcode), pc)
+	//fmt.Printf("[%0#2x]:  %-20v %0#4x  [[", opcode, GetOpcodeName(opcode), pc)
+	//
+	//for i := math.Max(0, float64(pc) - 5); i < float64(pc); i++ {
+	//	fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
+	//}
+	//fmt.Printf(" \033[1;31m%02x\033[0m", opcode)
+	//for i := float64(pc) + 1; i < float64(pc) + 6; i++ {
+	//	fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
+	//}
+	//fmt.Print(" ]]\n")
+
+	//expectedPC := gb.GetDebugNum()
+	//fmt.Printf(" ]]    %04x / %04x\n", expectedPC, pc)
+	//if pc != expectedPC {
+	//	gb.HALT("Unexpected PC!")
+	//}
 
 	if pc == BREAKPOINT || stepON {
-		log.Printf("AF: %0#4x", gb.CPU.AF.HiLo())
-		log.Printf("BC: %0#4x", gb.CPU.BC.HiLo())
-		log.Printf("DE: %0#4x", gb.CPU.DE.HiLo())
-		log.Printf("HL: %0#4x", gb.CPU.HL.HiLo())
-		log.Printf("SP: %0#4x", gb.CPU.SP.HiLo())
-		//log.Printf("%08b", gb.CPU.AF.Lo())
 		gb.HALT("BREAKPOINT")
 		stepON = true
 	}
@@ -487,8 +526,9 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// LD (nn),SP
 	case 0x08:
-		// TODO
-		log.Print("0x08 is unimplemented")
+		address := gb.popPC16()
+		gb.Memory.Write(address, gb.CPU.SP.Hi())
+		gb.Memory.Write(address + 1, gb.CPU.SP.Lo())
 
 	// PUSH AF
 	case 0xF5:
@@ -602,35 +642,35 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// SUB A,B
 	case 0x90:
-		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.BC.Hi(), gb.CPU.AF.Hi(), false)
+		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.AF.Hi(), gb.CPU.BC.Hi(), false)
 
 	// SUB A,C
 	case 0x91:
-		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.BC.Lo(), gb.CPU.AF.Hi(), false)
+		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.AF.Hi(), gb.CPU.BC.Lo(), false)
 
 	// SUB A,D
 	case 0x92:
-		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.DE.Hi(), gb.CPU.AF.Hi(), false)
+		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.AF.Hi(), gb.CPU.DE.Hi(), false)
 
 	// SUB A,E
 	case 0x93:
-		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.DE.Lo(), gb.CPU.AF.Hi(), false)
+		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.AF.Hi(), gb.CPU.DE.Lo(), false)
 
 	// SUB A,H
 	case 0x94:
-		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.HL.Hi(), gb.CPU.AF.Hi(), false)
+		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.AF.Hi(), gb.CPU.HL.Hi(), false)
 
 	// SUB A,L
 	case 0x95:
-		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.HL.Lo(), gb.CPU.AF.Hi(), false)
+		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.AF.Hi(), gb.CPU.HL.Lo(), false)
 
 	// SUB A,(HL)
 	case 0x96:
-		gb.instSub(gb.CPU.AF.SetHi, gb.Memory.Read(gb.CPU.HL.HiLo()), gb.CPU.AF.Hi(), false)
+		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.AF.Hi(), gb.Memory.Read(gb.CPU.HL.HiLo()), false)
 
 	// SUB A,#
 	case 0xD6:
-		gb.instSub(gb.CPU.AF.SetHi, gb.popPC(), gb.CPU.AF.Hi(), false)
+		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.AF.Hi(), gb.popPC(), false)
 
 	// SBC A,A
 	case 0x9F:
@@ -638,35 +678,35 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// SBC A,B
 	case 0x98:
-		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.BC.Hi(), gb.CPU.AF.Hi(), true)
+		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.AF.Hi(), gb.CPU.BC.Hi(), true)
 
 	// SBC A,C
 	case 0x99:
-		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.BC.Lo(), gb.CPU.AF.Hi(), true)
+		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.AF.Hi(), gb.CPU.BC.Lo(), true)
 
 	// SBC A,D
 	case 0x9A:
-		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.DE.Hi(), gb.CPU.AF.Hi(), true)
+		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.AF.Hi(), gb.CPU.DE.Hi(), true)
 
 	// SBC A,E
 	case 0x9B:
-		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.DE.Lo(), gb.CPU.AF.Hi(), true)
+		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.AF.Hi(), gb.CPU.DE.Lo(), true)
 
 	// SBC A,H
 	case 0x9C:
-		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.HL.Hi(), gb.CPU.AF.Hi(), true)
+		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.AF.Hi(), gb.CPU.HL.Hi(), true)
 
 	// SBC A,L
 	case 0x9D:
-		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.HL.Lo(), gb.CPU.AF.Hi(), true)
+		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.AF.Hi(), gb.CPU.HL.Lo(), true)
 
 	// SBC A,(HL)
 	case 0x9E:
-		gb.instSub(gb.CPU.AF.SetHi, gb.Memory.Read(gb.CPU.HL.HiLo()), gb.CPU.AF.Hi(), true)
+		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.AF.Hi(), gb.Memory.Read(gb.CPU.HL.HiLo()), true)
 
 	// SBC A,#
 	case 0xDE:
-		gb.instSub(gb.CPU.AF.SetHi, gb.popPC(), gb.CPU.AF.Hi(), true)
+		gb.instSub(gb.CPU.AF.SetHi, gb.CPU.AF.Hi(), gb.popPC(), true)
 
 	// AND A,A
 	case 0xA7:
@@ -1059,11 +1099,11 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// JP HL
 	case 0xE9:
-		gb.instJump(uint16(gb.CPU.HL.HiLo()))
+		gb.instJump(gb.CPU.HL.HiLo())
 
 	// JR n
 	case 0x18:
-		addr := int16(gb.CPU.PC) + int16(gb.popPC())
+		addr := int16(gb.CPU.PC) + int16(int8(gb.popPC()))
 		gb.instJump(uint16(addr))
 
 	// JR NZ,n

@@ -17,6 +17,10 @@ func (mem *Memory) LoadCart(loc string) {
 }
 
 func (mem *Memory) Write(address uint16, value byte) {
+	//if address == 0xFF80 {
+	//	mem.GB.HALT("0xFF80")
+	//}
+
 	switch {
 	// Timer control
 	case address == TMC:

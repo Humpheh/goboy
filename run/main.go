@@ -2,10 +2,25 @@ package main
 
 import (
 	"github.com/humpheh/gob"
-	"log"
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 func main() {
+	sdl.Init(sdl.INIT_EVERYTHING)
+
+	window, err := sdl.CreateWindow("test", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
+		int(gob.GPU_PIXEL_SIZE * 160), int(gob.GPU_PIXEL_SIZE * 144), sdl.WINDOW_SHOWN)
+	if err != nil {
+		panic(err)
+	}
+	defer window.Destroy()
+	defer sdl.Quit()
+
+	surface, err := window.GetSurface()
+	if err != nil {
+		panic(err)
+	}
+
 	cpu := gob.CPU{}
 	mem := gob.Memory{}
 	gb := gob.Gameboy{}
@@ -14,13 +29,14 @@ func main() {
 	gb.Memory = &mem
 
 	mem.GB = &gb
-	mem.LoadCart("C:\\Users\\Humphrey\\go\\src\\github.com\\humpheh\\gob\\run\\tetris.gb")
+	mem.LoadCart("/Users/humphreyshotton/pygb/_roms/cpu_instrs.gb")//tetris.gb")
 
 	gb.Init()
 
 	cycles := 0
 	for true {
 		cycles += gb.Update()
-		log.Print(cycles)
+		gb.RenderScreen(surface)
+		window.UpdateSurface()
 	}
 }
