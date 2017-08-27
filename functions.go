@@ -2,7 +2,6 @@ package gob
 
 import (
 	"github.com/humpheh/gob/bits"
-	"log"
 )
 
 func (gb *Gameboy) instAdd(set func(byte), val1 byte, val2 byte, addCarry bool) {
@@ -13,8 +12,10 @@ func (gb *Gameboy) instAdd(set func(byte), val1 byte, val2 byte, addCarry bool) 
 	set(total)
 	gb.CPU.SetZ(total == 0)
 	gb.CPU.SetN(false)
+
+	// TODO: Recheck these
 	gb.CPU.SetH(bits.HalfCarryAdd(val1, val2))
-	gb.CPU.SetC(bits.CarryAdd(val1, val2))
+	gb.CPU.SetC(bits.CarryAdd(val1, val2)) // If result is greater than 255
 }
 
 func (gb *Gameboy) instSub(set func(byte), val1 byte, val2 byte, addCarry bool) {
@@ -28,7 +29,7 @@ func (gb *Gameboy) instSub(set func(byte), val1 byte, val2 byte, addCarry bool) 
 
 	// TODO: check these
 	gb.CPU.SetH((val1 & 0x0f) > (val2 & 0x0f))
-	gb.CPU.SetC(val1 > val2)
+	gb.CPU.SetC(int16(val1) - int16(val2) < 0) // If result is less than 0
 }
 
 func (gb *Gameboy) instAnd(set func(byte), val1 byte, val2 byte) {
@@ -78,8 +79,6 @@ func (gb *Gameboy) instInc(set func(byte), org byte) {
 func (gb *Gameboy) instDec(set func(byte), org byte) {
 	total := org - 1
 	set(total)
-
-	log.Print("total:", total)
 
 	gb.CPU.SetZ(total == 0)
 	gb.CPU.SetN(true)

@@ -2,6 +2,10 @@ package gob
 
 import (
 	"github.com/humpheh/gob/bits"
+	"os"
+	"bufio"
+	"strings"
+	"strconv"
 )
 
 const (
@@ -32,6 +36,9 @@ type Gameboy struct {
 	InterruptsOn bool
 
 	CBInst map[byte]func()
+
+	scanner *bufio.Scanner
+	waitscan bool
 }
 
 // Should be called 60 times/second
@@ -45,8 +52,19 @@ func (gb *Gameboy) Update() int {
 		gb.UpdateGraphics(cycles_op)
 		gb.DoInterrupts()
 	}
-	gb.RenderScreen()
 	return cycles
+}
+
+func (gb *Gameboy) GetDebugNum() uint16 {
+	if !gb.waitscan {
+		gb.scanner.Scan()
+	}
+	line := gb.scanner.Text()
+
+	split := strings.Split(line, " ")
+	num, _ := strconv.ParseUint(split[1], 16, 16)
+
+	return uint16(num)
 }
 
 func (gb *Gameboy) UpdateTimers(cycles int) {
@@ -166,7 +184,7 @@ func (gb *Gameboy) UpdateGraphics(cycles int) {
 		current_line := gb.Memory.Read(0xFF44)
 
 		// TODO: This could be -456?
-		gb.ScanlineCounter = 456
+		gb.ScanlineCounter = 0
 
 		if current_line == 144 {
 			gb.RequestInterrupt(0)
@@ -241,10 +259,6 @@ func (gb *Gameboy) IsLCDEnabled() bool {
 	return bits.Test(gb.Memory.Read(0xFF40), 7)
 }
 
-func (gb *Gameboy) RenderScreen() {
-
-}
-
 func (gb *Gameboy) DrawScanline() {
 	control := gb.Memory.Read(0xFF40)
 	if bits.Test(control, 0 ) {
@@ -269,7 +283,7 @@ func (gb *Gameboy) RenderTiles(lcdControl byte) {
 	using_window := false
 
 	if bits.Test(lcdControl, 5) {
-		// is current scanline we're draing within windows Y position?
+		// is current scanline we're drawing within windows Y position?
 		if window_y <= gb.Memory.Read(0xFF44) {
 			using_window = true
 		}
@@ -333,11 +347,11 @@ func (gb *Gameboy) RenderTiles(lcdControl byte) {
 		if unsig {
 			tile_location = tile_location + uint16(tile_num * 16)
 		} else {
-			tile_location = uint16(int16(tile_location) + (tile_num + 128) * 16)
+			tile_location = uint16(int16(tile_location) + ((tile_num + 128) * 16))
 		}
 
 		// find the correct v-line we're on of the tile to get the tile data from in memory (???)
-		var line byte = (y_pos & 8) * 2 // each v-line takes up two bytes of memory
+		var line byte = (y_pos % 8) * 2 // each v-line takes up two bytes of memory
 		data1 := gb.Memory.Read(tile_location + uint16(line))
 		data2 := gb.Memory.Read(tile_location + uint16(line) + 1)
 
@@ -470,6 +484,18 @@ func (gb *Gameboy) RenderSprites(lcdControl byte) {
 }
 
 func (gb *Gameboy) Init() {
+	// Load debug file
+	file, err := os.Open("/Users/humphreyshotton/Documents/gb-inst.log")
+	if err != nil {
+		panic(err)
+	}
+
+	gb.scanner = bufio.NewScanner(file)
+	gb.scanner.Split(bufio.ScanLines)
+	// ^ TEMP ^
+
+	gb.ScanlineCounter = 0//456
+
 	gb.CBInst = gb.CBInstructions()
 
 	gb.CPU.PC = 0x100
@@ -500,6 +526,7 @@ func (gb *Gameboy) Init() {
 	gb.Memory.Data[0xFF25] = 0xF3
 	gb.Memory.Data[0xFF26] = 0xF1
 	gb.Memory.Data[0xFF40] = 0x91
+	gb.Memory.Data[0xFF41] = 0x85
 	gb.Memory.Data[0xFF42] = 0x00
 	gb.Memory.Data[0xFF43] = 0x00
 	gb.Memory.Data[0xFF45] = 0x00
