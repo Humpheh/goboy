@@ -20,7 +20,7 @@ func (gb *Gameboy) instAdd(set func(byte), val1 byte, val2 byte, addCarry bool) 
 
 func (gb *Gameboy) instSub(set func(byte), val1 byte, val2 byte, addCarry bool) {
 	if gb.CPU.C() && addCarry {
-		val1 += 1
+		val2 += 1
 	}
 	total := val1 - val2
 	set(total)
@@ -88,7 +88,7 @@ func (gb *Gameboy) instDec(set func(byte), org byte) {
 func (gb *Gameboy) instAdd16(set func(uint16), val1 uint16, val2 uint16) {
 	total := val1 + val2
 	set(total)
-	gb.CPU.SetZ(total == 0) // TODO: 0xE8 assumes this will never == 0 (always reset)
+	gb.CPU.SetZ(total == 0)
 	gb.CPU.SetN(false)
 	gb.CPU.SetH(bits.HalfCarryAdd16(val1, val2))
 	gb.CPU.SetC(bits.CarryAdd16(val1, val2))
@@ -96,12 +96,10 @@ func (gb *Gameboy) instAdd16(set func(uint16), val1 uint16, val2 uint16) {
 
 func (gb *Gameboy) instInc16(set func(uint16 uint16), org uint16) {
 	set(org + 1)
-	// TODO: Apparently no flags are set from this op?
 }
 
 func (gb *Gameboy) instDec16(set func(uint16 uint16), org uint16) {
 	set(org - 1)
-	// TODO: Apparently no flags are set from this op?
 }
 
 func (gb *Gameboy) instJump(next uint16) {

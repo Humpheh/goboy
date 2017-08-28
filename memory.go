@@ -1,6 +1,9 @@
 package gob
 
-import "github.com/humpheh/gob/bits"
+import (
+	"github.com/humpheh/gob/bits"
+	"fmt"
+)
 
 type Memory struct {
 	GB   *Gameboy
@@ -31,7 +34,10 @@ func (mem *Memory) Write(address uint16, value byte) {
 		if current_freq != new_freq {
 			mem.GB.SetClockFreq()
 		}
-
+	case address == 0xFF02:
+		if value == 0x81 {
+			fmt.Print(string(mem.Read(0xFF01)))
+		}
 	// Trap divider register
 	case address == 0xFF04:
 		mem.Data[0xFF04] = 0
