@@ -2,10 +2,10 @@ package gob
 
 import (
 	"log"
-	//"bufio"
-	//"os"
-	//"fmt"
-	//"math"
+	"fmt"
+	"math"
+	"bufio"
+	"os"
 )
 
 var OPCODE_CYCLES = []int{
@@ -54,9 +54,12 @@ func (gb *Gameboy) HALT(txt string) {
 	log.Printf("SP: %0#4x", gb.CPU.SP.HiLo())
 	log.Printf("0xFF80: %0#4x", gb.Memory.Read(0xFF80))
 
-	//reader := bufio.NewReader(os.Stdin)
-	//log.Print(txt)
-	//reader.ReadString('\n')
+	if haltStep {
+		reader := bufio.NewReader(os.Stdin)
+		log.Print(txt)
+		reader.ReadString('\n')
+		stepON = true
+	}
 }
 
 // goes wrong at 0x034C so
@@ -65,31 +68,35 @@ func (gb *Gameboy) HALT(txt string) {
 // end of data = 0x282a
 const BREAKPOINT = 0x9999//28B// 0x030E //0x2a19 + 1 //
 var stepON = false
+var debug = false
+var haltStep = true
 
 func (gb *Gameboy) ExecuteNextOpcode() int {
 	pc := gb.CPU.PC
 	opcode := gb.popPC()
 
-	//fmt.Printf("[%0#2x]:  %-20v %0#4x  [[", opcode, GetOpcodeName(opcode), pc)
-	//
-	//for i := math.Max(0, float64(pc) - 5); i < float64(pc); i++ {
-	//	fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
-	//}
-	//fmt.Printf(" \033[1;31m%02x\033[0m", opcode)
-	//for i := float64(pc) + 1; i < float64(pc) + 6; i++ {
-	//	fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
-	//}
-	//fmt.Print(" ]]\n")
+	if debug {
+		fmt.Printf("[%0#2x]:  %-20v %0#4x  [[", opcode, GetOpcodeName(opcode), pc)
 
-	//expectedPC := gb.GetDebugNum()
-	//fmt.Printf(" ]]    %04x / %04x\n", expectedPC, pc)
-	//if pc != expectedPC {
-	//	gb.HALT("Unexpected PC!")
-	//}
+		for i := math.Max(0, float64(pc)-5); i < float64(pc); i++ {
+			fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
+		}
+		fmt.Printf(" \033[1;31m%02x\033[0m", opcode)
+		for i := float64(pc) + 1; i < float64(pc)+6; i++ {
+			fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
+		}
+		fmt.Print(" ]]\n")
+
+		//expectedPC := gb.GetDebugNum()
+		//fmt.Printf(" ]]    %04x / %04x\n", expectedPC, pc)
+		//if pc != expectedPC {
+		//	gb.HALT("Unexpected PC!")
+		//}
+	}
 
 	if pc == BREAKPOINT || stepON {
 		gb.HALT("BREAKPOINT")
-		stepON = true
+		//stepON = true
 	}
 
 	gb.ExecuteOpcode(opcode)
@@ -480,6 +487,10 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	// LD (0xFF00+n),A
 	case 0xE0:
 		val := 0xFF00 + uint16(gb.popPC())
+		if val == 0xFF91 {
+			debug = true
+			gb.HALT("WAT")
+		}
 		gb.Memory.Write(val, gb.CPU.AF.Hi())
 
 	// LD A,(0xFF00+n)
@@ -492,6 +503,9 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	// LD BC,nn
 	case 0x01:
 		val := gb.popPC16()
+		//if val == 0x1200 {
+		//	gb.HALT("ts")
+		//}
 		gb.CPU.BC.Set(val)
 
 	// LD DE,nn
@@ -939,6 +953,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	// ADD SP,n
 	case 0xE8:
 		gb.instAdd16(gb.CPU.SP.Set, gb.CPU.SP.HiLo(), uint16(gb.popPC()))
+		gb.CPU.SetZ(false)
 
 	// INC BC
 	case 0x03:
@@ -974,8 +989,39 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// DAA
 	case 0x27:
-		log.Print("0x27 (DAA) is not implemented.")
-		gb.HALT("unimplemented!")
+		/*
+		When this instruction is executed, the A register is BCD
+		corrected using the contents of the flags. The exact process
+		is the following: if the least significant four bits of A
+		contain a non-BCD digit (i. e. it is greater than 9) or the
+		H flag is set, then $06 is added to the register. Then the
+		four most significant bits are checked. If this more significant
+		digit also happens to be greater than 9 or the C flag is set,
+		then $60 is added.
+		 */
+		// TODO: This could be more efficient?
+
+		if gb.CPU.N() {
+			if gb.CPU.AF.Hi() & 0x0F > 0x09 || gb.CPU.H() {
+				gb.CPU.AF.SetHi(gb.CPU.AF.Hi() - 0x06)
+				gb.CPU.SetC(gb.CPU.AF.Hi() & 0xF0 == 0xF0)
+			}
+
+			if gb.CPU.AF.Hi() & 0xF0 > 0x90 || gb.CPU.C() {
+				gb.CPU.AF.SetHi(gb.CPU.AF.Hi() - 0x06)
+			}
+		} else {
+			if gb.CPU.AF.Hi() & 0x0F > 0x09 || gb.CPU.C() {
+				gb.CPU.AF.SetHi(gb.CPU.AF.Hi() + 0x06)
+				gb.CPU.SetC(gb.CPU.AF.Hi() & 0xF0 == 0)
+			}
+
+			if gb.CPU.AF.Hi() & 0xF0 > 0x90 || gb.CPU.C() {
+				gb.CPU.AF.SetHi(gb.CPU.AF.Hi() + 0x06)
+			}
+		}
+
+		gb.CPU.SetZ(gb.CPU.AF.Hi() == 0)
 
 	// CPL
 	case 0x2F:
@@ -1006,8 +1052,9 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// STOP
 	case 0x10:
-		log.Print("0x10 (STOP) unimplemented (is 0x00 follows)")
-		gb.HALT("unimplemented!")
+		break
+		//log.Print("0x10 (STOP) unimplemented (is 0x00 follows)")
+		//gb.HALT("unimplemented!")
 
 	// DI
 	case 0xF3:

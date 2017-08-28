@@ -497,6 +497,7 @@ func (gb *Gameboy) Init() {
 	gb.ScanlineCounter = 0//456
 
 	gb.CBInst = gb.CBInstructions()
+	gb.CPU.AF.isAF = true
 
 	gb.CPU.PC = 0x100
 	gb.CPU.AF.Set(0x01B0)

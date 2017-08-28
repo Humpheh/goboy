@@ -1,9 +1,12 @@
 package gob
 
-import "github.com/humpheh/gob/bits"
+import (
+	"github.com/humpheh/gob/bits"
+)
 
 type Register struct {
-	val uint16
+	isAF bool // TODO: change this?
+	val  uint16
 }
 
 func (reg *Register) Hi() byte {
@@ -20,14 +23,23 @@ func (reg *Register) HiLo() uint16 {
 
 func (reg *Register) SetHi(val byte) {
 	reg.val = uint16(val) << 8 | (uint16(reg.val) & 0xFF)
+	reg.AfterSet()
 }
 
 func (reg *Register) SetLo(val byte) {
 	reg.val = uint16(val) | (uint16(reg.val) & 0xFF00)
+	reg.AfterSet()
 }
 
 func (reg *Register) Set(val uint16) {
 	reg.val = val
+	reg.AfterSet()
+}
+
+func (reg *Register) AfterSet() {
+	if reg.isAF {
+		reg.val &= 0xFFF0
+	}
 }
 
 type CPU struct {
@@ -48,7 +60,6 @@ func (cpu *CPU) SetFlag(index byte, on bool) {
 	} else {
 		cpu.AF.SetLo(bits.Reset(cpu.AF.Lo(), index))
 	}
-
 }
 
 func (cpu *CPU) SetZ(on bool) {
