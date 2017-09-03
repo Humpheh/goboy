@@ -4,8 +4,8 @@ import (
 	"github.com/humpheh/gob/bits"
 	"os"
 	"bufio"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -19,34 +19,46 @@ const (
 	TMA  = 0xFF06
 	TMC  = 0xFF07
 
-	WHITE = 1
+	WHITE      = 1
 	LIGHT_GRAY = 2
-	DARK_GRAY = 3
-	BLACK = 4
+	DARK_GRAY  = 3
+	BLACK      = 4
 )
 
 type Gameboy struct {
-	Memory       *Memory
-	CPU 		 *CPU
-	TimerCounter int
+	Memory          *Memory
+	CPU             *CPU
+	TimerCounter    int
 	ScanlineCounter int
 
 	ScreenData [160][144][3]int
 
 	InterruptsOn bool
+	Halted bool
+	SkipNext bool
 
 	CBInst map[byte]func()
 
-	scanner *bufio.Scanner
+	scanner  *bufio.Scanner
 	waitscan bool
+
+	thisCpuTicks int
 }
 
 // Should be called 60 times/second
 func (gb *Gameboy) Update() int {
 	cycles := 0
 	for cycles < CYCLES_FRAME {
-		cycles_op := gb.ExecuteNextOpcode()
-		cycles += cycles_op
+		//if gb.SkipNext {
+		//	gb.popPC()
+		//	gb.SkipNext = false
+		//	continue
+		//}
+		cycles_op := 4
+		if !gb.Halted {
+			cycles_op = gb.ExecuteNextOpcode()
+			cycles += cycles_op
+		}
 
 		gb.UpdateTimers(cycles_op)
 		gb.UpdateGraphics(cycles_op)
@@ -62,7 +74,7 @@ func (gb *Gameboy) GetDebugNum() uint16 {
 	line := gb.scanner.Text()
 
 	split := strings.Split(line, " ")
-	num, _ := strconv.ParseUint(split[1], 16, 16)
+	num, _ := strconv.ParseUint(split[1], 10, 16)
 
 	return uint16(num)
 }
@@ -80,7 +92,7 @@ func (gb *Gameboy) UpdateTimers(cycles int) {
 				gb.Memory.Write(TIMA, gb.Memory.Read(TMA))
 				gb.RequestInterrupt(2)
 			} else {
-				gb.Memory.Write(TIMA, gb.Memory.Read(TIMA) + 1)
+				gb.Memory.Write(TIMA, gb.Memory.Read(TIMA)+1)
 			}
 		}
 	}
@@ -97,10 +109,14 @@ func (gb *Gameboy) GetClockFreq() byte {
 func (gb *Gameboy) SetClockFreq() {
 	// Set the frequency of the timer
 	switch gb.GetClockFreq() {
-	case 0: gb.TimerCounter = 1024
-	case 1: gb.TimerCounter = 16
-	case 2: gb.TimerCounter = 64
-	case 3: gb.TimerCounter = 256
+	case 0:
+		gb.TimerCounter = 1024
+	case 1:
+		gb.TimerCounter = 16
+	case 2:
+		gb.TimerCounter = 64
+	case 3:
+		gb.TimerCounter = 256
 	}
 }
 
@@ -140,6 +156,7 @@ func (gb *Gameboy) DoInterrupts() {
 
 func (gb *Gameboy) ServiceInterrupt(interrupt byte) {
 	gb.InterruptsOn = false
+	gb.Halted = false
 
 	req := gb.Memory.Read(0xFF0F)
 	req = bits.Reset(req, interrupt)
@@ -148,25 +165,28 @@ func (gb *Gameboy) ServiceInterrupt(interrupt byte) {
 	gb.PushStack(gb.CPU.PC)
 
 	switch interrupt {
-	case 0: gb.CPU.PC = 0x40
-	case 1: gb.CPU.PC = 0x48
-	case 2: gb.CPU.PC = 0x50
-	case 4: gb.CPU.PC = 0x60
+	case 0:
+		gb.CPU.PC = 0x40
+	case 1:
+		gb.CPU.PC = 0x48
+	case 2:
+		gb.CPU.PC = 0x50
+	case 4:
+		gb.CPU.PC = 0x60
 	}
 }
 
 func (gb *Gameboy) PushStack(address uint16) {
 	sp := gb.CPU.SP.HiLo()
-	gb.Memory.Data[sp - 1] = byte(uint16(address & 0xFF00) >> 8)
-	gb.Memory.Data[sp - 2] = byte(address & 0xFF)
+	gb.Memory.Data[sp-1] = byte(uint16(address&0xFF00) >> 8)
+	gb.Memory.Data[sp-2] = byte(address & 0xFF)
 	gb.CPU.SP.Set(gb.CPU.SP.HiLo() - 2)
 }
 
 func (gb *Gameboy) PopStack() uint16 {
 	sp := gb.CPU.SP.HiLo()
-	// TODO: Check this works!
 	byte1 := uint16(gb.Memory.Data[sp])
-	byte2 := uint16(gb.Memory.Data[sp + 1]) << 8
+	byte2 := uint16(gb.Memory.Data[sp+1]) << 8
 	gb.CPU.SP.Set(gb.CPU.SP.HiLo() + 2)
 	return byte1 | byte2
 }
@@ -183,8 +203,8 @@ func (gb *Gameboy) UpdateGraphics(cycles int) {
 		gb.Memory.Data[0xFF44]++
 		current_line := gb.Memory.Read(0xFF44)
 
-		// TODO: This could be -456?
-		gb.ScanlineCounter = 0
+		// TODO: This could be +456?
+		gb.ScanlineCounter += 456
 
 		if current_line == 144 {
 			gb.RequestInterrupt(0)
@@ -261,7 +281,7 @@ func (gb *Gameboy) IsLCDEnabled() bool {
 
 func (gb *Gameboy) DrawScanline() {
 	control := gb.Memory.Read(0xFF40)
-	if bits.Test(control, 0 ) {
+	if bits.Test(control, 0) {
 		gb.RenderTiles(control)
 	}
 
@@ -316,7 +336,7 @@ func (gb *Gameboy) RenderTiles(lcdControl byte) {
 	}
 
 	// which of the 8 vertical pixels of the current tile is the scanline on?
-	var tile_row uint16 = uint16(byte(y_pos / 8) * 32)
+	var tile_row uint16 = uint16(byte(y_pos/8) * 32)
 
 	// start drawing the 160 horizontal pixels for this scanline
 	var pixel byte
@@ -345,7 +365,7 @@ func (gb *Gameboy) RenderTiles(lcdControl byte) {
 		tile_location := tile_data
 		// TODO: ensure signing works correctly
 		if unsig {
-			tile_location = tile_location + uint16(tile_num * 16)
+			tile_location = tile_location + uint16(tile_num*16)
 		} else {
 			tile_location = uint16(int16(tile_location) + ((tile_num + 128) * 16))
 		}
@@ -355,7 +375,7 @@ func (gb *Gameboy) RenderTiles(lcdControl byte) {
 		data1 := gb.Memory.Read(tile_location + uint16(line))
 		data2 := gb.Memory.Read(tile_location + uint16(line) + 1)
 
-		colour_bit := byte(int8((x_pos % 8) - 7) * -1)
+		colour_bit := byte(int8((x_pos%8)-7) * -1)
 
 		colour_num := (bits.Val(data2, colour_bit) << 1) | bits.Val(data1, colour_bit)
 		col := gb.GetColour(colour_num, 0xFF47)
@@ -363,9 +383,12 @@ func (gb *Gameboy) RenderTiles(lcdControl byte) {
 
 		// setup the RGB values
 		switch col {
-		case WHITE: red, green, blue = 255, 255, 255
-		case LIGHT_GRAY: red, green, blue = 0xCC, 0xCC, 0xCC
-		case DARK_GRAY: red, green, blue = 0x77, 0x77, 0x77
+		case WHITE:
+			red, green, blue = 255, 255, 255
+		case LIGHT_GRAY:
+			red, green, blue = 0xCC, 0xCC, 0xCC
+		case DARK_GRAY:
+			red, green, blue = 0x77, 0x77, 0x77
 		}
 
 		finally := gb.Memory.Read(0xFF44)
@@ -387,19 +410,27 @@ func (gb *Gameboy) GetColour(colour_num byte, address uint16) int {
 	var hi, lo byte = 0, 0
 
 	switch colour_num {
-	case 0: hi, lo = 1, 0
-	case 1: hi, lo = 3, 2
-	case 2: hi, lo = 5, 4
-	case 3: hi, lo = 7, 6
+	case 0:
+		hi, lo = 1, 0
+	case 1:
+		hi, lo = 3, 2
+	case 2:
+		hi, lo = 5, 4
+	case 3:
+		hi, lo = 7, 6
 	}
 
 	colour := (bits.Val(palette, hi) << 1) | bits.Val(palette, lo)
 
 	switch colour {
-	case 0: res = WHITE
-	case 1: res = LIGHT_GRAY
-	case 2: res = DARK_GRAY
-	case 3: res = BLACK
+	case 0:
+		res = WHITE
+	case 1:
+		res = LIGHT_GRAY
+	case 2:
+		res = DARK_GRAY
+	case 3:
+		res = BLACK
 	}
 
 	return res
@@ -413,8 +444,8 @@ func (gb *Gameboy) RenderSprites(lcdControl byte) {
 
 	for sprite := 0; sprite < 40; sprite++ {
 		index := sprite * 4
-		y_pos := gb.Memory.Read(uint16(0xFE00 + index)) - 16
-		x_pos := gb.Memory.Read(uint16(0xFE00 + index + 1)) - 8
+		y_pos := gb.Memory.Read(uint16(0xFE00+index)) - 16
+		x_pos := gb.Memory.Read(uint16(0xFE00+index+1)) - 8
 		tile_location := gb.Memory.Read(uint16(0xFE00 + index + 2))
 		attributes := gb.Memory.Read(uint16(0xFE00 + index + 3))
 
@@ -428,15 +459,15 @@ func (gb *Gameboy) RenderSprites(lcdControl byte) {
 			y_size = 16
 		}
 
-		if scanline >= y_pos && scanline < (y_pos + y_size) {
+		if scanline >= y_pos && scanline < (y_pos+y_size) {
 			line := scanline - y_pos
 
 			if y_flip {
-				line = byte(int8(line - y_size) * -1)
+				line = byte(int8(line-y_size) * -1)
 			}
 
 			line *= 2
-			data_address := 0x8000 + uint16((tile_location * 16) + line)
+			data_address := 0x8000 + uint16((tile_location*16)+line)
 			data1 := gb.Memory.Read(data_address)
 			data2 := gb.Memory.Read(data_address + 1)
 
@@ -445,7 +476,7 @@ func (gb *Gameboy) RenderSprites(lcdControl byte) {
 				colour_bit := tile_pixel
 
 				if x_flip {
-					colour_bit = byte(int8(colour_bit - 7) * -1)
+					colour_bit = byte(int8(colour_bit-7) * -1)
 				}
 
 				colour_num := (bits.Val(data2, colour_bit) << 1) | bits.Val(data1, colour_bit)
@@ -463,8 +494,10 @@ func (gb *Gameboy) RenderSprites(lcdControl byte) {
 
 				red, green, blue := 0, 0, 0
 				switch col {
-				case LIGHT_GRAY: red, green, blue = 0xCC, 0xCC, 0xCC
-				case DARK_GRAY: red, green, blue = 0x77, 0x77, 0x77
+				case LIGHT_GRAY:
+					red, green, blue = 0xCC, 0xCC, 0xCC
+				case DARK_GRAY:
+					red, green, blue = 0x77, 0x77, 0x77
 				}
 
 				var x_pix byte = 7 - tile_pixel
@@ -485,7 +518,7 @@ func (gb *Gameboy) RenderSprites(lcdControl byte) {
 
 func (gb *Gameboy) Init() {
 	// Load debug file
-	file, err := os.Open("/Users/humphreyshotton/Documents/gb-inst.log")
+	file, err := os.Open("/Users/humphreyshotton/go/src/github.com/humpheh/gob/output.log")
 	if err != nil {
 		panic(err)
 	}
@@ -494,7 +527,7 @@ func (gb *Gameboy) Init() {
 	gb.scanner.Split(bufio.ScanLines)
 	// ^ TEMP ^
 
-	gb.ScanlineCounter = 0//456
+	gb.ScanlineCounter = 456
 
 	gb.CBInst = gb.CBInstructions()
 	gb.CPU.AF.isAF = true

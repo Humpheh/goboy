@@ -183,6 +183,7 @@ func (mem *Memory) changeROMRAMMode(value byte) {
 }
 
 func (mem *Memory) DMATransfer(value byte) {
+	// TODO: This may need to be done instead of CPU ticks
 	address := uint16(value) << 8 // (data * 100)
 
 	var i uint16
