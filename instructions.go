@@ -22,10 +22,31 @@ var OPCODE_CYCLES = []int{
 	1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, // 9
 	1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, // a
 	1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, // b
-	2, 3, 3, 4, 3, 4, 2, 4, 2, 4, 3, 2, 3, 6, 2, 4, // c
+	2, 3, 3, 4, 3, 4, 2, 4, 2, 4, 3, 0, 3, 6, 2, 4, // c
 	2, 3, 3, 1, 3, 4, 2, 4, 2, 4, 3, 1, 3, 1, 2, 4, // d
 	3, 3, 2, 1, 1, 4, 2, 4, 4, 1, 4, 1, 1, 1, 2, 4, // e
 	3, 3, 2, 1, 1, 4, 2, 4, 3, 2, 4, 1, 0, 1, 2, 4, // f
+}
+
+//Number of machine cycles for each 0xCBXX instruction:
+var CB_OPCODE_CYCLES = []int{
+//  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0
+	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 1
+	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 2
+	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 3
+	2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, // 4
+	2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, // 5
+	2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, // 6
+	2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, // 7
+	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 8
+	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 9
+	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // A
+	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // B
+	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // C
+	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // D
+	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // E
+	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // F
 }
 
 func (gb *Gameboy) HALT(txt string) {
@@ -46,6 +67,12 @@ func (gb *Gameboy) HALT(txt string) {
 	//	fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
 	//}
 	//fmt.Print(" \n")
+	fmt.Print("[[")
+	for i := math.Max(0, float64(gb.CPU.PC)-6); i < float64(gb.CPU.PC) + 6; i++ {
+		fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
+	}
+	fmt.Print(" ]]\n")
+
 
 	log.Printf("AF: %0#4x  LCDC: %0#2x", gb.CPU.AF.HiLo(), gb.Memory.Read(0xFF40))
 	log.Printf("BC: %0#4x  STAT: %0#2x", gb.CPU.BC.HiLo(), gb.Memory.Read(0xFF41))
@@ -68,15 +95,18 @@ func (gb *Gameboy) HALT(txt string) {
 // end of data = 0x282a
 const BREAKPOINT = 0x9999//28B// 0x030E //0x2a19 + 1 //
 var stepON = false
-var debug = false
+var debug = true
 var haltStep = true
+var doDebugComp = true
 
 func (gb *Gameboy) ExecuteNextOpcode() int {
 	pc := gb.CPU.PC
 	opcode := gb.popPC()
 
+	gb.thisCpuTicks = OPCODE_CYCLES[opcode] * 4
+
 	if debug {
-		fmt.Printf("[%0#2x]:  %-20v %0#4x  [[", opcode, GetOpcodeName(opcode), pc)
+		fmt.Printf("[%0#2x]: %3v %-20v %0#4x  [[", opcode, gb.ScanlineCounter, GetOpcodeName(opcode), pc)
 
 		for i := math.Max(0, float64(pc)-5); i < float64(pc); i++ {
 			fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
@@ -85,13 +115,17 @@ func (gb *Gameboy) ExecuteNextOpcode() int {
 		for i := float64(pc) + 1; i < float64(pc)+6; i++ {
 			fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
 		}
-		fmt.Print(" ]]\n")
 
-		//expectedPC := gb.GetDebugNum()
-		//fmt.Printf(" ]]    %04x / %04x\n", expectedPC, pc)
-		//if pc != expectedPC {
-		//	gb.HALT("Unexpected PC!")
-		//}
+		if doDebugComp {
+			expected := gb.GetDebugNum()
+			actual := uint16(gb.Memory.Read(0xFF44))//pc
+			fmt.Printf(" ]]    (exp) %04x - %04x (act)\n", expected, actual)
+			if actual != expected {
+				gb.HALT("Unexpected Value!")
+			}
+		} else {
+			fmt.Print(" ]]\n")
+		}
 	}
 
 	if pc == BREAKPOINT || stepON {
@@ -101,8 +135,7 @@ func (gb *Gameboy) ExecuteNextOpcode() int {
 
 	gb.ExecuteOpcode(opcode)
 
-	cycles := OPCODE_CYCLES[opcode] * 4
-	return cycles
+	return gb.thisCpuTicks
 }
 
 func (gb *Gameboy) popPC() byte {
@@ -530,13 +563,14 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// LD HL,SP+n
 	case 0xF8:
-		val := gb.CPU.SP.HiLo() + uint16(gb.popPC())
-		gb.CPU.HL.Set(val)
+		val1 := int32(gb.CPU.SP.HiLo())
+		val2 := int32(int8(gb.popPC()))
+		result := val1 + val2
+		gb.CPU.HL.Set(uint16(result))
 		gb.CPU.SetZ(false)
 		gb.CPU.SetN(false)
-		// TODO:
-		gb.CPU.SetH(false)
-		gb.CPU.SetC(false)
+		gb.CPU.SetH(((val1 & 0x0f) + (val2 & 0x0f)) > 0x0f)
+		gb.CPU.SetC(result & 0xfff0000 != 0) // TODO: 0xFFFF0000
 
 	// LD (nn),SP
 	case 0x08:
@@ -952,7 +986,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// ADD SP,n
 	case 0xE8:
-		gb.instAdd16(gb.CPU.SP.Set, gb.CPU.SP.HiLo(), uint16(gb.popPC()))
+		gb.instAdd16Signed(gb.CPU.SP.Set, gb.CPU.SP.HiLo(), int8(gb.popPC()))
 		gb.CPU.SetZ(false)
 
 	// INC BC
@@ -1047,13 +1081,19 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// HALT
 	case 0x76:
-		log.Print("0x76 (HALT) called (unimplemented).")
-		gb.HALT("unimplemented!")
+		if gb.InterruptsOn {
+			log.Print("Halting!")
+			gb.Halted = true
+		} else {
+			log.Print("not halting interrupts off")
+		}
+		//else {
+		//	gb.skipNext = true
+		//}
 
 	// STOP
 	case 0x10:
-		break
-		//log.Print("0x10 (STOP) unimplemented (is 0x00 follows)")
+		log.Print("0x10 (STOP) unimplemented (is 0x00 follows)")
 		//gb.HALT("unimplemented!")
 
 	// DI
@@ -1121,6 +1161,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 		next := gb.popPC16()
 		if !gb.CPU.Z() {
 			gb.instJump(next)
+			gb.thisCpuTicks += 4
 		}
 
 	// JP Z,nn
@@ -1128,6 +1169,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 		next := gb.popPC16()
 		if gb.CPU.Z() {
 			gb.instJump(next)
+			gb.thisCpuTicks += 4
 		}
 
 	// JP NC,nn
@@ -1135,6 +1177,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 		next := gb.popPC16()
 		if !gb.CPU.C() {
 			gb.instJump(next)
+			gb.thisCpuTicks += 4
 		}
 
 	// JP C,nn
@@ -1142,6 +1185,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 		next := gb.popPC16()
 		if gb.CPU.C() {
 			gb.instJump(next)
+			gb.thisCpuTicks += 4
 		}
 
 	// JP HL
@@ -1150,39 +1194,43 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// JR n
 	case 0x18:
-		addr := int16(gb.CPU.PC) + int16(int8(gb.popPC()))
+		addr := int32(gb.CPU.PC) + int32(int8(gb.popPC()))
 		gb.instJump(uint16(addr))
 
 	// JR NZ,n
 	case 0x20:
-		next := int16(int8(gb.popPC()))
+		next := int8(gb.popPC())
 		if !gb.CPU.Z() {
-			addr := int16(gb.CPU.PC) + next
+			addr := int32(gb.CPU.PC) + int32(next)
 			gb.instJump(uint16(addr))
+			gb.thisCpuTicks += 4
 		}
 
 	// JR Z,n
 	case 0x28:
-		next := int16(int8(gb.popPC()))
+		next := int8(gb.popPC())
 		if gb.CPU.Z() {
-			addr := int16(gb.CPU.PC) + next
+			addr := int32(gb.CPU.PC) + int32(next)
 			gb.instJump(uint16(addr))
+			gb.thisCpuTicks += 4
 		}
 
 	// JR NC,n
 	case 0x30:
-		next := int16(int8(gb.popPC()))
+		next := int8(gb.popPC())
 		if !gb.CPU.C() {
-			addr := int16(gb.CPU.PC) + next
+			addr := int32(gb.CPU.PC) + int32(next)
 			gb.instJump(uint16(addr))
+			gb.thisCpuTicks += 4
 		}
 
 	// JR C,n
 	case 0x38:
-		next := int16(int8(gb.popPC()))
+		next := int8(gb.popPC())
 		if gb.CPU.C() {
-			addr := int16(gb.CPU.PC) + next
+			addr := int32(gb.CPU.PC) + int32(next)
 			gb.instJump(uint16(addr))
+			gb.thisCpuTicks += 4
 		}
 
 	// CALL nn
@@ -1194,6 +1242,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 		next := gb.popPC16()
 		if !gb.CPU.Z() {
 			gb.instCall(next)
+			gb.thisCpuTicks += 12
 		}
 
 	// CALL Z,nn
@@ -1201,6 +1250,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 		next := gb.popPC16()
 		if gb.CPU.Z() {
 			gb.instCall(next)
+			gb.thisCpuTicks += 12
 		}
 
 	// CALL NC,nn
@@ -1208,6 +1258,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 		next := gb.popPC16()
 		if !gb.CPU.C() {
 			gb.instCall(next)
+			gb.thisCpuTicks += 12
 		}
 
 	// CALL C,nn
@@ -1215,6 +1266,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 		next := gb.popPC16()
 		if !gb.CPU.C() {
 			gb.instCall(next)
+			gb.thisCpuTicks += 12
 		}
 
 	// RST 0x00
@@ -1257,24 +1309,28 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	case 0xC0:
 		if !gb.CPU.Z() {
 			gb.instRet()
+			gb.thisCpuTicks += 12
 		}
 
 	// RET Z
 	case 0xC8:
 		if gb.CPU.Z() {
 			gb.instRet()
+			gb.thisCpuTicks += 12
 		}
 
 	// RET NC
 	case 0xD0:
 		if !gb.CPU.C() {
 			gb.instRet()
+			gb.thisCpuTicks += 12
 		}
 
 	// RET C
 	case 0xD8:
 		if gb.CPU.C() {
 			gb.instRet()
+			gb.thisCpuTicks += 12
 		}
 
 	// RETI
@@ -1284,7 +1340,9 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// CB!
 	case 0xCB:
-		gb.CBInst[gb.popPC()]()
+		nextInst := gb.popPC()
+		gb.thisCpuTicks += CB_OPCODE_CYCLES[nextInst] * 4
+		gb.CBInst[nextInst]()
 
 	default:
 		log.Printf("Unimplemented opcode: %#2x", opcode)

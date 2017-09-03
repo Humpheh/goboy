@@ -17,11 +17,11 @@ func Reset(value byte, bit byte) byte {
 }
 
 func HalfCarryAdd(val1 byte, val2 byte) bool {
-	return ((val1&0xf)+(val2&0xf))&0x10 == 1
+	return (val1 & 0xF) + (val2 & 0xF) > 0xF
 }
 
 func CarryAdd(val1 byte, val2 byte) bool {
-	return (uint16(val1&0xf0)+uint16(val2&0xf0))&0x100 == 1
+	return uint16(val1) + uint16(val2) > 0xFF
 }
 
 func HalfCarryAdd16(val1 uint16, val2 uint16) bool {
