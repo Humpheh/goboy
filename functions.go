@@ -5,29 +5,32 @@ import (
 )
 
 func (gb *Gameboy) instAdd(set func(byte), val1 byte, val2 byte, addCarry bool) {
+	var carry int16 = 0
 	if gb.CPU.C() && addCarry {
-		val1 += 1
+		carry = 1
 	}
-	total := val1 + val2
-	set(total)
+	total := int16(val1) + int16(val2) + carry
+	set(byte(total))
 
-	gb.CPU.SetZ(total == 0)
+	gb.CPU.SetZ(byte(total) == 0)
 	gb.CPU.SetN(false)
-	gb.CPU.SetH(bits.HalfCarryAdd(val1, val2))
-	gb.CPU.SetC(bits.CarryAdd(val1, val2)) // If result is greater than 255
+	gb.CPU.SetH((val2 & 0xF) + (val1 & 0xF) + byte(carry) > 0xF)
+	gb.CPU.SetC(total > 0xFF) // If result is greater than 255
 }
 
 func (gb *Gameboy) instSub(set func(byte), val1 byte, val2 byte, addCarry bool) {
+	var carry int16 = 0
 	if gb.CPU.C() && addCarry {
-		val2 += 1
+		carry = 1
 	}
-	total := val1 - val2
+	dirtySum := int16(val1) - int16(val2) - carry
+	total := byte(dirtySum)
 	set(total)
 
 	gb.CPU.SetZ(total == 0)
 	gb.CPU.SetN(true)
-	gb.CPU.SetH((val1 & 0x0f) - (val2 & 0x0f) < 0)
-	gb.CPU.SetC(int16(val1) < int16(val2)) // If result is less than 0
+	gb.CPU.SetH(int16(val1 & 0x0f) - int16(val2 & 0xF) - int16(carry) < 0) // TODO: WRONG?
+	gb.CPU.SetC(dirtySum < 0) // If result is less than 0
 }
 
 func (gb *Gameboy) instAnd(set func(byte), val1 byte, val2 byte) {
@@ -84,22 +87,23 @@ func (gb *Gameboy) instDec(set func(byte), org byte) {
 }
 
 func (gb *Gameboy) instAdd16(set func(uint16), val1 uint16, val2 uint16) {
-	total := val1 + val2
-	set(total)
-	gb.CPU.SetZ(total == 0)
+	total := int32(val1) + int32(val2)
+	set(uint16(total))
+	//gb.CPU.SetZ(total == 0)
 	gb.CPU.SetN(false)
-	gb.CPU.SetH(bits.HalfCarryAdd16(val1, val2))
-	gb.CPU.SetC(bits.CarryAdd16(val1, val2))
+	gb.CPU.SetH(int32(val1 & 0xFFF) > (total & 0xFFF))//bits.HalfCarryAdd16(val1, val2))
+	gb.CPU.SetC(total > 0xFFFF)//bits.CarryAdd16(val1, val2))
 }
 
 func (gb *Gameboy) instAdd16Signed(set func(uint16), val1 uint16, val2 int8) {
 	total := uint16(int32(val1) + int32(val2))
 	set(total)
-	gb.CPU.SetZ(total == 0)
+	tmpVal := val1 ^ uint16(val2) ^ total
+	gb.CPU.SetZ(false)
 	gb.CPU.SetN(false)
 	// TODO: Check these!
-	gb.CPU.SetH((int32(val1)&0xf00+int32(val2)&0xf00)&0x1000 == 1)
-	gb.CPU.SetC((int32(val1)&0xf000+int32(val2)&0xf000)&0x10000 == 1)
+	gb.CPU.SetH((tmpVal & 0x10) == 0x10)
+	gb.CPU.SetC((tmpVal & 0x100) == 0x100)
 }
 
 func (gb *Gameboy) instInc16(set func(uint16 uint16), org uint16) {

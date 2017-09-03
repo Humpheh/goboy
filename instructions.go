@@ -81,12 +81,10 @@ func (gb *Gameboy) HALT(txt string) {
 	log.Printf("SP: %0#4x", gb.CPU.SP.HiLo())
 	log.Printf("0xFF80: %0#4x", gb.Memory.Read(0xFF80))
 
-	if haltStep {
-		reader := bufio.NewReader(os.Stdin)
-		log.Print(txt)
-		reader.ReadString('\n')
-		stepON = true
-	}
+	reader := bufio.NewReader(os.Stdin)
+	log.Print(txt)
+	reader.ReadString('\n')
+	check = true
 }
 
 // goes wrong at 0x034C so
@@ -94,18 +92,20 @@ func (gb *Gameboy) HALT(txt string) {
 // test from 0405 onwards to screen turning on
 // end of data = 0x282a
 const BREAKPOINT = 0x9999//28B// 0x030E //0x2a19 + 1 //
-var stepON = false
-var debug = true
-var haltStep = true
+var debug = false
 var doDebugComp = true
+var check = true
 
 func (gb *Gameboy) ExecuteNextOpcode() int {
 	pc := gb.CPU.PC
-	opcode := gb.popPC()
-
-	gb.thisCpuTicks = OPCODE_CYCLES[opcode] * 4
 
 	if debug {
+		expectedCPU, other := gb.GetDebugNum()
+		realCPU := gb.CPU.PrintState("Real")
+		compStr := gb.CPU.Compare(expectedCPU)
+
+		opcode := gb.Memory.Read(pc)
+
 		fmt.Printf("[%0#2x]: %3v %-20v %0#4x  [[", opcode, gb.ScanlineCounter, GetOpcodeName(opcode), pc)
 
 		for i := math.Max(0, float64(pc)-5); i < float64(pc); i++ {
@@ -115,24 +115,33 @@ func (gb *Gameboy) ExecuteNextOpcode() int {
 		for i := float64(pc) + 1; i < float64(pc)+6; i++ {
 			fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
 		}
+		fmt.Print(" ]]\n")
 
 		if doDebugComp {
-			expected := gb.GetDebugNum()
-			actual := uint16(gb.Memory.Read(0xFF44))//pc
-			fmt.Printf(" ]]    (exp) %04x - %04x (act)\n", expected, actual)
-			if actual != expected {
+			fmt.Println(expectedCPU.PrintState("Exp"))
+			fmt.Println(realCPU)
+			fmt.Println(compStr)
+			log.Printf("0xdd02: %0#4x", gb.Memory.Read(0xdd02))
+
+			fmt.Printf("Exp %#4x Real %#4x\n", other, gb.Memory.Read(0xFF44))
+
+			if (expectedCPU.AF.HiLo() != gb.CPU.AF.HiLo() ||
+				expectedCPU.BC.HiLo() != gb.CPU.BC.HiLo() ||
+				expectedCPU.DE.HiLo() != gb.CPU.DE.HiLo() ||
+				expectedCPU.HL.HiLo() != gb.CPU.HL.HiLo() ||
+				expectedCPU.SP.HiLo() != gb.CPU.SP.HiLo() ||
+				expectedCPU.PC != pc) && check {
 				gb.HALT("Unexpected Value!")
 			}
-		} else {
-			fmt.Print(" ]]\n")
 		}
 	}
 
-	if pc == BREAKPOINT || stepON {
+	if pc == BREAKPOINT {
 		gb.HALT("BREAKPOINT")
-		//stepON = true
 	}
 
+	opcode := gb.popPC()
+	gb.thisCpuTicks = OPCODE_CYCLES[opcode] * 4
 	gb.ExecuteOpcode(opcode)
 
 	return gb.thisCpuTicks
@@ -520,10 +529,6 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	// LD (0xFF00+n),A
 	case 0xE0:
 		val := 0xFF00 + uint16(gb.popPC())
-		if val == 0xFF91 {
-			debug = true
-			gb.HALT("WAT")
-		}
 		gb.Memory.Write(val, gb.CPU.AF.Hi())
 
 	// LD A,(0xFF00+n)
@@ -567,16 +572,18 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 		val2 := int32(int8(gb.popPC()))
 		result := val1 + val2
 		gb.CPU.HL.Set(uint16(result))
+		tempVal := val1 ^ val2 ^ result
 		gb.CPU.SetZ(false)
 		gb.CPU.SetN(false)
-		gb.CPU.SetH(((val1 & 0x0f) + (val2 & 0x0f)) > 0x0f)
-		gb.CPU.SetC(result & 0xfff0000 != 0) // TODO: 0xFFFF0000
+		// TODO: Probably chec ktehse
+		gb.CPU.SetH((tempVal & 0x10) == 0x10)
+		gb.CPU.SetC((tempVal & 0x100) == 0x100)
 
 	// LD (nn),SP
 	case 0x08:
 		address := gb.popPC16()
-		gb.Memory.Write(address, gb.CPU.SP.Hi())
-		gb.Memory.Write(address + 1, gb.CPU.SP.Lo())
+		gb.Memory.Write(address, gb.CPU.SP.Lo())
+		gb.Memory.Write(address + 1, gb.CPU.SP.Hi())
 
 	// PUSH AF
 	case 0xF5:
@@ -1109,10 +1116,10 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 		value := gb.CPU.AF.Hi()
 		result := byte(value << 1) | (value >> 7)
 		gb.CPU.AF.SetHi(result)
-		gb.CPU.SetZ(result == 0)
+		gb.CPU.SetZ(false)
 		gb.CPU.SetN(false)
 		gb.CPU.SetH(false)
-		gb.CPU.SetC(value >> 7 == 1)
+		gb.CPU.SetC(value > 0x7F)
 
 	// RLA
 	case 0x17:
@@ -1123,31 +1130,31 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 		}
 		result := byte(value << 1) + carry
 		gb.CPU.AF.SetHi(result)
-		gb.CPU.SetZ(result == 0)
+		gb.CPU.SetZ(false)
 		gb.CPU.SetN(false)
 		gb.CPU.SetH(false)
-		gb.CPU.SetC(value >> 7 == 1)
+		gb.CPU.SetC(result > 0x7F)
 
 	// RRCA
 	case 0x0F:
 		value := gb.CPU.AF.Hi()
 		result := byte(value >> 1) | byte((value & 1) << 7)
 		gb.CPU.AF.SetHi(result)
-		gb.CPU.SetZ(result == 0)
+		gb.CPU.SetZ(false)
 		gb.CPU.SetN(false)
 		gb.CPU.SetH(false)
-		gb.CPU.SetC((value & 1) << 7 == 1)
+		gb.CPU.SetC(result > 0x7F)
 
 	// RRA
 	case 0x1F:
 		value := gb.CPU.AF.Hi()
 		var carry byte = 0
 		if gb.CPU.C() {
-			carry = 1
+			carry = 0x80
 		}
-		result := byte(value >> 1) | byte(carry << 7)
+		result := byte(value >> 1) | carry
 		gb.CPU.AF.SetHi(result)
-		gb.CPU.SetZ(result == 0)
+		gb.CPU.SetZ(false)
 		gb.CPU.SetN(false)
 		gb.CPU.SetH(false)
 		gb.CPU.SetC((1 & value) == 1)
@@ -1264,7 +1271,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	// CALL C,nn
 	case 0xDC:
 		next := gb.popPC16()
-		if !gb.CPU.C() {
+		if gb.CPU.C() {
 			gb.instCall(next)
 			gb.thisCpuTicks += 12
 		}

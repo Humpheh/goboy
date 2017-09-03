@@ -67,16 +67,29 @@ func (gb *Gameboy) Update() int {
 	return cycles
 }
 
-func (gb *Gameboy) GetDebugNum() uint16 {
+func (gb *Gameboy) GetDebugNum() (CPU, uint16) {
 	if !gb.waitscan {
 		gb.scanner.Scan()
 	}
 	line := gb.scanner.Text()
 
 	split := strings.Split(line, " ")
-	num, _ := strconv.ParseUint(split[1], 10, 16)
+	val1, _ := strconv.ParseUint(split[0], 10, 16)
+	val2, _ := strconv.ParseUint(split[1], 10, 16)
+	val3, _ := strconv.ParseUint(split[2], 10, 16)
+	val4, _ := strconv.ParseUint(split[3], 10, 16)
+	val5, _ := strconv.ParseUint(split[4], 10, 16)
+	val6, _ := strconv.ParseUint(split[5], 10, 16)
+	val7, _ := strconv.ParseUint(split[6], 10, 16)
 
-	return uint16(num)
+	return CPU{
+		PC: uint16(val1),
+		AF: Register{val:uint16(val3)},
+		BC: Register{val:uint16(val4)},
+		DE: Register{val:uint16(val5)},
+		HL: Register{val:uint16(val6)},
+		SP: Register{val:uint16(val7)},
+	}, uint16(val2)
 }
 
 func (gb *Gameboy) UpdateTimers(cycles int) {
@@ -518,7 +531,7 @@ func (gb *Gameboy) RenderSprites(lcdControl byte) {
 
 func (gb *Gameboy) Init() {
 	// Load debug file
-	file, err := os.Open("/Users/humphreyshotton/go/src/github.com/humpheh/gob/output.log")
+	file, err := os.Open("/Users/humphreyshotton/go/src/github.com/humpheh/gob/output2.log")
 	if err != nil {
 		panic(err)
 	}
