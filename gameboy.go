@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"strconv"
 	"strings"
+	"log"
 )
 
 const (
@@ -543,6 +544,7 @@ func (gb *Gameboy) Init() {
 	gb.ScanlineCounter = 456
 
 	gb.CBInst = gb.CBInstructions()
+	log.Print(CB_NAMES)
 	gb.CPU.AF.isAF = true
 
 	gb.CPU.PC = 0x100
@@ -583,4 +585,6 @@ func (gb *Gameboy) Init() {
 	gb.Memory.Data[0xFF4A] = 0x00
 	gb.Memory.Data[0xFF4B] = 0x00
 	gb.Memory.Data[0xFFFF] = 0x00
+
+	gb.Memory.Data[0xFF0F] = 0xE0
 }

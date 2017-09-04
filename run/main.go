@@ -29,7 +29,7 @@ func main() {
 	gb.Memory = &mem
 
 	mem.GB = &gb
-	mem.LoadCart("/Users/humphreyshotton/pygb/_roms/cpu_instrs.gb")//tetris.gb")//06-ld r,r.gb")//
+	mem.LoadCart("/Users/humphreyshotton/pygb/_roms/02-interrupts.gb")//cpu_instrs.gb")//10-bit ops.gb")//
 
 	gb.Init()
 

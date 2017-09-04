@@ -92,7 +92,7 @@ func (gb *Gameboy) HALT(txt string) {
 // test from 0405 onwards to screen turning on
 // end of data = 0x282a
 const BREAKPOINT = 0x9999//28B// 0x030E //0x2a19 + 1 //
-var debug = false
+var debug = true
 var doDebugComp = true
 var check = true
 
@@ -100,13 +100,14 @@ func (gb *Gameboy) ExecuteNextOpcode() int {
 	pc := gb.CPU.PC
 
 	if debug {
-		expectedCPU, other := gb.GetDebugNum()
+		expectedCPU, _ := gb.GetDebugNum()
 		realCPU := gb.CPU.PrintState("Real")
 		compStr := gb.CPU.Compare(expectedCPU)
 
 		opcode := gb.Memory.Read(pc)
 
-		fmt.Printf("[%0#2x]: %3v %-20v %0#4x  [[", opcode, gb.ScanlineCounter, GetOpcodeName(opcode), pc)
+		next := gb.Memory.Read(pc + 1)
+		fmt.Printf("[%0#2x]: %3v %-20v %0#4x  [[", opcode, gb.ScanlineCounter, GetOpcodeName(opcode, next), pc)
 
 		for i := math.Max(0, float64(pc)-5); i < float64(pc); i++ {
 			fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
@@ -121,10 +122,6 @@ func (gb *Gameboy) ExecuteNextOpcode() int {
 			fmt.Println(expectedCPU.PrintState("Exp"))
 			fmt.Println(realCPU)
 			fmt.Println(compStr)
-			log.Printf("0xdd02: %0#4x", gb.Memory.Read(0xdd02))
-
-			fmt.Printf("Exp %#4x Real %#4x\n", other, gb.Memory.Read(0xFF44))
-
 			if (expectedCPU.AF.HiLo() != gb.CPU.AF.HiLo() ||
 				expectedCPU.BC.HiLo() != gb.CPU.BC.HiLo() ||
 				expectedCPU.DE.HiLo() != gb.CPU.DE.HiLo() ||
@@ -1041,27 +1038,24 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 		then $60 is added.
 		 */
 		// TODO: This could be more efficient?
-
-		if gb.CPU.N() {
-			if gb.CPU.AF.Hi() & 0x0F > 0x09 || gb.CPU.H() {
-				gb.CPU.AF.SetHi(gb.CPU.AF.Hi() - 0x06)
-				gb.CPU.SetC(gb.CPU.AF.Hi() & 0xF0 == 0xF0)
+		if !gb.CPU.N() {
+			if gb.CPU.C() || gb.CPU.AF.Hi() > 0x99 {
+				gb.CPU.AF.SetHi(gb.CPU.AF.Hi() + 0x60)
+				gb.CPU.SetC(true)
 			}
-
-			if gb.CPU.AF.Hi() & 0xF0 > 0x90 || gb.CPU.C() {
-				gb.CPU.AF.SetHi(gb.CPU.AF.Hi() - 0x06)
-			}
-		} else {
-			if gb.CPU.AF.Hi() & 0x0F > 0x09 || gb.CPU.C() {
+			if gb.CPU.H() || gb.CPU.AF.Hi() & 0xF > 0x9 {
 				gb.CPU.AF.SetHi(gb.CPU.AF.Hi() + 0x06)
-				gb.CPU.SetC(gb.CPU.AF.Hi() & 0xF0 == 0)
+				gb.CPU.SetH(false)
 			}
-
-			if gb.CPU.AF.Hi() & 0xF0 > 0x90 || gb.CPU.C() {
-				gb.CPU.AF.SetHi(gb.CPU.AF.Hi() + 0x06)
-			}
+		} else if gb.CPU.C() && gb.CPU.H() {
+			gb.CPU.AF.SetHi(gb.CPU.AF.Hi() + 0x9A)
+			gb.CPU.SetH(false)
+		} else if gb.CPU.C() {
+			gb.CPU.AF.SetHi(gb.CPU.AF.Hi() + 0xA0)
+		} else if gb.CPU.H() {
+			gb.CPU.AF.SetHi(gb.CPU.AF.Hi() + 0xFA)
+			gb.CPU.SetH(false)
 		}
-
 		gb.CPU.SetZ(gb.CPU.AF.Hi() == 0)
 
 	// CPL
@@ -1133,7 +1127,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 		gb.CPU.SetZ(false)
 		gb.CPU.SetN(false)
 		gb.CPU.SetH(false)
-		gb.CPU.SetC(result > 0x7F)
+		gb.CPU.SetC(value > 0x7F)
 
 	// RRCA
 	case 0x0F:
