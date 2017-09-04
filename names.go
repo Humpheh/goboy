@@ -250,6 +250,9 @@ func init() {
 	names[0xCB] = "CB!"
 }
 
-func GetOpcodeName(opcode byte) string {
+func GetOpcodeName(opcode byte, next byte) string {
+	if opcode == 0xCB {
+		return CB_NAMES[next]
+	}
 	return names[opcode]
 }

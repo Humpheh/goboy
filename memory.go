@@ -78,6 +78,9 @@ func (mem *Memory) Write(address uint16, value byte) {
 
 func (mem *Memory) Read(address uint16) byte {
 	switch {
+	case address == 0xFF0F:
+		return mem.Data[0xFF0F] & 0xE0
+
 	case address < 0x4000:
 		return mem.Cart.Data[address]
 
