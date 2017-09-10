@@ -20,10 +20,6 @@ func (mem *Memory) LoadCart(loc string) {
 }
 
 func (mem *Memory) Write(address uint16, value byte) {
-	//if address == 0xFF80 {
-	//	mem.GB.HALT("0xFF80")
-	//}
-
 	switch {
 	// Timer control
 	case address == TMC:
@@ -34,10 +30,13 @@ func (mem *Memory) Write(address uint16, value byte) {
 		if current_freq != new_freq {
 			mem.GB.SetClockFreq()
 		}
+
+	// Serial transfer control
 	case address == 0xFF02:
 		if value == 0x81 {
 			fmt.Print(string(mem.Read(0xFF01)))
 		}
+
 	// Trap divider register
 	case address == 0xFF04:
 		mem.Data[0xFF04] = 0
@@ -78,8 +77,12 @@ func (mem *Memory) Write(address uint16, value byte) {
 
 func (mem *Memory) Read(address uint16) byte {
 	switch {
+	// Joypad address
+	case address == 0xFF00:
+		return mem.GB.JoypadValue(mem.Data[0xFF00])
+
 	case address == 0xFF0F:
-		return mem.Data[0xFF0F] & 0xE0
+		return mem.Data[0xFF0F] | 0xE0
 
 	case address < 0x4000:
 		return mem.Cart.Data[address]
