@@ -93,7 +93,7 @@ func (gb *Gameboy) HALT(txt string) {
 // end of data = 0x282a
 const BREAKPOINT = 0x9999//28B// 0x030E //0x2a19 + 1 //
 var debug = false
-var doDebugComp = true
+var doDebugComp = false
 var check = true
 
 func (gb *Gameboy) ExecuteNextOpcode() int {
