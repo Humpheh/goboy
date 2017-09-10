@@ -97,10 +97,11 @@ func (gb *Gameboy) UpdateTimers(cycles int) {
 	gb.dividerRegister(cycles)
 
 	if gb.isClockEnabled() {
+		log.Println(gb.TimerCounter, cycles)
 		gb.TimerCounter -= cycles
 
 		if gb.TimerCounter <= 0 {
-			gb.GetClockFreq()
+			gb.SetClockFreq()
 
 			if gb.Memory.Read(TIMA) == 255 {
 				gb.Memory.Write(TIMA, gb.Memory.Read(TMA))
@@ -350,7 +351,7 @@ func (gb *Gameboy) RenderTiles(lcdControl byte) {
 	}
 
 	// which of the 8 vertical pixels of the current tile is the scanline on?
-	var tile_row uint16 = uint16(byte(y_pos/8) * 32)
+	var tile_row uint16 = uint16(y_pos/8) * 32
 
 	// start drawing the 160 horizontal pixels for this scanline
 	var pixel byte
@@ -381,7 +382,7 @@ func (gb *Gameboy) RenderTiles(lcdControl byte) {
 		if unsig {
 			tile_location = tile_location + uint16(tile_num*16)
 		} else {
-			tile_location = uint16(int16(tile_location) + ((tile_num + 128) * 16))
+			tile_location = uint16(int32(tile_location) + int32((tile_num + 128) * 16))
 		}
 
 		// find the correct v-line we're on of the tile to get the tile data from in memory (???)
@@ -530,9 +531,14 @@ func (gb *Gameboy) RenderSprites(lcdControl byte) {
 	}
 }
 
+func (gb *Gameboy) JoypadValue(current byte) byte {
+	// TODO: implement this properly based on current
+	return current | 0xc0 | 0xf
+}
+
 func (gb *Gameboy) Init() {
 	// Load debug file
-	file, err := os.Open("/Users/humphreyshotton/go/src/github.com/humpheh/gob/output2.log")
+	file, err := os.Open("/Users/humphreyshotton/go/src/github.com/humpheh/gob/output3.log")
 	if err != nil {
 		panic(err)
 	}
@@ -546,6 +552,8 @@ func (gb *Gameboy) Init() {
 	gb.CBInst = gb.CBInstructions()
 	log.Print(CB_NAMES)
 	gb.CPU.AF.isAF = true
+
+	gb.TimerCounter = 1024
 
 	gb.CPU.PC = 0x100
 	gb.CPU.AF.Set(0x01B0)

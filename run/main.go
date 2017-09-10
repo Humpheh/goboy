@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/humpheh/gob"
 	"github.com/veandco/go-sdl2/sdl"
+	"time"
 )
 
 func main() {
@@ -29,7 +30,7 @@ func main() {
 	gb.Memory = &mem
 
 	mem.GB = &gb
-	mem.LoadCart("/Users/humphreyshotton/pygb/_roms/02-interrupts.gb")//cpu_instrs.gb")//10-bit ops.gb")//
+	mem.LoadCart("/Users/humphreyshotton/pygb/_roms/drmario.gb")//02-interrupts.gb")//cpu_instrs.gb")//10-bit ops.gb")//
 
 	gb.Init()
 
@@ -38,5 +39,6 @@ func main() {
 		cycles += gb.Update()
 		gb.RenderScreen(surface)
 		window.UpdateSurface()
+		time.Sleep(time.Millisecond)
 	}
 }
