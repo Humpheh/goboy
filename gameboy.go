@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"strconv"
 	"strings"
-	"log"
 )
 
 const (
@@ -39,6 +38,7 @@ type Gameboy struct {
 	SkipNext bool
 
 	CBInst map[byte]func()
+	InputMask byte
 
 	scanner  *bufio.Scanner
 	waitscan bool
@@ -50,21 +50,19 @@ type Gameboy struct {
 func (gb *Gameboy) Update() int {
 	cycles := 0
 	for cycles < CYCLES_FRAME {
-		//if gb.SkipNext {
-		//	gb.popPC()
-		//	gb.SkipNext = false
-		//	continue
-		//}
 		cycles_op := 4
 		if !gb.Halted {
 			cycles_op = gb.ExecuteNextOpcode()
 			cycles += cycles_op
+		} else {
+			// TODO: This is incorrect
+			cycles += 4
 		}
-
 		gb.UpdateTimers(cycles_op)
 		gb.UpdateGraphics(cycles_op)
 		gb.DoInterrupts()
 	}
+
 	return cycles
 }
 
@@ -97,7 +95,6 @@ func (gb *Gameboy) UpdateTimers(cycles int) {
 	gb.dividerRegister(cycles)
 
 	if gb.isClockEnabled() {
-		log.Println(gb.TimerCounter, cycles)
 		gb.TimerCounter -= cycles
 
 		if gb.TimerCounter <= 0 {
@@ -486,8 +483,8 @@ func (gb *Gameboy) RenderSprites(lcdControl byte) {
 			data1 := gb.Memory.Read(data_address)
 			data2 := gb.Memory.Read(data_address + 1)
 
-			var tile_pixel byte
-			for tile_pixel = 7; tile_pixel >= 0; tile_pixel-- {
+			// TODO: Improve this range loop
+			for _, tile_pixel := range []byte{7,6,5,4,3,2,1,0} {
 				colour_bit := tile_pixel
 
 				if x_flip {
@@ -532,8 +529,13 @@ func (gb *Gameboy) RenderSprites(lcdControl byte) {
 }
 
 func (gb *Gameboy) JoypadValue(current byte) byte {
-	// TODO: implement this properly based on current
-	return current | 0xc0 | 0xf
+	var in byte = 0xF
+	if bits.Test(current, 4) {
+		in = gb.InputMask & 0xF
+	} else if bits.Test(current, 5) {
+		in = (gb.InputMask >> 4) & 0xF
+	}
+	return current | 0xc0 | in
 }
 
 func (gb *Gameboy) Init() {
@@ -550,10 +552,10 @@ func (gb *Gameboy) Init() {
 	gb.ScanlineCounter = 456
 
 	gb.CBInst = gb.CBInstructions()
-	log.Print(CB_NAMES)
 	gb.CPU.AF.isAF = true
 
 	gb.TimerCounter = 1024
+	gb.InputMask = 0xFF
 
 	gb.CPU.PC = 0x100
 	gb.CPU.AF.Set(0x01B0)
