@@ -4,7 +4,7 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-const SDL_PIXEL_SIZE int32 = 5
+const PIXEL_SCALE int = 3
 
 // Interface for a screen which displays the game
 type Monitor interface {
@@ -26,32 +26,24 @@ func GetSDLMonitor(gameboy *Gameboy) SDLMonitor {
 // And SDL2 monitor instance
 type SDLMonitor struct {
 	Monitor
-	Gameboy *Gameboy
-	window  *sdl.Window
-	surface *sdl.Surface
+	Gameboy  *Gameboy
+	window   *sdl.Window
+	surface  *sdl.Surface
+	renderer *sdl.Renderer
 }
 
 // Initialise the display
 func (mon *SDLMonitor) Init() {
 	sdl.Init(sdl.INIT_EVERYTHING)
-	window, err := sdl.CreateWindow(
-		"test",
-		sdl.WINDOWPOS_UNDEFINED,
-		sdl.WINDOWPOS_UNDEFINED,
-		int(SDL_PIXEL_SIZE * 160),
-		int(SDL_PIXEL_SIZE * 144),
-		sdl.WINDOW_SHOWN,
+	window, renderer, err := sdl.CreateWindowAndRenderer(
+		160 * PIXEL_SCALE, 144 * PIXEL_SCALE, 0,
 	)
 	if err != nil {
 		panic(err)
 	}
+	renderer.SetScale(float32(PIXEL_SCALE), float32(PIXEL_SCALE))
 	mon.window = window
-
-	surface, err := window.GetSurface()
-	if err != nil {
-		panic(err)
-	}
-	mon.surface = surface
+	mon.renderer = renderer
 }
 
 // Combine an array of an RGB array a single number
@@ -63,16 +55,12 @@ func (mon *SDLMonitor) toColour(cols [3]int) uint32 {
 func (mon *SDLMonitor) RenderScreen() {
 	for x := 0; x < 160; x++ {
 		for y := 0; y < 144; y++ {
-			rect := sdl.Rect{
-				X: int32(x) * SDL_PIXEL_SIZE,
-				Y: int32(y) * SDL_PIXEL_SIZE,
-				W: SDL_PIXEL_SIZE,
-				H: SDL_PIXEL_SIZE,
-			}
-			mon.surface.FillRect(&rect, mon.toColour(mon.Gameboy.ScreenData[x][y]))
+			col := mon.Gameboy.ScreenData[x][y]
+			mon.renderer.SetDrawColor(uint8(col[0]), uint8(col[1]), uint8(col[2]), 0xFF)
+			mon.renderer.DrawPoint(x, y)
 		}
 	}
-	mon.window.UpdateSurface()
+	mon.renderer.Present()
 }
 
 // Destroy the monitor instance
