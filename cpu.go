@@ -55,6 +55,18 @@ type CPU struct {
 	Divider int
 }
 
+// Init CPU and its registers to the initial values
+func (cpu *CPU) Init() {
+	cpu.PC = 0x100
+	cpu.AF.Set(0x01B0)
+	cpu.BC.Set(0x0013)
+	cpu.DE.Set(0x00D8)
+	cpu.HL.Set(0x014D)
+	cpu.SP.Set(0xFFFE)
+
+	cpu.AF.isAF = true
+}
+
 func (cpu *CPU) PrintState(label string) string {
 	return fmt.Sprintf("%5v - AF: %0#4x  BC: %0#4x  DE: %0#4x  HL: %0#4x  PC: %0#4x  SP: %0#4x",
 		label, cpu.AF.HiLo(), cpu.BC.HiLo(), cpu.DE.HiLo(), cpu.HL.HiLo(),

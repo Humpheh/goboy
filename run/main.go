@@ -23,23 +23,14 @@ func main() {
 		exitError("")
 	}
 
-	cpu := gob.CPU{}
-	mem := gob.Memory{}
 	gb := gob.Gameboy{}
-
-	gb.CPU = &cpu
-	gb.Memory = &mem
-
-	mem.GB = &gb
-	err := mem.LoadCart(rom_file)
+	err := gb.Init(rom_file)
 	if err != nil {
-		exitError("Could not load rom file")
+		exitError(err.Error())
 	}
 
 	monitor := gob.GetSDLMonitor(&gb)
 	defer monitor.Destroy()
-
-	gb.Init()
 
 	cycles := 0
 	for true {
