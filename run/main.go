@@ -5,22 +5,22 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/humpheh/gob/bits"
 	"log"
+	"os"
 )
 
+func exitError(msg string) {
+	print(msg, "\n")
+	print("Usage: gob romfile\n")
+	os.Exit(0)
+}
+
 func main() {
-	sdl.Init(sdl.INIT_EVERYTHING)
-
-	window, err := sdl.CreateWindow("test", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
-		int(gob.GPU_PIXEL_SIZE * 160), int(gob.GPU_PIXEL_SIZE * 144), sdl.WINDOW_SHOWN)
-	if err != nil {
-		panic(err)
+	if len(os.Args) == 1 {
+		exitError("")
 	}
-	defer window.Destroy()
-	defer sdl.Quit()
-
-	surface, err := window.GetSurface()
-	if err != nil {
-		panic(err)
+	rom_file := os.Args[1]
+	if rom_file == "" {
+		exitError("")
 	}
 
 	cpu := gob.CPU{}
@@ -31,15 +31,20 @@ func main() {
 	gb.Memory = &mem
 
 	mem.GB = &gb
-	mem.LoadCart("/Users/humphreyshotton/pygb/_roms/drmario.gb")//02-interrupts.gb")//cpu_instrs.gb")//10-bit ops.gb")//
+	err := mem.LoadCart(rom_file)
+	if err != nil {
+		exitError("Could not load rom file")
+	}
+
+	monitor := gob.GetSDLMonitor(&gb)
+	defer monitor.Destroy()
 
 	gb.Init()
 
 	cycles := 0
 	for true {
 		cycles += gb.Update()
-		gb.RenderScreen(surface)
-		window.UpdateSurface()
+		monitor.RenderScreen()
 
 		evt := sdl.PollEvent()
 		if evt != nil {
