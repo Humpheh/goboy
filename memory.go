@@ -14,9 +14,9 @@ type Memory struct {
 	ROMBanking bool
 }
 
-func (mem *Memory) LoadCart(loc string) {
+func (mem *Memory) LoadCart(loc string) error {
 	mem.Cart = &Cartridge{}
-	mem.Cart.Load(loc)
+	return mem.Cart.Load(loc)
 }
 
 func (mem *Memory) Write(address uint16, value byte) {

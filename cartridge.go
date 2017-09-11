@@ -13,10 +13,10 @@ type Cartridge struct {
 	RAMBank uint16
 }
 
-func (cart *Cartridge) Load(filename string) {
+func (cart *Cartridge) Load(filename string) error {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	cart.Data = data
@@ -34,4 +34,5 @@ func (cart *Cartridge) Load(filename string) {
 	// RAM banking
 	cart.RAMBank = 0
 	cart.RAM = [0x8000]byte{}
+	return nil
 }
