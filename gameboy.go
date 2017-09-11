@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"strconv"
 	"strings"
+	"fmt"
 )
 
 const (
@@ -538,11 +539,25 @@ func (gb *Gameboy) JoypadValue(current byte) byte {
 	return current | 0xc0 | in
 }
 
-func (gb *Gameboy) Init() {
+func (gb *Gameboy) Init(rom_file string) error {
+	// Initialise the CPU
+	gb.CPU = &CPU{}
+	gb.CPU.Init()
+
+	// Initialise the memory
+	gb.Memory = &Memory{}
+	gb.Memory.Init(gb)
+
+	// Load the ROM file
+	err := gb.Memory.LoadCart(rom_file)
+	if err != nil {
+		return fmt.Errorf("could not open rom file: %s", err)
+	}
+
 	// Load debug file
 	file, err := os.Open("/Users/humphreyshotton/go/src/github.com/humpheh/gob/output3.log")
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("could not open debug file: %s", err)
 	}
 
 	gb.scanner = bufio.NewScanner(file)
@@ -550,51 +565,10 @@ func (gb *Gameboy) Init() {
 	// ^ TEMP ^
 
 	gb.ScanlineCounter = 456
-
-	gb.CBInst = gb.CBInstructions()
-	gb.CPU.AF.isAF = true
-
 	gb.TimerCounter = 1024
 	gb.InputMask = 0xFF
 
-	gb.CPU.PC = 0x100
-	gb.CPU.AF.Set(0x01B0)
-	gb.CPU.BC.Set(0x0013)
-	gb.CPU.DE.Set(0x00D8)
-	gb.CPU.HL.Set(0x014D)
-	gb.CPU.SP.Set(0xFFFE)
-	gb.Memory.Data[0xFF05] = 0x00
-	gb.Memory.Data[0xFF06] = 0x00
-	gb.Memory.Data[0xFF07] = 0x00
-	gb.Memory.Data[0xFF10] = 0x80
-	gb.Memory.Data[0xFF11] = 0xBF
-	gb.Memory.Data[0xFF12] = 0xF3
-	gb.Memory.Data[0xFF14] = 0xBF
-	gb.Memory.Data[0xFF16] = 0x3F
-	gb.Memory.Data[0xFF17] = 0x00
-	gb.Memory.Data[0xFF19] = 0xBF
-	gb.Memory.Data[0xFF1A] = 0x7F
-	gb.Memory.Data[0xFF1B] = 0xFF
-	gb.Memory.Data[0xFF1C] = 0x9F
-	gb.Memory.Data[0xFF1E] = 0xBF
-	gb.Memory.Data[0xFF20] = 0xFF
-	gb.Memory.Data[0xFF21] = 0x00
-	gb.Memory.Data[0xFF22] = 0x00
-	gb.Memory.Data[0xFF23] = 0xBF
-	gb.Memory.Data[0xFF24] = 0x77
-	gb.Memory.Data[0xFF25] = 0xF3
-	gb.Memory.Data[0xFF26] = 0xF1
-	gb.Memory.Data[0xFF40] = 0x91
-	gb.Memory.Data[0xFF41] = 0x85
-	gb.Memory.Data[0xFF42] = 0x00
-	gb.Memory.Data[0xFF43] = 0x00
-	gb.Memory.Data[0xFF45] = 0x00
-	gb.Memory.Data[0xFF47] = 0xFC
-	gb.Memory.Data[0xFF48] = 0xFF
-	gb.Memory.Data[0xFF49] = 0xFF
-	gb.Memory.Data[0xFF4A] = 0x00
-	gb.Memory.Data[0xFF4B] = 0x00
-	gb.Memory.Data[0xFFFF] = 0x00
+	gb.CBInst = gb.CBInstructions()
 
-	gb.Memory.Data[0xFF0F] = 0xE0
+	return nil
 }
