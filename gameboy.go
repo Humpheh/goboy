@@ -479,14 +479,14 @@ func (gb *Gameboy) RenderSprites(lcdControl byte) {
 		}
 
 		if scanline >= y_pos && scanline < (y_pos+y_size) {
-			line := scanline - y_pos
+			var line int32 = int32(scanline - y_pos)
 
 			if y_flip {
-				line = byte(int8(line-y_size) * -1)
+				line = (line-int32(y_size)) * -1
 			}
 
 			line *= 2
-			data_address := 0x8000 + uint16((tile_location*16)+line)
+			data_address := 0x8000 + uint16((uint16(tile_location)*16)+uint16(line))
 			data1 := gb.Memory.Read(data_address)
 			data2 := gb.Memory.Read(data_address + 1)
 
