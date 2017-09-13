@@ -22,7 +22,7 @@ func (mem *Memory) Init(gameboy *Gameboy) {
 	mem.Data[0xFF05] = 0x00
 	mem.Data[0xFF06] = 0x00
 	mem.Data[0xFF07] = 0x00
-	mem.Data[0xFF0F] = 0xE0
+	mem.Data[0xFF0F] = 0xE1
 	mem.Data[0xFF10] = 0x80
 	mem.Data[0xFF11] = 0xBF
 	mem.Data[0xFF12] = 0xF3
@@ -129,8 +129,8 @@ func (mem *Memory) Read(address uint16) byte {
 
 	// Reading from ROM memory bank
 	case address >= 0x4000 && address <= 0x7FFF:
-		new_address := address - 0x4000
-		return mem.Cart.Data[new_address + (mem.Cart.ROMBank * 0x4000)]
+		new_address := uint32(address) - 0x4000
+		return mem.Cart.Data[new_address + (uint32(mem.Cart.ROMBank) * 0x4000)]
 
 	// Reading from RAM memory bank
 	case address >= 0xA000 && address <= 0xBFFF:
@@ -198,7 +198,6 @@ func (mem *Memory) changeLoROMBank(value byte) {
 		mem.Cart.ROMBank &= 224 // turn off the lower 5
 		mem.Cart.ROMBank |= uint16(lower)
 	}
-
 	if mem.Cart.ROMBank == 0 {
 		mem.Cart.ROMBank++
 	}
