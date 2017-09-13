@@ -91,9 +91,9 @@ func (gb *Gameboy) HALT(txt string) {
 // never reaches 0x036F loop
 // test from 0405 onwards to screen turning on
 // end of data = 0x282a
-const BREAKPOINT = 0x9999//28B// 0x030E //0x2a19 + 1 //
+const BREAKPOINT = 0x23f8//28B// 0x030E //0x2a19 + 1 //
 var debug = false
-var doDebugComp = true
+var doDebugComp = false
 var check = true
 
 func (gb *Gameboy) ExecuteNextOpcode() int {
@@ -103,7 +103,7 @@ func (gb *Gameboy) ExecuteNextOpcode() int {
 		expectedCPU, expectedNum := gb.GetDebugNum()
 		realCPU := gb.CPU.PrintState("Real")
 		compStr := gb.CPU.Compare(expectedCPU)
-		realNum := gb.Memory.Read(0xFF05)
+		realNum := gb.Memory.Read(0xFF0F)
 
 		opcode := gb.Memory.Read(pc)
 
@@ -120,11 +120,12 @@ func (gb *Gameboy) ExecuteNextOpcode() int {
 		fmt.Print(" ]]\n")
 
 		if doDebugComp {
+			_ = expectedNum
 			fmt.Printf("%v  (%02x)\n", expectedCPU.PrintState("Exp"), expectedNum)
 			fmt.Printf("%v  (%02x)\n", realCPU, realNum)
 			fmt.Println(compStr)
-			if (//byte(expectedNum) != realNum ||
-				expectedCPU.AF.HiLo() != gb.CPU.AF.HiLo() ||
+			if (byte(expectedNum) != realNum ||
+				//expectedCPU.AF.HiLo() != gb.CPU.AF.HiLo() ||
 				expectedCPU.BC.HiLo() != gb.CPU.BC.HiLo() ||
 				expectedCPU.DE.HiLo() != gb.CPU.DE.HiLo() ||
 				expectedCPU.HL.HiLo() != gb.CPU.HL.HiLo() ||
@@ -1105,7 +1106,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// EI
 	case 0xFB:
-		gb.InterruptsOn = true
+		gb.InterruptsEnabling = true
 
 	// RLCA
 	case 0x07:

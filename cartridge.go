@@ -1,6 +1,8 @@
 package gob
 
-import "io/ioutil"
+import (
+	"io/ioutil"
+)
 
 type Cartridge struct {
 	Data    []byte // max len 0x200000

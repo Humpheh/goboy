@@ -34,6 +34,7 @@ type Gameboy struct {
 
 	ScreenData [160][144][3]int
 
+	InterruptsEnabling bool
 	InterruptsOn bool
 	Halted bool
 	SkipNext bool
@@ -148,6 +149,11 @@ func (gb *Gameboy) RequestInterrupt(interrupt byte) {
 }
 
 func (gb *Gameboy) DoInterrupts() {
+	if gb.InterruptsEnabling {
+		gb.InterruptsOn = true
+		gb.InterruptsEnabling = false
+		return
+	}
 	if !gb.InterruptsOn {
 		return
 	}
