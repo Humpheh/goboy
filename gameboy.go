@@ -20,10 +20,10 @@ const (
 	TMA  = 0xFF06
 	TMC  = 0xFF07
 
-	WHITE      = 1
-	LIGHT_GRAY = 2
-	DARK_GRAY  = 3
-	BLACK      = 4
+	WHITE      = 0
+	LIGHT_GRAY = 1
+	DARK_GRAY  = 2
+	BLACK      = 3
 )
 
 type Gameboy struct {
@@ -32,14 +32,15 @@ type Gameboy struct {
 	TimerCounter    int
 	ScanlineCounter int
 
-	ScreenData [160][144][3]int
+	ScreenData   [160][144][3]uint8
+	PreparedData [160][144][3]uint8
 
 	InterruptsEnabling bool
-	InterruptsOn bool
-	Halted bool
-	SkipNext bool
+	InterruptsOn       bool
+	Halted             bool
+	SkipNext           bool
 
-	CBInst map[byte]func()
+	CBInst    map[byte]func()
 	InputMask byte
 
 	scanner  *bufio.Scanner
@@ -85,11 +86,11 @@ func (gb *Gameboy) GetDebugNum() (CPU, uint16) {
 
 	return CPU{
 		PC: uint16(val1),
-		AF: Register{val:uint16(val3)},
-		BC: Register{val:uint16(val4)},
-		DE: Register{val:uint16(val5)},
-		HL: Register{val:uint16(val6)},
-		SP: Register{val:uint16(val7)},
+		AF: Register{val: uint16(val3)},
+		BC: Register{val: uint16(val4)},
+		DE: Register{val: uint16(val5)},
+		HL: Register{val: uint16(val6)},
+		SP: Register{val: uint16(val7)},
 	}, uint16(val2)
 }
 
@@ -227,10 +228,12 @@ func (gb *Gameboy) UpdateGraphics(cycles int) {
 
 		if current_line == 144 {
 			gb.RequestInterrupt(0)
+			gb.PreparedData = gb.ScreenData
+			gb.ScreenData = [160][144][3]uint8{}
 		} else if current_line > 153 {
 			gb.Memory.Data[0xFF44] = 0
 		} else if current_line < 144 {
-			gb.DrawScanline()
+			gb.DrawScanline(current_line)
 		}
 	}
 }
@@ -298,21 +301,20 @@ func (gb *Gameboy) IsLCDEnabled() bool {
 	return bits.Test(gb.Memory.Read(0xFF40), 7)
 }
 
-func (gb *Gameboy) DrawScanline() {
+func (gb *Gameboy) DrawScanline(scanline byte) {
 	control := gb.Memory.Read(0xFF40)
 	if bits.Test(control, 0) {
-		gb.RenderTiles(control)
+		gb.RenderTiles(control, scanline)
 	}
 
 	if bits.Test(control, 1) {
-		gb.RenderSprites(control)
+		gb.RenderSprites(control, scanline)
 	}
 }
 
-func (gb *Gameboy) RenderTiles(lcdControl byte) {
-	var tile_data uint16 = 0
-	var background_memory uint16 = 0
-	unsig := true
+func (gb *Gameboy) RenderTiles(lcdControl byte, scanline byte) {
+	unsig := false
+	tile_data := uint16(0x8800)
 
 	scroll_y := gb.Memory.Read(0xFF42)
 	scroll_x := gb.Memory.Read(0xFF43)
@@ -328,22 +330,20 @@ func (gb *Gameboy) RenderTiles(lcdControl byte) {
 		}
 	}
 
+	// Test if we're using unsigned bytes
 	if bits.Test(lcdControl, 4) {
 		tile_data = 0x8000
-	} else {
-		// This memory region uses signed bytes as tile identifiers
-		tile_data = 0x8800
-		unsig = false
+		unsig = true
 	}
 
 	var test_bit byte = 3
 	if using_window {
 		test_bit = 6
 	}
+
+	background_memory := uint16(0x9800)
 	if bits.Test(lcdControl, test_bit) {
 		background_memory = 0x9C00
-	} else {
-		background_memory = 0x9800
 	}
 
 	// yPos is used to calc which of 32 v-lines the current scanline is drawing
@@ -362,72 +362,46 @@ func (gb *Gameboy) RenderTiles(lcdControl byte) {
 	for pixel = 0; pixel < 160; pixel++ {
 		x_pos := pixel + scroll_x
 
-		// translate the current x pos to window space if necessary
+		// Translate the current x pos to window space if necessary
 		if using_window && pixel >= window_x {
 			x_pos = pixel - window_x
 		}
 
 		// which of the 32 horizontal tiles does this x_pox fall within?
 		tile_col := uint16(x_pos / 8)
-		var tile_num int16 // signed
 
-		// get the tile identity number
+		// Get the tile identity number
 		tile_address := background_memory + tile_row + tile_col
-		// TODO: ensure signing works correctly
-		if unsig {
-			tile_num = int16(gb.Memory.Read(tile_address))
-		} else {
-			tile_num = int16(int8(gb.Memory.Read(tile_address)))
-		}
 
 		// deduce where this tile id is in memory
 		tile_location := tile_data
 		// TODO: ensure signing works correctly
 		if unsig {
+			tile_num := int16(gb.Memory.Data[tile_address])
 			tile_location = tile_location + uint16(tile_num*16)
 		} else {
-			tile_location = uint16(int32(tile_location) + int32((tile_num + 128) * 16))
+			tile_num := int16(int8(gb.Memory.Data[tile_address]))
+			tile_location = uint16(int32(tile_location) + int32((tile_num+128)*16))
 		}
 
 		// find the correct v-line we're on of the tile to get the tile data from in memory (???)
 		var line byte = (y_pos % 8) * 2 // each v-line takes up two bytes of memory
-		data1 := gb.Memory.Read(tile_location + uint16(line))
-		data2 := gb.Memory.Read(tile_location + uint16(line) + 1)
+		data1 := gb.Memory.Data[tile_location+uint16(line)]
+		data2 := gb.Memory.Data[tile_location+uint16(line)+1]
 
 		colour_bit := byte(int8((x_pos%8)-7) * -1)
-
 		colour_num := (bits.Val(data2, colour_bit) << 1) | bits.Val(data1, colour_bit)
-		col := gb.GetColour(colour_num, 0xFF47)
-		red, green, blue := 0, 0, 0
 
-		// setup the RGB values
-		switch col {
-		case WHITE:
-			red, green, blue = 255, 255, 255
-		case LIGHT_GRAY:
-			red, green, blue = 0xCC, 0xCC, 0xCC
-		case DARK_GRAY:
-			red, green, blue = 0x77, 0x77, 0x77
+		// Set the pixel if it is in bounds
+		if pixel >= 0 && pixel < 160 {
+			red, green, blue := gb.GetColour(colour_num, 0xFF47)
+			gb.SetPixel(pixel, scanline, red, green, blue)
 		}
-
-		finally := gb.Memory.Read(0xFF44)
-
-		// safety check to make sure about to set is in bounds
-		if finally < 0 || finally > 143 || pixel < 0 || pixel > 159 {
-			continue
-		}
-
-		gb.ScreenData[pixel][finally][0] = red
-		gb.ScreenData[pixel][finally][1] = green
-		gb.ScreenData[pixel][finally][2] = blue
 	}
 }
 
-func (gb *Gameboy) GetColour(colour_num byte, address uint16) int {
-	res := WHITE
-	palette := gb.Memory.Read(address)
+func (gb *Gameboy) GetColour(colour_num byte, address uint16) (byte, byte, byte) {
 	var hi, lo byte = 0, 0
-
 	switch colour_num {
 	case 0:
 		hi, lo = 1, 0
@@ -439,39 +413,38 @@ func (gb *Gameboy) GetColour(colour_num byte, address uint16) int {
 		hi, lo = 7, 6
 	}
 
-	colour := (bits.Val(palette, hi) << 1) | bits.Val(palette, lo)
+	palette := gb.Memory.Read(address)
+	col := (bits.Val(palette, hi) << 1) | bits.Val(palette, lo)
 
-	switch colour {
-	case 0:
-		res = WHITE
-	case 1:
-		res = LIGHT_GRAY
-	case 2:
-		res = DARK_GRAY
-	case 3:
-		res = BLACK
+	switch col {
+	case WHITE:
+		return 0xFF, 0xFF, 0xFF
+	case LIGHT_GRAY:
+		return 0xCC, 0xCC, 0xCC
+	case DARK_GRAY:
+		return 0x77, 0x77, 0x77
+	default:
+		return 0x00, 0x00, 0x00
 	}
-
-	return res
 }
 
-func (gb *Gameboy) RenderSprites(lcdControl byte) {
-	use8x16 := false
-	if bits.Test(lcdControl, 2) {
-		use8x16 = true
-	}
+// Render the sprites to the screen. Takes the lcdControl register
+// and current scanline to write to the correct place
+func (gb *Gameboy) RenderSprites(lcdControl byte, scanline byte) {
+	use8x16 := bits.Test(lcdControl, 2)
 
 	for sprite := 0; sprite < 40; sprite++ {
+		// Load sprite data from memory. Note: for speed purposes
+		// we are accessing the Data array directly instead of using
+		// the read() method.
 		index := sprite * 4
-		y_pos := gb.Memory.Read(uint16(0xFE00+index)) - 16
-		x_pos := gb.Memory.Read(uint16(0xFE00+index+1)) - 8
-		tile_location := gb.Memory.Read(uint16(0xFE00 + index + 2))
-		attributes := gb.Memory.Read(uint16(0xFE00 + index + 3))
+		y_pos := gb.Memory.Data[uint16(0xFE00+index)] - 16
+		x_pos := gb.Memory.Data[uint16(0xFE00+index+1)] - 8
+		tile_location := gb.Memory.Data[uint16(0xFE00+index+2)]
+		attributes := gb.Memory.Data[uint16(0xFE00+index+3)]
 
 		y_flip := bits.Test(attributes, 6)
 		x_flip := bits.Test(attributes, 5)
-
-		scanline := gb.Memory.Read(0xFF44)
 
 		var y_size byte = 8
 		if use8x16 {
@@ -479,60 +452,54 @@ func (gb *Gameboy) RenderSprites(lcdControl byte) {
 		}
 
 		if scanline >= y_pos && scanline < (y_pos+y_size) {
-			var line int32 = int32(scanline - y_pos)
-
+			// Set the line to draw based on if the sprite is flipped on the y
+			line := int32(scanline - y_pos)
 			if y_flip {
-				line = (line-int32(y_size)) * -1
+				line = (line - int32(y_size)) * -1
 			}
 
-			line *= 2
-			data_address := 0x8000 + uint16((uint16(tile_location)*16)+uint16(line))
-			data1 := gb.Memory.Read(data_address)
-			data2 := gb.Memory.Read(data_address + 1)
+			// Load the data containing the sprite data for this line
+			data_address := 0x8000 + (uint16(tile_location) * 16) + uint16(line*2)
+			data1 := gb.Memory.Data[data_address]
+			data2 := gb.Memory.Data[data_address+1]
 
-			// TODO: Improve this range loop
-			for _, tile_pixel := range []byte{7,6,5,4,3,2,1,0} {
+			// Draw the line of the sprite
+			for tile_pixel := byte(0); tile_pixel < 8; tile_pixel++ {
 				colour_bit := tile_pixel
-
 				if x_flip {
 					colour_bit = byte(int8(colour_bit-7) * -1)
 				}
 
+				// Find the colour value by combining the data bits
 				colour_num := (bits.Val(data2, colour_bit) << 1) | bits.Val(data1, colour_bit)
 
+				// Colour 0 is transparent for sprites
+				if colour_num == 0 {
+					continue
+				}
+
+				// Determine the colour palette to use
 				var colour_address uint16 = 0xFF48
 				if bits.Test(attributes, 4) {
 					colour_address = 0xFF49
 				}
-				col := gb.GetColour(colour_num, colour_address)
 
-				// white is transparent for sprites
-				if col == WHITE {
-					continue
+				pixel := x_pos + (7 - tile_pixel)
+
+				// Set the pixel if it is in bounds
+				if pixel >= 0 && pixel < 160 {
+					red, green, blue := gb.GetColour(colour_num, colour_address)
+					gb.SetPixel(pixel, scanline, red, green, blue)
 				}
-
-				red, green, blue := 0, 0, 0
-				switch col {
-				case LIGHT_GRAY:
-					red, green, blue = 0xCC, 0xCC, 0xCC
-				case DARK_GRAY:
-					red, green, blue = 0x77, 0x77, 0x77
-				}
-
-				var x_pix byte = 7 - tile_pixel
-				pixel := x_pos + x_pix
-
-				// safety check to make sure about to set is in bounds
-				if scanline < 0 || scanline > 143 || pixel < 0 || pixel > 159 {
-					continue
-				}
-
-				gb.ScreenData[pixel][scanline][0] = red
-				gb.ScreenData[pixel][scanline][1] = green
-				gb.ScreenData[pixel][scanline][2] = blue
 			}
 		}
 	}
+}
+
+func (gb *Gameboy) SetPixel(x byte, y byte, r uint8, g uint8, b uint8) {
+	gb.ScreenData[x][y][0] = r
+	gb.ScreenData[x][y][1] = g
+	gb.ScreenData[x][y][2] = b
 }
 
 func (gb *Gameboy) JoypadValue(current byte) byte {
