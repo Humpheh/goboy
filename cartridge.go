@@ -11,8 +11,11 @@ type Cartridge struct {
 	ROMBank  uint16
 	MBC1     bool
 	MBC2     bool
+	MBC3     bool
+	MBC5     bool
 	RAM      []byte
 	RAMBank  uint16
+	Name     string
 	filename string
 }
 
@@ -27,6 +30,10 @@ func (cart *Cartridge) Load(filename string) error {
 		return err
 	}
 
+	// Get the cart name from the rom
+	name_bytes := data[0x0134:0x0142]
+	cart.Name = string(name_bytes)
+
 	cart.Data = data
 
 	// RAM banking
@@ -40,6 +47,8 @@ func (cart *Cartridge) Load(filename string) error {
 		cart.MBC1 = true
 	case 5, 6:
 		cart.MBC2 = true
+	case 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E:
+		cart.MBC5 = true
 	}
 	cart.ROMBank = 1
 

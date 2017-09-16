@@ -64,7 +64,7 @@ func main2() {
 		since := time.Since(start)
 		if since > time.Second {
 			start = time.Now()
-			log.Print("FPS:", monitor.Frames)
+			monitor.SetTitle(monitor.Frames)
 			monitor.Frames = 0
 		}
 	}

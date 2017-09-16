@@ -154,7 +154,7 @@ func (mem *Memory) HandleBanking(address uint16, value byte) {
 	// Change ROM bank
 	case address >= 0x200 && address < 0x4000:
 		if mem.Cart.MBC1 || mem.Cart.MBC2 {
-			mem.changeLoROMBank(value)
+			mem.changeLoROMBank(value, false)
 		}
 
 	// Change ROM or RAM
@@ -190,7 +190,7 @@ func (mem *Memory) enableRAMBank(address uint16, value byte) {
 	}
 }
 
-func (mem *Memory) changeLoROMBank(value byte) {
+func (mem *Memory) changeLoROMBank(value byte, allowZero bool) {
 	if mem.Cart.MBC2 {
 		mem.Cart.ROMBank = uint16(value & 0xF)
 	} else {
@@ -198,7 +198,7 @@ func (mem *Memory) changeLoROMBank(value byte) {
 		mem.Cart.ROMBank &= 224 // turn off the lower 5
 		mem.Cart.ROMBank |= uint16(lower)
 	}
-	if mem.Cart.ROMBank == 0 {
+	if mem.Cart.ROMBank == 0 && !allowZero {
 		mem.Cart.ROMBank++
 	}
 }

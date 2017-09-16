@@ -40,7 +40,6 @@ type Gameboy struct {
 	InterruptsEnabling bool
 	InterruptsOn       bool
 	Halted             bool
-	SkipNext           bool
 
 	CBInst    map[byte]func()
 	InputMask byte
@@ -157,7 +156,7 @@ func (gb *Gameboy) DoInterrupts() {
 		gb.InterruptsEnabling = false
 		return
 	}
-	if !gb.InterruptsOn {
+	if !gb.InterruptsOn && !gb.Halted {
 		return
 	}
 
@@ -167,16 +166,19 @@ func (gb *Gameboy) DoInterrupts() {
 	if req > 0 {
 		var i byte
 		for i = 0; i < 5; i++ {
-			if bits.Test(req, i) {
-				if bits.Test(enabled, i) {
-					gb.ServiceInterrupt(i)
-				}
+			if bits.Test(req, i) && bits.Test(enabled, i) {
+				gb.ServiceInterrupt(i)
 			}
 		}
 	}
 }
 
 func (gb *Gameboy) ServiceInterrupt(interrupt byte) {
+	// If was halted without interrupts, do not jump or reset IF
+	if !gb.InterruptsOn && gb.Halted {
+		gb.Halted = false
+		return
+	}
 	gb.InterruptsOn = false
 	gb.Halted = false
 
