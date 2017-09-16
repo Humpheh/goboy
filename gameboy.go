@@ -240,11 +240,16 @@ func (gb *Gameboy) UpdateGraphics(cycles int) {
 
 func (gb *Gameboy) setLCDStatus() {
 	status := gb.Memory.Read(0xFF41)
+
 	if !gb.IsLCDEnabled() {
+		// TODO: Set screen to white in this instance
 		gb.ScanlineCounter = 456
 		gb.Memory.Data[0xFF44] = 0
 		status &= 252
-		status = bits.Set(status, 0)
+		// TODO: Check this is correct
+		// We aren't in a mode so reset the values
+		status = bits.Reset(status, 0)
+		status = bits.Reset(status, 1)
 		gb.Memory.Write(0xFF41, status)
 		return
 	}
@@ -266,17 +271,17 @@ func (gb *Gameboy) setLCDStatus() {
 
 		if gb.ScanlineCounter >= mode2_bounds {
 			mode = 2
-			status = bits.Set(status, 1)
 			status = bits.Reset(status, 0)
+			status = bits.Set(status, 1)
 			request_interrupt = bits.Test(status, 5)
 		} else if gb.ScanlineCounter >= mode3_bounds {
 			mode = 3
-			status = bits.Set(status, 1)
 			status = bits.Set(status, 0)
+			status = bits.Set(status, 1)
 		} else {
 			mode = 0
-			status = bits.Reset(status, 1)
 			status = bits.Reset(status, 0)
+			status = bits.Reset(status, 1)
 			request_interrupt = bits.Test(status, 3)
 		}
 	}
@@ -285,8 +290,10 @@ func (gb *Gameboy) setLCDStatus() {
 		gb.RequestInterrupt(1)
 	}
 
+	// Check is LYC == LY (coincidence flag)
 	if gb.Memory.Read(0xFF44) == gb.Memory.Read(0xFF45) {
 		status = bits.Set(status, 2)
+		// If enabled request an interrupt for this
 		if bits.Test(status, 6) {
 			gb.RequestInterrupt(1)
 		}
