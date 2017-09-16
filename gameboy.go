@@ -173,6 +173,15 @@ func (gb *Gameboy) DoInterrupts() {
 	}
 }
 
+// Address that should be jumped to by interrupt number
+var interrupt_addresses = map[byte]uint16{
+	0: 0x40, // V-Blank
+	1: 0x48, // LCDC Status
+	2: 0x50, // Timer Overflow
+	3: 0x58, // Serial Transfer
+	4: 0x60, // Hi-Lo P10-P13
+}
+
 func (gb *Gameboy) ServiceInterrupt(interrupt byte) {
 	// If was halted without interrupts, do not jump or reset IF
 	if !gb.InterruptsOn && gb.Halted {
@@ -187,17 +196,7 @@ func (gb *Gameboy) ServiceInterrupt(interrupt byte) {
 	gb.Memory.Write(0xFF0F, req)
 
 	gb.PushStack(gb.CPU.PC)
-
-	switch interrupt {
-	case 0:
-		gb.CPU.PC = 0x40
-	case 1:
-		gb.CPU.PC = 0x48
-	case 2:
-		gb.CPU.PC = 0x50
-	case 4:
-		gb.CPU.PC = 0x60
-	}
+	gb.CPU.PC = interrupt_addresses[interrupt]
 }
 
 func (gb *Gameboy) PushStack(address uint16) {
@@ -226,8 +225,6 @@ func (gb *Gameboy) UpdateGraphics(cycles int) {
 	if gb.ScanlineCounter <= 0 {
 		gb.Memory.Data[0xFF44]++
 		current_line := gb.Memory.Read(0xFF44)
-
-		// TODO: This could be +456?
 		gb.ScanlineCounter += 456
 
 		if current_line == 144 {
@@ -544,7 +541,7 @@ func (gb *Gameboy) Init(rom_file string) error {
 
 	// Load debug file
 	file, err := os.Open("/Users/humphreyshotton/go/src/github.com/humpheh/gob/output3.log")
-	if err != nil {
+	if err == nil {
 		return fmt.Errorf("could not open debug file: %s", err)
 	}
 
