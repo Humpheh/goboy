@@ -48,6 +48,7 @@ func (mon *PixelsMonitor) initDisplay() {
 			0, 0,
 			float64(160*PIXEL_SCALE), float64(144*PIXEL_SCALE),
 		),
+		VSync: true,
 	}
 	win, err := pixelgl.NewWindow(cfg)
 	if err != nil {
