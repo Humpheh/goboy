@@ -2,10 +2,6 @@ package gob
 
 import (
 	"log"
-	"fmt"
-	"math"
-	"bufio"
-	"os"
 )
 
 var OPCODE_CYCLES = []int{
@@ -28,7 +24,6 @@ var OPCODE_CYCLES = []int{
 	3, 3, 2, 1, 1, 4, 2, 4, 3, 2, 4, 1, 0, 1, 2, 4, // f
 }
 
-//Number of machine cycles for each 0xCBXX instruction:
 var CB_OPCODE_CYCLES = []int{
 //  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0
@@ -49,95 +44,11 @@ var CB_OPCODE_CYCLES = []int{
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // F
 }
 
-func (gb *Gameboy) HALT(txt string) {
-	//for x := 0; x < 160; x++ {
-	//	for y := 0; y < 144; y++ {
-	//		if gb.ScreenData[x][y][0] == 255 {
-	//			fmt.Print("#")
-	//		} else {
-	//			fmt.Print(" ")
-	//		}
-	//	}
-	//	fmt.Printf("\n")
-	//}
-
-	//log.Print( gb.ScreenData)
-
-	//for i := 0x8000 + 1; i < 0x8000 + 40; i++ {
-	//	fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
-	//}
-	//fmt.Print(" \n")
-	fmt.Print("[[")
-	for i := math.Max(0, float64(gb.CPU.PC)-6); i < float64(gb.CPU.PC) + 6; i++ {
-		fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
-	}
-	fmt.Print(" ]]\n")
-
-
-	log.Printf("AF: %0#4x  LCDC: %0#2x", gb.CPU.AF.HiLo(), gb.Memory.Read(0xFF40))
-	log.Printf("BC: %0#4x  STAT: %0#2x", gb.CPU.BC.HiLo(), gb.Memory.Read(0xFF41))
-	log.Printf("DE: %0#4x    LY: %0#2x", gb.CPU.DE.HiLo(), gb.Memory.Read(0xFF44))
-	log.Printf("HL: %0#4x   CNT: %0#2x", gb.CPU.HL.HiLo(), gb.Memory.Read(0xFF44))
-	log.Printf("SP: %0#4x", gb.CPU.SP.HiLo())
-	log.Printf("0xFF80: %0#4x", gb.Memory.Read(0xFF80))
-
-	reader := bufio.NewReader(os.Stdin)
-	log.Print(txt)
-	reader.ReadString('\n')
-	check = true
-}
-
-// goes wrong at 0x034C so
-// never reaches 0x036F loop
-// test from 0405 onwards to screen turning on
-// end of data = 0x282a
-const BREAKPOINT = 0x23f8//28B// 0x030E //0x2a19 + 1 //
 var debug = false
-var doDebugComp = false
-var check = true
 
 func (gb *Gameboy) ExecuteNextOpcode() int {
-	pc := gb.CPU.PC
-
 	if debug {
-		expectedCPU, expectedNum := gb.GetDebugNum()
-		realCPU := gb.CPU.PrintState("Real")
-		compStr := gb.CPU.Compare(expectedCPU)
-		realNum := gb.Memory.Read(0xFF0F)
-
-		opcode := gb.Memory.Read(pc)
-
-		next := gb.Memory.Read(pc + 1)
-		fmt.Printf("[%0#2x]: %3v %-20v %0#4x  [[", opcode, gb.ScanlineCounter, GetOpcodeName(opcode, next), pc)
-
-		for i := math.Max(0, float64(pc)-5); i < float64(pc); i++ {
-			fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
-		}
-		fmt.Printf(" \033[1;31m%02x\033[0m", opcode)
-		for i := float64(pc) + 1; i < float64(pc)+6; i++ {
-			fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
-		}
-		fmt.Print(" ]]\n")
-
-		if doDebugComp {
-			_ = expectedNum
-			fmt.Printf("%v  (%02x)\n", expectedCPU.PrintState("Exp"), expectedNum)
-			fmt.Printf("%v  (%02x)\n", realCPU, realNum)
-			fmt.Println(compStr)
-			if (byte(expectedNum) != realNum ||
-				//expectedCPU.AF.HiLo() != gb.CPU.AF.HiLo() ||
-				expectedCPU.BC.HiLo() != gb.CPU.BC.HiLo() ||
-				expectedCPU.DE.HiLo() != gb.CPU.DE.HiLo() ||
-				expectedCPU.HL.HiLo() != gb.CPU.HL.HiLo() ||
-				expectedCPU.SP.HiLo() != gb.CPU.SP.HiLo() ||
-				expectedCPU.PC != pc) && check {
-				gb.HALT("Unexpected Value!")
-			}
-		}
-	}
-
-	if pc == BREAKPOINT {
-		gb.HALT("BREAKPOINT")
+		LogOpcode(gb)
 	}
 
 	opcode := gb.popPC()
@@ -541,9 +452,6 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	// LD BC,nn
 	case 0x01:
 		val := gb.popPC16()
-		//if val == 0x1200 {
-		//	gb.HALT("ts")
-		//}
 		gb.CPU.BC.Set(val)
 
 	// LD DE,nn
@@ -1090,7 +998,6 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	// STOP
 	case 0x10:
 		log.Print("0x10 (STOP) unimplemented (is 0x00 follows)")
-		//gb.HALT("unimplemented!")
 
 	// DI
 	case 0xF3:
@@ -1342,7 +1249,6 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	default:
 		log.Printf("Unimplemented opcode: %#2x", opcode)
-		gb.HALT("unimplemented!")
 	}
 }
 
