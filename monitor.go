@@ -6,6 +6,8 @@ import (
 	"github.com/faiface/pixel"
 	"image/color"
 	"github.com/humpheh/gob/bits"
+	"fmt"
+	"log"
 )
 
 const PIXEL_SCALE float64 = 3
@@ -81,7 +83,13 @@ func (mon *PixelsMonitor) RenderScreen() {
 	mon.Window.Update()
 }
 
-func (mon *PixelsMonitor) Destroy() {
+func (mon *PixelsMonitor) SetTitle(fps int) {
+	title := fmt.Sprintf("GoBoy - %s", mon.Gameboy.Memory.Cart.Name)
+	if fps != 0 {
+		title += fmt.Sprintf(" (FPS: %2v)", fps)
+	}
+	log.Println(title)
+	mon.Window.SetTitle(title)
 }
 
 var key_map = map[pixelgl.Button]byte{

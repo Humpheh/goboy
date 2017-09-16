@@ -1085,15 +1085,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// HALT
 	case 0x76:
-		if gb.InterruptsOn {
-			log.Print("Halting!")
-			gb.Halted = true
-		} else {
-			log.Print("not halting interrupts off")
-		}
-		//else {
-		//	gb.skipNext = true
-		//}
+		gb.Halted = true
 
 	// STOP
 	case 0x10:
