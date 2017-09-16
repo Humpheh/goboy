@@ -47,6 +47,8 @@ func (cart *Cartridge) Load(filename string) error {
 		cart.MBC1 = true
 	case 5, 6:
 		cart.MBC2 = true
+	case 0x12, 0x13:
+		cart.MBC3 = true
 	case 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E:
 		cart.MBC5 = true
 	}

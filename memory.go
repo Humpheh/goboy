@@ -14,7 +14,7 @@ type Memory struct {
 	ROMBanking bool
 }
 
-// Initialise the gb memory to the post-boot values
+// Init the gb memory to the post-boot values
 func (mem *Memory) Init(gameboy *Gameboy) {
 	mem.GB = gameboy
 
