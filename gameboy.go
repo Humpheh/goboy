@@ -2,10 +2,6 @@ package gob
 
 import (
 	"github.com/humpheh/gob/bits"
-	"os"
-	"bufio"
-	"strconv"
-	"strings"
 	"fmt"
 )
 
@@ -13,17 +9,10 @@ const (
 	CLOCK_SPEED   = 4194304
 	FRAMES_SECOND = 60
 	CYCLES_FRAME  = CLOCK_SPEED / FRAMES_SECOND
-)
 
-const (
 	TIMA = 0xFF05
 	TMA  = 0xFF06
 	TMC  = 0xFF07
-
-	WHITE      = 0
-	LIGHT_GRAY = 1
-	DARK_GRAY  = 2
-	BLACK      = 3
 )
 
 type Gameboy struct {
@@ -43,9 +32,6 @@ type Gameboy struct {
 
 	CBInst    map[byte]func()
 	InputMask byte
-
-	scanner  *bufio.Scanner
-	waitscan bool
 
 	thisCpuTicks int
 }
@@ -68,31 +54,6 @@ func (gb *Gameboy) Update() int {
 	}
 
 	return cycles
-}
-
-func (gb *Gameboy) GetDebugNum() (CPU, uint16) {
-	if !gb.waitscan {
-		gb.scanner.Scan()
-	}
-	line := gb.scanner.Text()
-
-	split := strings.Split(line, " ")
-	val1, _ := strconv.ParseUint(split[0], 10, 16)
-	val2, _ := strconv.ParseUint(split[1], 10, 16)
-	val3, _ := strconv.ParseUint(split[2], 10, 16)
-	val4, _ := strconv.ParseUint(split[3], 10, 16)
-	val5, _ := strconv.ParseUint(split[4], 10, 16)
-	val6, _ := strconv.ParseUint(split[5], 10, 16)
-	val7, _ := strconv.ParseUint(split[6], 10, 16)
-
-	return CPU{
-		PC: uint16(val1),
-		AF: Register{val: uint16(val3)},
-		BC: Register{val: uint16(val4)},
-		DE: Register{val: uint16(val5)},
-		HL: Register{val: uint16(val6)},
-		SP: Register{val: uint16(val7)},
-	}, uint16(val2)
 }
 
 func (gb *Gameboy) UpdateTimers(cycles int) {
@@ -425,14 +386,10 @@ func (gb *Gameboy) GetColour(colour_num byte, address uint16) (byte, byte, byte)
 	col := (bits.Val(palette, hi) << 1) | bits.Val(palette, lo)
 
 	switch col {
-	case WHITE:
-		return 0xFF, 0xFF, 0xFF
-	case LIGHT_GRAY:
-		return 0xCC, 0xCC, 0xCC
-	case DARK_GRAY:
-		return 0x77, 0x77, 0x77
-	default:
-		return 0x00, 0x00, 0x00
+	case 0: return 0xFF, 0xFF, 0xFF
+	case 1: return 0xCC, 0xCC, 0xCC
+	case 2: return 0x77, 0x77, 0x77
+	default: return 0x00, 0x00, 0x00
 	}
 }
 
@@ -538,16 +495,6 @@ func (gb *Gameboy) Init(rom_file string) error {
 	if err != nil {
 		return fmt.Errorf("could not open rom file: %s", err)
 	}
-
-	// Load debug file
-	file, err := os.Open("/Users/humphreyshotton/go/src/github.com/humpheh/gob/output3.log")
-	if err == nil {
-		return fmt.Errorf("could not open debug file: %s", err)
-	}
-
-	gb.scanner = bufio.NewScanner(file)
-	gb.scanner.Split(bufio.ScanLines)
-	// ^ TEMP ^
 
 	gb.ScanlineCounter = 456
 	gb.TimerCounter = 1024

@@ -10,12 +10,6 @@ import (
 	"time"
 )
 
-func exitError(msg string) {
-	print(msg, "\n")
-	print("Usage: gob romfile\n")
-	os.Exit(0)
-}
-
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 var rom = flag.String("rom", "", "location of rom file")
 
@@ -37,17 +31,17 @@ func main2() {
 
 	rom_file := *rom
 	if rom_file == "" {
-		exitError("must supply rom file")
+		flag.PrintDefaults()
+		os.Exit(1)
 	}
 
 	gb := gob.Gameboy{}
 	err := gb.Init(rom_file)
 	if err != nil {
-		exitError(err.Error())
+		log.Fatal(err)
 	}
 
 	monitor := gob.GetPixelsMonitor(&gb)
-	//defer monitor.Destroy()
 
 	perframe := time.Second / 60
 	ticker := time.NewTicker(perframe)
