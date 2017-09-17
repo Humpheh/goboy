@@ -44,13 +44,7 @@ var CB_OPCODE_CYCLES = []int{
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // F
 }
 
-var debug = false
-
 func (gb *Gameboy) ExecuteNextOpcode() int {
-	if debug {
-		LogOpcode(gb)
-	}
-
 	opcode := gb.popPC()
 	gb.thisCpuTicks = OPCODE_CYCLES[opcode] * 4
 	gb.ExecuteOpcode(opcode)

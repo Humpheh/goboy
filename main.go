@@ -52,6 +52,7 @@ func main2() {
 	for range ticker.C {
 		frames++
 		monitor.ProcessInput()
+
 		cycles += gameboy.Update()
 		monitor.RenderScreen()
 
