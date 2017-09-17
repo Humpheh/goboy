@@ -2,6 +2,7 @@
 GoBoy is a Nintendo GameBoy emulator written in golang. While it is work in progress it currently runs GB games that use MBC1/2 memory banking cartridges. This emulator was primarily built as a development exercise.
 
 <img src="images/links-awakening.png" width="400">
+<img src="images/pkmn-red.png" width="400">
 
 The program includes debugging functions which make it useful for understanding how the emulator is working or for building one yourself, such as a method for printing out opcodes and register values to the console at each step. Turning these on will slow down the emulation massively.
 
