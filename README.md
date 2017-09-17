@@ -18,6 +18,8 @@ goboy -rom zelda.gb
 ```
 Controls: <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd> <kbd>Z</kbd> <kbd>X</kbd> <kbd>Enter</kbd> <kbd>Backspace</kbd>
 
+The colour palette can be cycled with <kbd>=</kbd>
+
 ## Testing
 GoBoy currently passes all of the tests in Blargg's cpu_instrs test rom.
 
