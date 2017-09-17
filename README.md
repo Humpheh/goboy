@@ -1,5 +1,5 @@
 # GoBoy
-GoBoy is a Nintendo GameBoy emulator written in golang. While it is work in progress it currently runs GB games that use MBC1/2 memory banking cartridges. This emulator was primarily built as a development exercise.
+GoBoy is a Nintendo GameBoy emulator written in golang. While it is work in progress it currently runs the majority of normal GameBoy games. There is currently no sound engine implemented. This emulator was primarily built as a development exercise.
 
 <img src="images/links-awakening.png" width="400"><img src="images/pkmn-red.png" width="400">
 
@@ -41,6 +41,7 @@ Feel free to open pull requests to this project or play around if you're interes
 - [x] MBC3 banking support
 - [ ] MBC3 clock support
 - [ ] Refactor
+- [ ] Sound
 - [ ] Speed up CPU (investigate switch vs map)
 - [ ] Resizable window
 - [ ] MBC4-7 support
