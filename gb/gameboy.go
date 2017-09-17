@@ -375,7 +375,7 @@ func (gb *Gameboy) RenderTiles(lcdControl byte, scanline byte) {
 	}
 }
 
-func (gb *Gameboy) GetColour(colour_num byte, address uint16) (byte, byte, byte) {
+func (gb *Gameboy) GetColour(colour_num byte, address uint16) (uint8, uint8, uint8) {
 	var hi, lo byte = 0, 0
 	switch colour_num {
 	case 0:
@@ -391,16 +391,7 @@ func (gb *Gameboy) GetColour(colour_num byte, address uint16) (byte, byte, byte)
 	palette := gb.Memory.Read(address)
 	col := (bits.Val(palette, hi) << 1) | bits.Val(palette, lo)
 
-	switch col {
-	case 0:
-		return 0xFF, 0xFF, 0xFF
-	case 1:
-		return 0xCC, 0xCC, 0xCC
-	case 2:
-		return 0x77, 0x77, 0x77
-	default:
-		return 0x00, 0x00, 0x00
-	}
+	return GetPaletteColour(col)
 }
 
 // Render the sprites to the screen. Takes the lcdControl register

@@ -78,7 +78,9 @@ func (mon *PixelsMonitor) RenderScreen() {
 	}
 
 	spr := pixel.NewSprite(pixel.Picture(mon.picture), pixel.R(0, 0, 160, 144))
-	mon.Window.Clear(color.White)
+	r, g, b := GetPaletteColour(0)
+	bg := color.RGBA{R: r, G: g, B: b, A: 0xFF}
+	mon.Window.Clear(bg)
 	spr.Draw(mon.Window, pixel.IM.Scaled(pixel.ZV, PIXEL_SCALE))
 	mon.Window.Update()
 }
@@ -120,6 +122,9 @@ var extra_map = map[pixelgl.Button]func(*PixelsMonitor){
 	},
 	pixelgl.KeyE: func(mon *PixelsMonitor) {
 		mon.Gameboy.Debug.OutputOpcodes = !mon.Gameboy.Debug.OutputOpcodes
+	},
+	pixelgl.KeyEqual: func(mon *PixelsMonitor) {
+		current_palette = (current_palette + 1) % byte(len(palettes))
 	},
 }
 
