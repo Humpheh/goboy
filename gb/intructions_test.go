@@ -1,19 +1,19 @@
-package gob
+package gb
 
 import (
-	"testing"
 	"fmt"
-	"strconv"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"strconv"
+	"testing"
 )
 
 // Test that the CPU passes all of the test instructions
 // in the cpu_instrs rom.
 func TestInstructions(t *testing.T) {
 	gb := Gameboy{}
-	err := gb.Init("roms/cpu_instrs.gb")
-	require.NoError(t, err, "error in init gb %v", err)
+	err := gb.Init("roms/cpu_instrs.gb2")
+	require.NoError(t, err, "error in init gb2 %v", err)
 
 	// Expect the output to be 68 characters long
 	expected := 106
@@ -42,7 +42,7 @@ func TestInstructions(t *testing.T) {
 
 			test_num, err := strconv.ParseInt(test_str[:2], 10, 8)
 			assert.NoError(t, err, "error in parsing number: %s", test_str[:2])
-			assert.Equal(t, i + 1, test_num, "unexpected test number")
+			assert.Equal(t, i+1, test_num, "unexpected test number")
 
 			status := test_str[3:5]
 			assert.Equal(t, "ok", status, "status was not ok")

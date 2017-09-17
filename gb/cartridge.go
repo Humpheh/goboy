@@ -1,4 +1,4 @@
-package gob
+package gb
 
 import (
 	"io/ioutil"

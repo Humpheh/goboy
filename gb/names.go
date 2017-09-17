@@ -1,4 +1,4 @@
-package gob
+package gb
 
 var names = map[byte]string{}
 

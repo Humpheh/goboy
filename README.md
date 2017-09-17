@@ -14,7 +14,7 @@ GoBoy currently uses pixel for control binding and graphics rendering. This requ
 
 ## Usage 
 ```sh
-gb -rom zelda.gb
+goboy -rom zelda.gb
 ```
 Controls: <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd> <kbd>Z</kbd> <kbd>X</kbd> <kbd>Enter</kbd> <kbd>Backspace</kbd>
 

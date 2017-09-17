@@ -1,11 +1,11 @@
-package gob
+package gb
 
 import (
 	"log"
 )
 
 var OPCODE_CYCLES = []int{
-//  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+	//  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 	1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1, // 0
 	1, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1, // 1
 	2, 3, 2, 2, 1, 1, 2, 1, 2, 2, 2, 2, 1, 1, 2, 1, // 2
@@ -25,7 +25,7 @@ var OPCODE_CYCLES = []int{
 }
 
 var CB_OPCODE_CYCLES = []int{
-//  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+	//  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 1
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 2
@@ -67,7 +67,7 @@ func (gb *Gameboy) popPC() byte {
 func (gb *Gameboy) popPC16() uint16 {
 	b1 := uint16(gb.popPC())
 	b2 := uint16(gb.popPC())
-	return b2 << 8 | b1
+	return b2<<8 | b1
 }
 
 func (gb *Gameboy) ExecuteOpcode(opcode byte) {
@@ -491,7 +491,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	case 0x08:
 		address := gb.popPC16()
 		gb.Memory.Write(address, gb.CPU.SP.Lo())
-		gb.Memory.Write(address + 1, gb.CPU.SP.Hi())
+		gb.Memory.Write(address+1, gb.CPU.SP.Hi())
 
 	// PUSH AF
 	case 0xF5:
@@ -939,22 +939,22 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	// DAA
 	case 0x27:
 		/*
-		When this instruction is executed, the A register is BCD
-		corrected using the contents of the flags. The exact process
-		is the following: if the least significant four bits of A
-		contain a non-BCD digit (i. e. it is greater than 9) or the
-		H flag is set, then $06 is added to the register. Then the
-		four most significant bits are checked. If this more significant
-		digit also happens to be greater than 9 or the C flag is set,
-		then $60 is added.
-		 */
+			When this instruction is executed, the A register is BCD
+			corrected using the contents of the flags. The exact process
+			is the following: if the least significant four bits of A
+			contain a non-BCD digit (i. e. it is greater than 9) or the
+			H flag is set, then $06 is added to the register. Then the
+			four most significant bits are checked. If this more significant
+			digit also happens to be greater than 9 or the C flag is set,
+			then $60 is added.
+		*/
 		// TODO: This could be more efficient?
 		if !gb.CPU.N() {
 			if gb.CPU.C() || gb.CPU.AF.Hi() > 0x99 {
 				gb.CPU.AF.SetHi(gb.CPU.AF.Hi() + 0x60)
 				gb.CPU.SetC(true)
 			}
-			if gb.CPU.H() || gb.CPU.AF.Hi() & 0xF > 0x9 {
+			if gb.CPU.H() || gb.CPU.AF.Hi()&0xF > 0x9 {
 				gb.CPU.AF.SetHi(gb.CPU.AF.Hi() + 0x06)
 				gb.CPU.SetH(false)
 			}
@@ -1010,7 +1010,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	// RLCA
 	case 0x07:
 		value := gb.CPU.AF.Hi()
-		result := byte(value << 1) | (value >> 7)
+		result := byte(value<<1) | (value >> 7)
 		gb.CPU.AF.SetHi(result)
 		gb.CPU.SetZ(false)
 		gb.CPU.SetN(false)
@@ -1024,7 +1024,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 		if gb.CPU.C() {
 			carry = 1
 		}
-		result := byte(value << 1) + carry
+		result := byte(value<<1) + carry
 		gb.CPU.AF.SetHi(result)
 		gb.CPU.SetZ(false)
 		gb.CPU.SetN(false)
@@ -1034,7 +1034,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	// RRCA
 	case 0x0F:
 		value := gb.CPU.AF.Hi()
-		result := byte(value >> 1) | byte((value & 1) << 7)
+		result := byte(value>>1) | byte((value&1)<<7)
 		gb.CPU.AF.SetHi(result)
 		gb.CPU.SetZ(false)
 		gb.CPU.SetN(false)
@@ -1048,7 +1048,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 		if gb.CPU.C() {
 			carry = 0x80
 		}
-		result := byte(value >> 1) | carry
+		result := byte(value>>1) | carry
 		gb.CPU.AF.SetHi(result)
 		gb.CPU.SetZ(false)
 		gb.CPU.SetN(false)
@@ -1251,4 +1251,3 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 		log.Printf("Unimplemented opcode: %#2x", opcode)
 	}
 }
-

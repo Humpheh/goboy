@@ -1,8 +1,8 @@
-package gob
+package gb
 
 import (
-	"github.com/humpheh/gob/bits"
 	"fmt"
+	"github.com/humpheh/goboy/bits"
 )
 
 const (
@@ -357,8 +357,8 @@ func (gb *Gameboy) RenderTiles(lcdControl byte, scanline byte) {
 
 		// Get the tile data from in memory
 		var line byte = (y_pos % 8) * 2
-		data1 := gb.Memory.Data[tile_location + uint16(line)]
-		data2 := gb.Memory.Data[tile_location + uint16(line) + 1]
+		data1 := gb.Memory.Data[tile_location+uint16(line)]
+		data2 := gb.Memory.Data[tile_location+uint16(line)+1]
 
 		colour_bit := byte(int8((x_pos%8)-7) * -1)
 		colour_num := (bits.Val(data2, colour_bit) << 1) | bits.Val(data1, colour_bit)
@@ -388,10 +388,14 @@ func (gb *Gameboy) GetColour(colour_num byte, address uint16) (byte, byte, byte)
 	col := (bits.Val(palette, hi) << 1) | bits.Val(palette, lo)
 
 	switch col {
-	case 0: return 0xFF, 0xFF, 0xFF
-	case 1: return 0xCC, 0xCC, 0xCC
-	case 2: return 0x77, 0x77, 0x77
-	default: return 0x00, 0x00, 0x00
+	case 0:
+		return 0xFF, 0xFF, 0xFF
+	case 1:
+		return 0xCC, 0xCC, 0xCC
+	case 2:
+		return 0x77, 0x77, 0x77
+	default:
+		return 0x00, 0x00, 0x00
 	}
 }
 
