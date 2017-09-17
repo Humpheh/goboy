@@ -65,7 +65,7 @@ func LogOpcode(gb *Gameboy) {
 	fmt.Print(" ]]\n")
 }
 
-func GetDebugNum(gb *Gameboy, scanner *bufio.Scanner) (CPU, uint16) {
+func GetDebugNum(scanner *bufio.Scanner) (CPU, uint16) {
 	scanner.Scan()
 	line := scanner.Text()
 
@@ -86,4 +86,16 @@ func GetDebugNum(gb *Gameboy, scanner *bufio.Scanner) (CPU, uint16) {
 		HL: Register{val: uint16(val6)},
 		SP: Register{val: uint16(val7)},
 	}, uint16(val2)
+}
+
+func WaitForInput(){
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Enter text: ")
+	reader.ReadString('\n')
+}
+
+type DebugFlags struct {
+	HideSprites    bool
+	HideBackground bool
+	OutputOpcodes  bool
 }

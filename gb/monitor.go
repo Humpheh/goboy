@@ -111,6 +111,18 @@ var key_map = map[pixelgl.Button]byte{
 	pixelgl.KeyDown: 7,
 }
 
+var extra_map = map[pixelgl.Button]func(*PixelsMonitor){
+	pixelgl.KeyQ: func(mon *PixelsMonitor) {
+		mon.Gameboy.Debug.HideBackground = !mon.Gameboy.Debug.HideBackground
+	},
+	pixelgl.KeyW: func(mon *PixelsMonitor) {
+		mon.Gameboy.Debug.HideSprites = !mon.Gameboy.Debug.HideSprites
+	},
+	pixelgl.KeyE: func(mon *PixelsMonitor) {
+		mon.Gameboy.Debug.OutputOpcodes = !mon.Gameboy.Debug.OutputOpcodes
+	},
+}
+
 func (mon *PixelsMonitor) ProcessInput() {
 	for key, offset := range key_map {
 		if mon.Window.JustPressed(key) {
@@ -119,6 +131,12 @@ func (mon *PixelsMonitor) ProcessInput() {
 		}
 		if mon.Window.JustReleased(key) {
 			mon.Gameboy.InputMask = bits.Set(mon.Gameboy.InputMask, offset)
+		}
+	}
+	// Extra keys not related to emulation
+	for key, f := range extra_map {
+		if mon.Window.JustPressed(key) {
+			f(mon)
 		}
 	}
 }

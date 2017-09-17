@@ -146,6 +146,28 @@ func (mem *Memory) Read(address uint16) byte {
 }
 
 func (mem *Memory) HandleBanking(address uint16, value byte) {
+	// MBC3 banking TODO: merge this into main banking switch
+	if mem.Cart.MBC3 {
+		switch {
+		// Enable RAM bank
+		case address < 0x2000:
+			mem.enableRAMBank(address, value)
+
+		// Switch ROM bank
+		case address < 0x4000:
+			var lower byte = value & 127
+			mem.Cart.ROMBank = uint16(lower)
+			if mem.Cart.ROMBank == 0 {
+				mem.Cart.ROMBank++
+			}
+
+		// Switch RAM bank
+		case address < 0x6000:
+			mem.Cart.RAMBank = uint16(value & 0x3)
+		}
+		return
+	}
+
 	switch {
 	// Enable RAM
 	case address < 0x2000:
