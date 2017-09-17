@@ -2,7 +2,6 @@ package gob
 
 import (
 	"github.com/humpheh/gob/bits"
-	"fmt"
 )
 
 type Memory struct {
@@ -74,7 +73,10 @@ func (mem *Memory) Write(address uint16, value byte) {
 	// Serial transfer control
 	case address == 0xFF02:
 		if value == 0x81 {
-			fmt.Print(string(mem.Read(0xFF01)))
+			f := mem.GB.TransferFunction
+			if f != nil {
+				f(mem.Read(0xFF01))
+			}
 		}
 
 	// Trap divider register

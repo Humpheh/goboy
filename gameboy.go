@@ -32,6 +32,8 @@ type Gameboy struct {
 
 	CBInst    map[byte]func()
 	InputMask byte
+	// Callback when the serial port is written to
+	TransferFunction func(byte)
 
 	thisCpuTicks int
 }
