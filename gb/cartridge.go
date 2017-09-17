@@ -42,15 +42,47 @@ func (cart *Cartridge) Load(filename string) error {
 
 	// ROM banking
 	mbc_flag := cart.Data[0x147]
+
+	/*
+	00h  ROM ONLY                 13h  MBC3+RAM+BATTERY
+  	01h  MBC1                     15h  MBC4
+  	02h  MBC1+RAM                 16h  MBC4+RAM
+  	03h  MBC1+RAM+BATTERY         17h  MBC4+RAM+BATTERY
+  	05h  MBC2                     19h  MBC5
+  	06h  MBC2+BATTERY             1Ah  MBC5+RAM
+  	08h  ROM+RAM                  1Bh  MBC5+RAM+BATTERY
+  	09h  ROM+RAM+BATTERY          1Ch  MBC5+RUMBLE
+  	0Bh  MMM01                    1Dh  MBC5+RUMBLE+RAM
+  	0Ch  MMM01+RAM                1Eh  MBC5+RUMBLE+RAM+BATTERY
+  	0Dh  MMM01+RAM+BATTERY        FCh  POCKET CAMERA
+  	0Fh  MBC3+TIMER+BATTERY       FDh  BANDAI TAMA5
+  	10h  MBC3+TIMER+RAM+BATTERY   FEh  HuC3
+  	11h  MBC3                     FFh  HuC1+RAM+BATTERY
+  	12h  MBC3+RAM
+	*/
+
 	switch mbc_flag {
-	case 1, 2, 3:
-		cart.MBC1 = true
-	case 5, 6:
-		cart.MBC2 = true
-	case 0x12, 0x13:
-		cart.MBC3 = true
-	case 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E:
-		cart.MBC5 = true
+	case 0x00, 0x08, 0x09, 0x0B, 0x0C, 0x0D:
+		log.Println("ROM/MMM01")
+	default:
+		switch {
+		case mbc_flag <= 0x03:
+			cart.MBC1 = true
+			log.Println("MBC1")
+		case mbc_flag <= 0x06:
+			cart.MBC2 = true
+			log.Println("MBC2")
+		case mbc_flag <= 0x13:
+			cart.MBC3 = true
+			log.Println("MBC3")
+		case mbc_flag < 0x17:
+			log.Println("Warning: MBC4 carts are not supported.")
+		case mbc_flag < 0x1E:
+			cart.MBC5 = true
+			log.Println("Warning: MBC5 carts are not supported.")
+		default:
+			log.Printf("Warning: This cart may not be supported: %02x", mbc_flag)
+		}
 	}
 	cart.ROMBank = 1
 
