@@ -1,7 +1,7 @@
-package gob
+package gb
 
 import (
-	"github.com/humpheh/gob/bits"
+	"github.com/humpheh/goboy/bits"
 )
 
 type Memory struct {
@@ -13,7 +13,7 @@ type Memory struct {
 	ROMBanking bool
 }
 
-// Init the gb memory to the post-boot values
+// Init the gb2 memory to the post-boot values
 func (mem *Memory) Init(gameboy *Gameboy) {
 	mem.GB = gameboy
 
@@ -98,13 +98,13 @@ func (mem *Memory) Write(address uint16, value byte) {
 	case address >= 0xA000 && address < 0xC000:
 		if mem.EnableRAM {
 			new_address := address - 0xA000
-			mem.Cart.RAM[new_address + mem.Cart.RAMBank * 0x2000] = value
+			mem.Cart.RAM[new_address+mem.Cart.RAMBank*0x2000] = value
 		}
 
 	// ECHO RAM
 	case address >= 0xE000 && address < 0xFE00:
 		mem.Data[address] = value
-		mem.Write(address - 0x2000, value)
+		mem.Write(address-0x2000, value)
 
 	// Restricted
 	case address >= 0xFEA0 && address < 0xFEFF:
@@ -132,12 +132,12 @@ func (mem *Memory) Read(address uint16) byte {
 	// Reading from ROM memory bank
 	case address >= 0x4000 && address <= 0x7FFF:
 		new_address := uint32(address) - 0x4000
-		return mem.Cart.Data[new_address + (uint32(mem.Cart.ROMBank) * 0x4000)]
+		return mem.Cart.Data[new_address+(uint32(mem.Cart.ROMBank)*0x4000)]
 
 	// Reading from RAM memory bank
 	case address >= 0xA000 && address <= 0xBFFF:
 		new_address := address - 0xA000
-		return mem.Cart.RAM[new_address + (mem.Cart.RAMBank * 0x2000)]
+		return mem.Cart.RAM[new_address+(mem.Cart.RAMBank*0x2000)]
 
 	// Else return memory
 	default:
@@ -221,7 +221,7 @@ func (mem *Memory) changeRAMBank(value byte) {
 }
 
 func (mem *Memory) changeROMRAMMode(value byte) {
-	if value & 0x1 == 0 {
+	if value&0x1 == 0 {
 		mem.ROMBanking = true
 		mem.Cart.RAMBank = 0
 	} else {
@@ -236,6 +236,6 @@ func (mem *Memory) DMATransfer(value byte) {
 	var i uint16
 	for i = 0; i < 0xA0; i++ {
 		// TODO: Check this doesn't prevent
-		mem.Write(0xFE00 + i, mem.Read(address + i))
+		mem.Write(0xFE00+i, mem.Read(address+i))
 	}
 }

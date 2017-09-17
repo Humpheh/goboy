@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/humpheh/gob"
+	"flag"
+	"github.com/faiface/pixel/pixelgl"
+	"github.com/humpheh/goboy/gb"
 	"log"
 	"os"
-	"flag"
 	"runtime/pprof"
-	"github.com/faiface/pixel/pixelgl"
 	"time"
 )
 
@@ -35,13 +35,13 @@ func main2() {
 		os.Exit(1)
 	}
 
-	gb := gob.Gameboy{}
-	err := gb.Init(rom_file)
+	gameboy := gb.Gameboy{}
+	err := gameboy.Init(rom_file)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	monitor := gob.GetPixelsMonitor(&gb)
+	monitor := gb.GetPixelsMonitor(&gameboy)
 
 	perframe := time.Second / 60
 	ticker := time.NewTicker(perframe)
@@ -52,7 +52,7 @@ func main2() {
 	for range ticker.C {
 		frames++
 		monitor.ProcessInput()
-		cycles += gb.Update()
+		cycles += gameboy.Update()
 		monitor.RenderScreen()
 
 		since := time.Since(start)

@@ -1,7 +1,7 @@
-package gob
+package gb
 
 import (
-	"github.com/humpheh/gob/bits"
+	"github.com/humpheh/goboy/bits"
 )
 
 func (gb *Gameboy) instAdd(set func(byte), val1 byte, val2 byte, addCarry bool) {
@@ -14,7 +14,7 @@ func (gb *Gameboy) instAdd(set func(byte), val1 byte, val2 byte, addCarry bool) 
 
 	gb.CPU.SetZ(byte(total) == 0)
 	gb.CPU.SetN(false)
-	gb.CPU.SetH((val2 & 0xF) + (val1 & 0xF) + byte(carry) > 0xF)
+	gb.CPU.SetH((val2&0xF)+(val1&0xF)+byte(carry) > 0xF)
 	gb.CPU.SetC(total > 0xFF) // If result is greater than 255
 }
 
@@ -29,8 +29,8 @@ func (gb *Gameboy) instSub(set func(byte), val1 byte, val2 byte, addCarry bool) 
 
 	gb.CPU.SetZ(total == 0)
 	gb.CPU.SetN(true)
-	gb.CPU.SetH(int16(val1 & 0x0f) - int16(val2 & 0xF) - int16(carry) < 0) // TODO: WRONG?
-	gb.CPU.SetC(dirtySum < 0) // If result is less than 0
+	gb.CPU.SetH(int16(val1&0x0f)-int16(val2&0xF)-int16(carry) < 0) // TODO: WRONG?
+	gb.CPU.SetC(dirtySum < 0)                                      // If result is less than 0
 }
 
 func (gb *Gameboy) instAnd(set func(byte), val1 byte, val2 byte) {
@@ -65,7 +65,7 @@ func (gb *Gameboy) instCp(val1 byte, val2 byte) {
 	gb.CPU.SetZ(total == 0)
 	gb.CPU.SetN(true)
 	gb.CPU.SetH((val1 & 0x0f) > (val2 & 0x0f)) // TODO: check
-	gb.CPU.SetC(val1 > val2) // TODO: Check
+	gb.CPU.SetC(val1 > val2)                   // TODO: Check
 }
 
 func (gb *Gameboy) instInc(set func(byte), org byte) {
@@ -83,16 +83,16 @@ func (gb *Gameboy) instDec(set func(byte), org byte) {
 
 	gb.CPU.SetZ(total == 0)
 	gb.CPU.SetN(true)
-	gb.CPU.SetH(org & 0x0F == 0) // TODO: Check
+	gb.CPU.SetH(org&0x0F == 0) // TODO: Check
 }
 
 func (gb *Gameboy) instAdd16(set func(uint16), val1 uint16, val2 uint16) {
 	total := int32(val1) + int32(val2)
 	set(uint16(total))
-	//gb.CPU.SetZ(total == 0)
+	//gb2.CPU.SetZ(total == 0)
 	gb.CPU.SetN(false)
-	gb.CPU.SetH(int32(val1 & 0xFFF) > (total & 0xFFF))//bits.HalfCarryAdd16(val1, val2))
-	gb.CPU.SetC(total > 0xFFFF)//bits.CarryAdd16(val1, val2))
+	gb.CPU.SetH(int32(val1&0xFFF) > (total & 0xFFF)) //bits.HalfCarryAdd16(val1, val2))
+	gb.CPU.SetC(total > 0xFFFF)                      //bits.CarryAdd16(val1, val2))
 }
 
 func (gb *Gameboy) instAdd16Signed(set func(uint16), val1 uint16, val2 int8) {

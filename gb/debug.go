@@ -1,12 +1,12 @@
-package gob
+package gb
 
 import (
-	"fmt"
 	"bufio"
-	"os"
+	"fmt"
 	"math"
-	"strings"
+	"os"
 	"strconv"
+	"strings"
 )
 
 func compare(val1 uint16, val2 uint16) string {

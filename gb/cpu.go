@@ -1,7 +1,7 @@
-package gob
+package gb
 
 import (
-	"github.com/humpheh/gob/bits"
+	"github.com/humpheh/goboy/bits"
 )
 
 type Register struct {
@@ -22,7 +22,7 @@ func (reg *Register) HiLo() uint16 {
 }
 
 func (reg *Register) SetHi(val byte) {
-	reg.val = uint16(val) << 8 | (uint16(reg.val) & 0xFF)
+	reg.val = uint16(val)<<8 | (uint16(reg.val) & 0xFF)
 	reg.AfterSet()
 }
 
@@ -91,17 +91,17 @@ func (cpu *CPU) SetC(on bool) {
 }
 
 func (cpu *CPU) Z() bool {
-	return cpu.AF.HiLo() >> 7 & 1 == 1
+	return cpu.AF.HiLo()>>7&1 == 1
 }
 
 func (cpu *CPU) N() bool {
-	return cpu.AF.HiLo() >> 6 & 1 == 1
+	return cpu.AF.HiLo()>>6&1 == 1
 }
 
 func (cpu *CPU) H() bool {
-	return cpu.AF.HiLo() >> 5 & 1 == 1
+	return cpu.AF.HiLo()>>5&1 == 1
 }
 
 func (cpu *CPU) C() bool {
-	return cpu.AF.HiLo() >> 4 & 1 == 1
+	return cpu.AF.HiLo()>>4&1 == 1
 }

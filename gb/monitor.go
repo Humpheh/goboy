@@ -1,12 +1,12 @@
 // TODO: Rename monitor so something better
-package gob
+package gb
 
 import (
-	"github.com/faiface/pixel/pixelgl"
-	"github.com/faiface/pixel"
-	"image/color"
-	"github.com/humpheh/gob/bits"
 	"fmt"
+	"github.com/faiface/pixel"
+	"github.com/faiface/pixel/pixelgl"
+	"github.com/humpheh/goboy/bits"
+	"image/color"
 	"log"
 )
 
@@ -61,7 +61,7 @@ func (mon *PixelsMonitor) initDisplay() {
 	win.SetMatrix(cam)
 
 	mon.picture = &pixel.PictureData{
-		Pix:    make([]color.RGBA, 144 * 160),
+		Pix:    make([]color.RGBA, 144*160),
 		Stride: 160,
 		Rect:   pixel.R(0, 0, 160, 144),
 	}
