@@ -18,6 +18,7 @@ const (
 type Gameboy struct {
 	Memory          *Memory
 	CPU             *CPU
+	Sound           *Sound
 	TimerCounter    int
 	ScanlineCounter int
 
@@ -57,6 +58,7 @@ func (gb *Gameboy) Update() int {
 		gb.UpdateTimers(cycles_op)
 		gb.UpdateGraphics(cycles_op)
 		gb.DoInterrupts()
+		gb.Sound.Tick(cycles_op)
 	}
 
 	return cycles
@@ -168,8 +170,8 @@ func (gb *Gameboy) ServiceInterrupt(interrupt byte) {
 
 func (gb *Gameboy) PushStack(address uint16) {
 	sp := gb.CPU.SP.HiLo()
-	gb.Memory.Write(sp-1, byte(uint16(address&0xFF00) >> 8))
-	gb.Memory.Write(sp-2, byte(address & 0xFF))
+	gb.Memory.Write(sp-1, byte(uint16(address&0xFF00)>>8))
+	gb.Memory.Write(sp-2, byte(address&0xFF))
 	gb.CPU.SP.Set(gb.CPU.SP.HiLo() - 2)
 }
 
@@ -488,6 +490,9 @@ func (gb *Gameboy) Init(rom_file string) error {
 	// Initialise the memory
 	gb.Memory = &Memory{}
 	gb.Memory.Init(gb)
+
+	gb.Sound = &Sound{}
+	gb.Sound.Init(gb)
 
 	// Load the ROM file
 	err := gb.Memory.LoadCart(rom_file)
