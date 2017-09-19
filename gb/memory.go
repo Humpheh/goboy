@@ -60,6 +60,34 @@ func (mem *Memory) LoadCart(loc string) error {
 
 func (mem *Memory) Write(address uint16, value byte) {
 	switch {
+	case address == 0xFF14:
+		mem.Data[0xFF14] = value
+		if bits.Test(value, 7) {
+			mem.GB.Sound.StartChannel1(value)
+		}
+
+	case address == 0xFF19:
+		mem.Data[0xFF19] = value
+		if bits.Test(value, 7) {
+			mem.GB.Sound.StartChannel2(value)
+		}
+
+	case address == 0xFF1E:
+		mem.Data[0xFF1E] = value
+		if bits.Test(value, 7) {
+			mem.GB.Sound.StartChannel3(value)
+		}
+
+	case address == 0xFF23:
+		mem.Data[0xFF23] = value
+		if bits.Test(value, 7) {
+			mem.GB.Sound.StartChannel4(value)
+		}
+
+	case address == 0xFF25:
+		mem.Data[0xFF25] = value// & 0x64
+
+
 	// Timer control
 	case address == TMC:
 		current_freq := mem.GB.GetClockFreq()
