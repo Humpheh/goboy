@@ -89,7 +89,25 @@ func (mem *Memory) Write(address uint16, value byte) {
 		mem.GB.Sound.SetVolume(value)
 
 	case address == 0xFF25:
-		mem.Data[0xFF25] = value// & 0x64
+		/*
+		FF25 - NR51 - Selection of Sound output terminal (R/W)
+  Bit 7 - Output sound 4 to SO2 terminal
+  Bit 6 - Output sound 3 to SO2 terminal
+  Bit 5 - Output sound 2 to SO2 terminal
+  Bit 4 - Output sound 1 to SO2 terminal
+  Bit 3 - Output sound 4 to SO1 terminal
+  Bit 2 - Output sound 3 to SO1 terminal
+  Bit 1 - Output sound 2 to SO1 terminal
+  Bit 0 - Output sound 1 to SO1 terminal
+		 */
+		mem.Data[0xFF25] = value
+		mem.GB.Sound.UpdateOutput(value)
+
+	case address >= 0xFF30 && address <= 0xFF3F:
+		mem.Data[address] = value
+		sound_index := (address - 0xFF30) * 2
+		mem.GB.Sound.WaveformRam[sound_index] = int8((value >> 4) & 0xF)
+		mem.GB.Sound.WaveformRam[sound_index + 1] = int8(value & 0xF)
 
 
 	// Timer control

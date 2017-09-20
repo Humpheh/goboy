@@ -7,6 +7,7 @@ import (
 	"time"
 	"math"
 	"fmt"
+	"log"
 )
 
 var squarelimits = map[byte]float64{
@@ -17,10 +18,11 @@ var squarelimits = map[byte]float64{
 }
 
 type Envelope struct {
-	Time      float64
-	StepLen   float64
-	Steps     byte
-	StepsInit byte
+	Time       float64
+	StepLen    float64
+	Steps      byte
+	StepsInit  byte
+	Increasing bool
 }
 
 func (env *Envelope) Update(secs float64, channel *Channel) {
@@ -33,7 +35,70 @@ func (env *Envelope) Update(secs float64, channel *Channel) {
 			if env.Steps == 0 {
 				amp = 0
 			}
+			if env.Increasing {
+				log.Print("inc")
+				amp = 1 - amp
+			}
 			channel.SetAmp(amp)
+		}
+	}
+}
+
+type Sweep struct {
+	Time float64
+	StepLen byte
+	Steps byte
+	Step byte
+	Increase bool
+}
+
+var sweeptime = map[byte]float64{
+	1: 7.8  / 1000,
+	2: 15.6 / 1000,
+	3: 23.4 / 1000,
+	4: 31.3 / 1000,
+	5: 39.1 / 1000,
+	6: 46.9 / 1000,
+	7: 54.7 / 1000,
+}
+
+func (swp *Sweep) Update(secs float64, channel *Channel) {
+
+	/*
+
+FF10 - NR10 - Channel 1 Sweep register (R/W)
+  Bit 6-4 - Sweep Time
+  Bit 3   - Sweep Increase/Decrease
+             0: Addition    (frequency increases)
+             1: Subtraction (frequency decreases)
+  Bit 2-0 - Number of sweep shift (n: 0-7)
+Sweep Time:
+  000: sweep off - no freq change
+  001: 7.8 ms  (1/128Hz)
+  010: 15.6 ms (2/128Hz)
+  011: 23.4 ms (3/128Hz)
+  100: 31.3 ms (4/128Hz)
+  101: 39.1 ms (5/128Hz)
+  110: 46.9 ms (6/128Hz)
+  111: 54.7 ms (7/128Hz)
+
+The change of frequency (NR13,NR14) at each shift is calculated by the
+following formula where X(0) is initial freq & X(t-1) is last freq:
+  X(t) = X(t-1) +/- X(t-1)/2^n
+*/
+
+	if swp.Step < swp.Steps && swp.StepLen != 0 {
+		t := sweeptime[swp.StepLen]
+		swp.Time += secs
+		if swp.Time > t {
+			swp.Time -= t
+			swp.Step += 1
+
+			if swp.Increase {
+				channel.Freq += channel.Freq / math.Pow(2, float64(swp.Step))
+			} else {
+				channel.Freq -= channel.Freq / math.Pow(2, float64(swp.Step))
+			}
 		}
 	}
 }
@@ -43,23 +108,27 @@ type Sound struct {
 	Channel1     *Channel
 	Channel1Time float64
 	Channel1Env  *Envelope
+	Channel1Sweep *Sweep
 	Channel2     *Channel
 	Channel2Time float64
 	Channel2Env  *Envelope
+	Channel2Sweep *Sweep
 	Channel3     *Channel
 	Channel3Time float64
 	Channel4     *Channel
 	Channel4Time float64
 	Channel4Env  *Envelope
+
+	WaveformRam [32]int8
 }
 
 func (s *Sound) Init(gb *Gameboy) {
-	sample_rate := beep.SampleRate(48000)
+	sample_rate := beep.SampleRate(48100)
 	speaker.Init(sample_rate, sample_rate.N(time.Second/30))
 
 	s.Channel1 = GetChannel(Square)
 	s.Channel2 = GetChannel(Square)
-	s.Channel3 = GetChannel(Square)
+	s.Channel3 = GetChannel(MakeWaveform(&s.WaveformRam))
 	s.Channel4 = GetChannel(Noise)
 
 	mix := beep.Mix(
@@ -73,58 +142,15 @@ func (s *Sound) Init(gb *Gameboy) {
 }
 
 func (s *Sound) Tick(clocks int) {
-	/*
-	29. FF26 (NR 52)
- Name - NR 52 (Value at reset: $F1-GB, $F0-SGB)
- Contents - Sound on/off (R/W)
- Bit 7 - All sound on/off
- 0: stop all sound circuits
- 1: operate all sound circuits
- Bit 3 - Sound 4 ON flag
- Bit 2 - Sound 3 ON flag
- Bit 1 - Sound 2 ON flag
- Bit 0 - Sound 1 ON flag
- Bits 0 - 3 of this register are meant to
- be status bits to be read. Writing to
- these bits does NOT enable/disable
- sound.
-FF24 - NR50 - Channel control / ON-OFF / Volume (R/W)
-The volume bits specify the "Master Volume" for Left/Right sound output.
-  Bit 7   - Output Vin to SO2 terminal (1=Enable)
-  Bit 6-4 - SO2 output level (volume)  (0-7)
-  Bit 3   - Output Vin to SO1 terminal (1=Enable)
-  Bit 2-0 - SO1 output level (volume)  (0-7)
-The Vin signal is received from the game cartridge bus, allowing external
-hardware in the cartridge to supply a fifth sound channel, additionally to the
-gameboys internal four channels. As far as I know this feature isn't used by
-any existing games.
-	 */
-	//control := s.GB.Memory.Data[0xFF26]
-	//output := s.GB.Memory.Data[0xFF25]
-	//volume := s.GB.Memory.Data[0xFF24]
-	//
-	//sound_on := bits.Test(control, 7)
-	//
-	//_ = volume
-	////vol1 := volume & 0x7
-	////vol2 := (volume >> 4) & 0x7
-	//vol := snd.DefaultAmpFac// - (snd.DefaultAmpFac / 7) * float64(vol1)
-	//
-	//chan1out := bits.Test(output, 0) || bits.Test(output, 4)
-	//if sound_on && chan1out {
-	//	s.Channel1.On()
-	//
-	//} else {
-	//	s.Channel1.Off()
-	//	s.Channel1Time = 0
-	//}
-
 	secs := float64(clocks) / CLOCK_SPEED
 
 	if s.Channel1Time > 0 {
 		s.Channel1Time -= secs
 		if s.Channel1Env != nil {
 			s.Channel1Env.Update(secs, s.Channel1)
+		}
+		if s.Channel1Sweep != nil {
+			s.Channel1Sweep.Update(secs, s.Channel1)
 		}
 	} else {
 		s.Toggle(1, false)
@@ -160,6 +186,21 @@ any existing games.
 	s.Channel4.DebugMute = s.GB.Debug.MuteChannel4
 }
 
+func (s *Sound) UpdateOutput(value byte) {
+	if !bits.Test(value, 0) && !bits.Test(value, 4) {
+		s.Channel1.Off()
+	}
+	if !bits.Test(value, 1) && !bits.Test(value, 5) {
+		s.Channel2.Off()
+	}
+	if !bits.Test(value, 2) && !bits.Test(value, 6) {
+		s.Channel3.Off()
+	}
+	if !bits.Test(value, 3) && !bits.Test(value, 7) {
+		s.Channel4.Off()
+	}
+}
+
 func (s *Sound) ShouldPlay(channel byte) bool {
 	FF25 := s.GB.Memory.Data[0xFF25]
 	FF26 := s.GB.Memory.Data[0xFF26]
@@ -171,32 +212,21 @@ func (s *Sound) ShouldPlay(channel byte) bool {
 }
 
 func (s *Sound) StartChannel1(NR14 byte) {
-
-	/*
-	NR11 - Channel 1 Sound length/Wave pattern duty (R/W)
-  Bit 7-6 - Wave Pattern Duty (Read/Write)
-  Bit 5-0 - Sound length data (Write Only) (t1: 0-63)
-Wave Duty:
-  00: 12.5% ( _-------_-------_------- )
-  01: 25%   ( __------__------__------ )
-  10: 50%   ( ____----____----____---- ) (normal)
-  11: 75%   ( ______--______--______-- )
-Sound Length = (64-t1)*(1/256) seconds
-The Length value is used only if Bit 6 in NR14 is set.
-	 */
-
-	/*
-FF12 - NR12 - Channel 1 Volume Envelope (R/W)
- Bit 7-4 - Initial Volume of envelope (0-0Fh) (0=No Sound)
- Bit 3   - Envelope Direction (0=Decrease, 1=Increase)
- Bit 2-0 - Number of envelope sweep (n: 0-7)
-		   (If zero, stop envelope operation.)
-Length of 1 step = n*(1/64) seconds
-*/
-
+	NR10 := s.GB.Memory.Data[0xFF10]
 	NR11 := s.GB.Memory.Data[0xFF11]
 	NR12 := s.GB.Memory.Data[0xFF12]
 	NR13 := s.GB.Memory.Data[0xFF13]
+
+	sweep_time := (NR10 >> 4) & 0x7
+	sweep_increase := !bits.Test(NR10, 3)
+	sweep_shift := NR10 & 0x7
+
+	s.Channel1Sweep = &Sweep{
+		StepLen: sweep_time,
+		Steps: sweep_shift,
+		Step: 0,
+		Increase: sweep_increase,
+	}
 
 	if bits.Test(NR14, 6) {
 		// Counter
@@ -214,13 +244,14 @@ Length of 1 step = n*(1/64) seconds
 
 	// Envelope
 	env_volume := (NR12 >> 4) & 0xF
-	//env_increase := bits.Test(NR12, 3)
+	env_increase := bits.Test(NR12, 3)
 	env_sweep := NR12 & 0x7
 
 	s.Channel1Env = &Envelope{
 		StepLen:   float64(env_sweep) / 64,
 		Steps:     env_volume,
 		StepsInit: env_volume,
+		Increasing: env_increase,
 	}
 
 	s.Toggle(1, s.ShouldPlay(1))
@@ -228,27 +259,6 @@ Length of 1 step = n*(1/64) seconds
 }
 
 func (s *Sound) StartChannel2(NR24 byte) {
-
-	/*
-	NR11 - Channel 1 Sound length/Wave pattern duty (R/W)
-  Bit 7-6 - Wave Pattern Duty (Read/Write)
-  Bit 5-0 - Sound length data (Write Only) (t1: 0-63)
-Wave Duty:
-  00: 12.5% ( _-------_-------_------- )
-  01: 25%   ( __------__------__------ )
-  10: 50%   ( ____----____----____---- ) (normal)
-  11: 75%   ( ______--______--______-- )
-Sound Length = (64-t1)*(1/256) seconds
-The Length value is used only if Bit 6 in NR14 is set.
-
-	FF17 - NR22 - Channel 2 Volume Envelope (R/W)
-  Bit 7-4 - Initial Volume of envelope (0-0Fh) (0=No Sound)
-  Bit 3   - Envelope Direction (0=Decrease, 1=Increase)
-  Bit 2-0 - Number of envelope sweep (n: 0-7)
-            (If zero, stop envelope operation.)
-Length of 1 step = n*(1/64) seconds
-
-	 */
 	NR22 := s.GB.Memory.Data[0xFF17]
 	NR23 := s.GB.Memory.Data[0xFF18]
 
@@ -268,13 +278,14 @@ Length of 1 step = n*(1/64) seconds
 
 	// Envelope
 	env_volume := (NR22 >> 4) & 0xF
-	//env_increase := bits.Test(NR12, 3)
+	env_increase := bits.Test(NR22, 3)
 	env_sweep := NR22 & 0x7
 
 	s.Channel2Env = &Envelope{
 		StepLen:   float64(env_sweep) / 64,
 		Steps:     env_volume,
 		StepsInit: env_volume,
+		Increasing: env_increase,
 	}
 
 	s.Toggle(2, s.ShouldPlay(2))
@@ -305,30 +316,6 @@ func (s *Sound) StartChannel3(NR34 byte) {
 }
 
 func (s *Sound) StartChannel4(NR44 byte) {
-	/*
-
-FF21 - NR42 - Channel 4 Volume Envelope (R/W)
-  Bit 7-4 - Initial Volume of envelope (0-0Fh) (0=No Sound)
-  Bit 3   - Envelope Direction (0=Decrease, 1=Increase)
-  Bit 2-0 - Number of envelope sweep (n: 0-7)
-            (If zero, stop envelope operation.)
-Length of 1 step = n*(1/64) seconds
-
-FF22 - NR43 - Channel 4 Polynomial Counter (R/W)
-The amplitude is randomly switched between high and low at the given
-frequency. A higher frequency will make the noise to appear 'softer'.
-When Bit 3 is set, the output will become more regular, and some frequencies
-will sound more like Tone than Noise.
-  Bit 7-4 - Shift Clock Frequency (s)
-  Bit 3   - Counter Step/Width (0=15 bits, 1=7 bits)
-  Bit 2-0 - Dividing Ratio of Frequencies (r)
-Frequency = 524288 Hz / r / 2^(s+1)     ;For r=0 assume r=0.5 instead
-
-FF23 - NR44 - Channel 4 Counter/consecutive; Inital (R/W)
-  Bit 7   - Initial (1=Restart Sound)     (Write Only)
-  Bit 6   - Counter/consecutive selection (Read/Write)
-            (1=Stop output when length in NR41 expires)
-	 */
 	NR42 := s.GB.Memory.Data[0xFF21]
 	NR43 := s.GB.Memory.Data[0xFF22]
 
@@ -353,13 +340,14 @@ FF23 - NR44 - Channel 4 Counter/consecutive; Inital (R/W)
 
 	// Envelope
 	env_volume := (NR42 >> 4) & 0xF
-	//env_increase := bits.Test(NR12, 3)
+	env_increase := bits.Test(NR42, 3)
 	env_sweep := NR42 & 0x7
 
 	s.Channel4Env = &Envelope{
 		StepLen:   float64(env_sweep) / 64,
 		Steps:     env_volume,
 		StepsInit: env_volume,
+		Increasing: env_increase,
 	}
 
 	s.Toggle(4, s.ShouldPlay(4))
@@ -373,7 +361,7 @@ func (s *Sound) Toggle(channel byte, on bool) {
 	case 3: c = s.Channel3
 	case 4: c = s.Channel4
 	}
-	if on {
+	if on && s.ShouldPlay(channel) {
 		fmt.Print("chn ", channel)
 		c.On()
 		s.GB.Memory.Data[0xFF26] = bits.Set(s.GB.Memory.Data[0xFF26], channel - 1)
@@ -384,13 +372,6 @@ func (s *Sound) Toggle(channel byte, on bool) {
 }
 
 func (s *Sound) SetVolume(value byte) {
-	/*
-	The volume bits specify the "Master Volume" for Left/Right sound output.
-	Bit 7   - Output Vin to SO2 terminal (1=Enable)
-	Bit 6-4 - SO2 output level (volume)  (0-7)
-	Bit 3   - Output Vin to SO1 terminal (1=Enable)
-	Bit 2-0 - SO1 output level (volume)  (0-7)
-	*/
 	so1vol := float64(value & 0x7) / 7
 	so2vol := float64((value >> 4) & 0x7) / 7
 
