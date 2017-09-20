@@ -6,6 +6,7 @@ import (
 	"github.com/faiface/beep/speaker"
 	"time"
 	"math"
+	"fmt"
 )
 
 var squarelimits = map[byte]float64{
@@ -152,6 +153,11 @@ any existing games.
 	} else {
 		s.Toggle(4, false)
 	}
+
+	s.Channel1.DebugMute = s.GB.Debug.MuteChannel1
+	s.Channel2.DebugMute = s.GB.Debug.MuteChannel2
+	s.Channel3.DebugMute = s.GB.Debug.MuteChannel3
+	s.Channel4.DebugMute = s.GB.Debug.MuteChannel4
 }
 
 func (s *Sound) ShouldPlay(channel byte) bool {
@@ -368,10 +374,28 @@ func (s *Sound) Toggle(channel byte, on bool) {
 	case 4: c = s.Channel4
 	}
 	if on {
+		fmt.Print("chn ", channel)
 		c.On()
 		s.GB.Memory.Data[0xFF26] = bits.Set(s.GB.Memory.Data[0xFF26], channel - 1)
 	} else {
 		c.Off()
 		s.GB.Memory.Data[0xFF26] = bits.Reset(s.GB.Memory.Data[0xFF26], channel - 1)
 	}
+}
+
+func (s *Sound) SetVolume(value byte) {
+	/*
+	The volume bits specify the "Master Volume" for Left/Right sound output.
+	Bit 7   - Output Vin to SO2 terminal (1=Enable)
+	Bit 6-4 - SO2 output level (volume)  (0-7)
+	Bit 3   - Output Vin to SO1 terminal (1=Enable)
+	Bit 2-0 - SO1 output level (volume)  (0-7)
+	*/
+	so1vol := float64(value & 0x7) / 7
+	so2vol := float64((value >> 4) & 0x7) / 7
+
+	s.Channel1.SetVolume(so1vol, so2vol)
+	s.Channel2.SetVolume(so1vol, so2vol)
+	s.Channel3.SetVolume(so1vol, so2vol)
+	s.Channel4.SetVolume(so1vol, so2vol)
 }

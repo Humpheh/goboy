@@ -84,6 +84,10 @@ func (mem *Memory) Write(address uint16, value byte) {
 			mem.GB.Sound.StartChannel4(value)
 		}
 
+	case address == 0xFF24:
+		mem.Data[0xFF24] = value
+		mem.GB.Sound.SetVolume(value)
+
 	case address == 0xFF25:
 		mem.Data[0xFF25] = value// & 0x64
 
