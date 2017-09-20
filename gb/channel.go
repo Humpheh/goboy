@@ -11,7 +11,7 @@ const two_pi = 2 * math.Pi
 
 func GetChannel(gen func(float64, float64) float64) *Channel {
 	return &Channel{
-		Amp:  0,
+		on: false,
 		Func: gen,
 	}
 }
@@ -74,4 +74,12 @@ func Square(t float64, mod float64) float64 {
 
 func Noise(t float64, _ float64) float64 {
 	return rand.Float64()*2 - 1
+}
+
+func MakeWaveform(data *[32]int8) func(float64, float64) float64 {
+	return func(t float64, _ float64) float64 {
+		idx := int(math.Floor(t / two_pi * 32)) % 32
+		data := int16(int8(data[idx] << 4) >> 4)
+		return float64(data) / 7
+	}
 }
