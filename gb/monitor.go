@@ -126,6 +126,23 @@ var extra_map = map[pixelgl.Button]func(*PixelsMonitor){
 	pixelgl.KeyEqual: func(mon *PixelsMonitor) {
 		current_palette = (current_palette + 1) % byte(len(palettes))
 	},
+
+	pixelgl.Key7: func(mon *PixelsMonitor) {
+		mon.Gameboy.Debug.MuteChannel1 = !mon.Gameboy.Debug.MuteChannel1
+		log.Print("Channel 1 mute =", mon.Gameboy.Debug.MuteChannel1)
+	},
+	pixelgl.Key8: func(mon *PixelsMonitor) {
+		mon.Gameboy.Debug.MuteChannel2 = !mon.Gameboy.Debug.MuteChannel2
+		log.Print("Channel 2 mute =", mon.Gameboy.Debug.MuteChannel2)
+	},
+	pixelgl.Key9: func(mon *PixelsMonitor) {
+		mon.Gameboy.Debug.MuteChannel3 = !mon.Gameboy.Debug.MuteChannel3
+		log.Print("Channel 3 mute =", mon.Gameboy.Debug.MuteChannel3)
+	},
+	pixelgl.Key0: func(mon *PixelsMonitor) {
+		mon.Gameboy.Debug.MuteChannel4 = !mon.Gameboy.Debug.MuteChannel4
+		log.Print("Channel 4 mute =", mon.Gameboy.Debug.MuteChannel4)
+	},
 }
 
 func (mon *PixelsMonitor) ProcessInput() {

@@ -21,7 +21,10 @@ type Channel struct {
 	Amp  float64
 	Func func(t float64, mod float64) float64
 	FuncMod float64
+	DebugMute bool
 	on   bool
+	so1vol float64
+	so2vol float64
 }
 
 func (chn *Channel) Stream(sr float64) beep.StreamerFunc {
@@ -33,12 +36,12 @@ func (chn *Channel) Stream(sr float64) beep.StreamerFunc {
 			t += step
 
 			var val float64 = 0
-			if chn.on {
+			if chn.on && !chn.DebugMute {
 				val = chn.Func(t, chn.FuncMod) * chn.Amp * volume
 			}
 
-			samples[i][0] = val
-			samples[i][1] = val
+			samples[i][0] = val * chn.so1vol
+			samples[i][1] = val * chn.so2vol
 		}
 		return len(samples), true
 	})
@@ -54,6 +57,11 @@ func (chn *Channel) On() {
 
 func (chn *Channel) Off() {
 	chn.on = false
+}
+
+func (chn *Channel) SetVolume(so1vol float64, so2vol float64) {
+	chn.so1vol = so1vol
+	chn.so2vol = so2vol
 }
 
 func Square(t float64, mod float64) float64 {
