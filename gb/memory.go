@@ -89,19 +89,16 @@ func (mem *Memory) Write(address uint16, value byte) {
 		mem.GB.Sound.SetVolume(value)
 
 	case address == 0xFF25:
-		/*
-		FF25 - NR51 - Selection of Sound output terminal (R/W)
-  Bit 7 - Output sound 4 to SO2 terminal
-  Bit 6 - Output sound 3 to SO2 terminal
-  Bit 5 - Output sound 2 to SO2 terminal
-  Bit 4 - Output sound 1 to SO2 terminal
-  Bit 3 - Output sound 4 to SO1 terminal
-  Bit 2 - Output sound 3 to SO1 terminal
-  Bit 1 - Output sound 2 to SO1 terminal
-  Bit 0 - Output sound 1 to SO1 terminal
-		 */
 		mem.Data[0xFF25] = value
 		mem.GB.Sound.UpdateOutput(value)
+
+	case address == 0xFF1A:
+		mem.Data[0xFF1A] = value
+		mem.GB.Sound.ToggleCh3(value)
+
+	case address == 0xFF1C:
+		mem.Data[0xFF1C] = value
+		mem.GB.Sound.ToggleCh3Volume(value)
 
 	case address >= 0xFF30 && address <= 0xFF3F:
 		mem.Data[address] = value

@@ -9,10 +9,13 @@ import (
 const volume = 0.1
 const two_pi = 2 * math.Pi
 
-func GetChannel(gen func(float64, float64) float64) *Channel {
+func GetChannel(gen func(float64, float64) float64, start float64) *Channel {
 	return &Channel{
 		on: false,
 		Func: gen,
+		t: start,
+		buffer: [][2]float64{{0, 0}},
+		Volume: 1,
 	}
 }
 
@@ -22,29 +25,48 @@ type Channel struct {
 	Func func(t float64, mod float64) float64
 	FuncMod float64
 	DebugMute bool
+	Volume float64
 	on   bool
 	so1vol float64
 	so2vol float64
+	t float64
+
+	buffer [][2]float64
 }
 
 func (chn *Channel) Stream(sr float64) beep.StreamerFunc {
-	var t float64 = 0
+	counter := 0
 	return beep.StreamerFunc(func(samples [][2]float64) (n int, ok bool) {
-		step := chn.Freq * two_pi / float64(sr)
-
+		buflen := len(chn.buffer) - 1
 		for i := range samples {
-			t += step
-
-			var val float64 = 0
-			if chn.on && !chn.DebugMute {
-				val = chn.Func(t, chn.FuncMod) * chn.Amp * volume
+			index := counter
+			if counter < buflen {
+				counter++
+			} else {
+				counter -= 684
+				if counter < 0 {
+					counter = 0
+				}
 			}
-
-			samples[i][0] = val * chn.so1vol
-			samples[i][1] = val * chn.so2vol
+			samples[i] = chn.buffer[index]
 		}
 		return len(samples), true
 	})
+}
+
+func (chn *Channel) Buffer(samples int) {
+	step := chn.Freq * two_pi / float64(41040)
+
+	for i := 0; i < samples; i++ {
+		chn.t += step
+
+		var val float64 = 0
+		if chn.on && !chn.DebugMute {
+			val = chn.Func(chn.t, chn.FuncMod) * chn.Amp * volume * chn.Volume
+		}
+
+		chn.buffer = append(chn.buffer, [2]float64{val * chn.so1vol, val * chn.so2vol})
+	}
 }
 
 func (chn *Channel) SetAmp(amp float64) {
@@ -73,7 +95,7 @@ func Square(t float64, mod float64) float64 {
 }
 
 func Noise(t float64, _ float64) float64 {
-	return rand.Float64()*2 - 1
+	return float64(rand.Intn(3) - 1)
 }
 
 func MakeWaveform(data *[32]int8) func(float64, float64) float64 {

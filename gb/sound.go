@@ -4,10 +4,8 @@ import (
 	"github.com/humpheh/goboy/bits"
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/speaker"
-	"time"
 	"math"
-	"fmt"
-	"log"
+	"time"
 )
 
 var squarelimits = map[byte]float64{
@@ -36,7 +34,6 @@ func (env *Envelope) Update(secs float64, channel *Channel) {
 				amp = 0
 			}
 			if env.Increasing {
-				log.Print("inc")
 				amp = 1 - amp
 			}
 			channel.SetAmp(amp)
@@ -120,16 +117,18 @@ type Sound struct {
 	Channel4Env  *Envelope
 
 	WaveformRam [32]int8
+	Time float64
 }
 
 func (s *Sound) Init(gb *Gameboy) {
-	sample_rate := beep.SampleRate(48100)
+	sample_rate := beep.SampleRate(41040)
 	speaker.Init(sample_rate, sample_rate.N(time.Second/30))
 
-	s.Channel1 = GetChannel(Square)
-	s.Channel2 = GetChannel(Square)
-	s.Channel3 = GetChannel(MakeWaveform(&s.WaveformRam))
-	s.Channel4 = GetChannel(Noise)
+	s.Time = 0
+	s.Channel1 = GetChannel(Square, s.Time)
+	s.Channel2 = GetChannel(Square, s.Time)
+	s.Channel3 = GetChannel(MakeWaveform(&s.WaveformRam), s.Time)
+	s.Channel4 = GetChannel(Noise, s.Time)
 
 	mix := beep.Mix(
 		s.Channel1.Stream(float64(sample_rate)),
@@ -143,6 +142,7 @@ func (s *Sound) Init(gb *Gameboy) {
 
 func (s *Sound) Tick(clocks int) {
 	secs := float64(clocks) / CLOCK_SPEED
+	s.Time += secs
 
 	if s.Channel1Time > 0 {
 		s.Channel1Time -= secs
@@ -184,6 +184,11 @@ func (s *Sound) Tick(clocks int) {
 	s.Channel2.DebugMute = s.GB.Debug.MuteChannel2
 	s.Channel3.DebugMute = s.GB.Debug.MuteChannel3
 	s.Channel4.DebugMute = s.GB.Debug.MuteChannel4
+
+	s.Channel1.Buffer(684)
+	s.Channel2.Buffer(684)
+	s.Channel3.Buffer(684)
+	s.Channel4.Buffer(684)
 }
 
 func (s *Sound) UpdateOutput(value byte) {
@@ -362,8 +367,9 @@ func (s *Sound) Toggle(channel byte, on bool) {
 	case 4: c = s.Channel4
 	}
 	if on && s.ShouldPlay(channel) {
-		fmt.Print("chn ", channel)
+		//fmt.Print("chn ", channel)
 		c.On()
+
 		s.GB.Memory.Data[0xFF26] = bits.Set(s.GB.Memory.Data[0xFF26], channel - 1)
 	} else {
 		c.Off()
@@ -379,4 +385,28 @@ func (s *Sound) SetVolume(value byte) {
 	s.Channel2.SetVolume(so1vol, so2vol)
 	s.Channel3.SetVolume(so1vol, so2vol)
 	s.Channel4.SetVolume(so1vol, so2vol)
+}
+
+func (s *Sound) ToggleCh3(value byte) {
+	if bits.Test(value, 7) {
+		s.Channel3.On()
+	} else {
+		s.Channel3.Off()
+	}
+}
+
+var ch3vols = map[byte]float64{
+	0: 0, 1: 1, 2: 0.5, 3: 0.25,
+}
+
+func (s *Sound) ToggleCh3Volume(value byte) {
+	/*
+	0: Mute (No sound)
+    1: 100% Volume (Produce Wave Pattern RAM Data as it is)
+    2:  50% Volume (Produce Wave Pattern RAM data shifted once to the right)
+    3:  25% Volume (Produce Wave Pattern RAM data shifted twice to the right)
+	*/
+	// TODO: What does that mean/
+	vol := value >> 5 & 0x3
+	s.Channel3.Volume = ch3vols[vol]
 }

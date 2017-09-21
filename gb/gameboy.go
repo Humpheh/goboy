@@ -58,8 +58,8 @@ func (gb *Gameboy) Update() int {
 		gb.UpdateTimers(cycles_op)
 		gb.UpdateGraphics(cycles_op)
 		gb.DoInterrupts()
-		gb.Sound.Tick(cycles_op)
 	}
+	gb.Sound.Tick(cycles)
 
 	return cycles
 }
