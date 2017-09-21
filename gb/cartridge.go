@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"log"
 	"time"
+	"bytes"
 )
 
 type Cartridge struct {
@@ -32,7 +33,7 @@ func (cart *Cartridge) Load(filename string) error {
 
 	// Get the cart name from the rom
 	name_bytes := data[0x0134:0x0142]
-	cart.Name = string(name_bytes)
+	cart.Name = string(bytes.Trim(name_bytes, "\x00"))
 
 	cart.Data = data
 
