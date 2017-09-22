@@ -4,6 +4,7 @@ import (
 	"github.com/faiface/beep"
 	"math"
 	"math/rand"
+	"sync"
 )
 
 const volume = 0.1
@@ -32,29 +33,40 @@ type Channel struct {
 	t float64
 
 	buffer [][2]float64
+	counter int
+	bufferlock sync.Mutex
 }
 
 func (chn *Channel) Stream(sr float64) beep.StreamerFunc {
-	counter := 0
+	chn.counter = 0
 	return beep.StreamerFunc(func(samples [][2]float64) (n int, ok bool) {
+		chn.bufferlock.Lock()
 		buflen := len(chn.buffer) - 1
 		for i := range samples {
-			index := counter
-			if counter < buflen {
-				counter++
+			index := chn.counter
+			if chn.counter < buflen {
+				chn.counter ++
 			} else {
-				counter -= 684
-				if counter < 0 {
-					counter = 0
+				chn.counter -= 684
+				if chn.counter < 0 {
+					chn.counter = 0
 				}
 			}
 			samples[i] = chn.buffer[index]
 		}
+		chn.bufferlock.Unlock()
 		return len(samples), true
 	})
 }
 
 func (chn *Channel) Buffer(samples int) {
+	chn.bufferlock.Lock()
+	// Remove end of buffer if its getting long
+	if len(chn.buffer) > samples * 120 {
+		chn.buffer = chn.buffer[samples * 60:]
+		chn.counter -= samples * 60
+	}
+
 	step := chn.Freq * two_pi / float64(41040)
 
 	for i := 0; i < samples; i++ {
@@ -67,6 +79,7 @@ func (chn *Channel) Buffer(samples int) {
 
 		chn.buffer = append(chn.buffer, [2]float64{val * chn.so1vol, val * chn.so2vol})
 	}
+	chn.bufferlock.Unlock()
 }
 
 func (chn *Channel) SetAmp(amp float64) {
