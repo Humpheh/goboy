@@ -60,6 +60,10 @@ func (mem *Memory) LoadCart(loc string) error {
 
 func (mem *Memory) Write(address uint16, value byte) {
 	switch {
+	case address == 0xFF13:
+		mem.Data[0xFF13] = value
+		mem.GB.Sound.UpdateChan1Freq()
+
 	case address == 0xFF14:
 		mem.Data[0xFF14] = value
 		if bits.Test(value, 7) {
@@ -90,6 +94,10 @@ func (mem *Memory) Write(address uint16, value byte) {
 
 	case address == 0xFF25:
 		mem.Data[0xFF25] = value
+		mem.GB.Sound.UpdateOutput(value)
+
+	case address == 0xFF26:
+		mem.Data[0xFF26] = value
 		mem.GB.Sound.UpdateOutput(value)
 
 	case address == 0xFF1A:

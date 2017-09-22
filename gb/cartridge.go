@@ -62,6 +62,8 @@ func (cart *Cartridge) Load(filename string) error {
   	12h  MBC3+RAM
 	*/
 
+	log.Printf("Cart type: %#02x", mbc_flag)
+
 	switch mbc_flag {
 	case 0x00, 0x08, 0x09, 0x0B, 0x0C, 0x0D:
 		log.Println("ROM/MMM01")
@@ -88,7 +90,7 @@ func (cart *Cartridge) Load(filename string) error {
 	cart.ROMBank = 1
 
 	switch mbc_flag {
-	case 0x3, 0x6, 0x9, 0xD, 0x13, 0x1B, 0x1E:
+	case 0x3, 0x6, 0x9, 0xD, 0xF, 0x10, 0x13, 0x17, 0x1B, 0x1E:
 		cart.initGameSaves()
 	}
 

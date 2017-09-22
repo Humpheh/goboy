@@ -100,6 +100,14 @@ following formula where X(0) is initial freq & X(t-1) is last freq:
 	}
 }
 
+var sound_mask = []byte{
+	0xFF, 0xC0, 0xFF, 0x00, 0x40, /*0xFF15->*/
+	0x00, 0xC0, 0xFF, 0x00, 0x40,
+	0x80, 0x00, 0x60, 0x00, 0x40, /*<-0xFF1E*/
+	0x00, 0x3F, 0xFF, 0xFF, 0x40,
+	0xFF, 0xFF, 0x80,
+}
+
 type Sound struct {
 	GB           *Gameboy
 	Channel1     *Channel
@@ -192,16 +200,16 @@ func (s *Sound) Tick(clocks int) {
 }
 
 func (s *Sound) UpdateOutput(value byte) {
-	if !bits.Test(value, 0) && !bits.Test(value, 4) {
+	if !s.ShouldPlay(1) {
 		s.Channel1.Off()
 	}
-	if !bits.Test(value, 1) && !bits.Test(value, 5) {
+	if !s.ShouldPlay(2) {
 		s.Channel2.Off()
 	}
-	if !bits.Test(value, 2) && !bits.Test(value, 6) {
+	if !s.ShouldPlay(3) {
 		s.Channel3.Off()
 	}
-	if !bits.Test(value, 3) && !bits.Test(value, 7) {
+	if !s.ShouldPlay(4) {
 		s.Channel4.Off()
 	}
 }
@@ -211,7 +219,7 @@ func (s *Sound) ShouldPlay(channel byte) bool {
 	FF26 := s.GB.Memory.Data[0xFF26]
 
 	// Individual sound control
-	return bits.Test(FF25, channel-1) || bits.Test(FF25, channel+3) ||
+	return bits.Test(FF25, channel-1) && bits.Test(FF25, channel+3) &&
 	// All sound on/off
 		bits.Test(FF26, 7)
 }
@@ -220,7 +228,6 @@ func (s *Sound) StartChannel1(NR14 byte) {
 	NR10 := s.GB.Memory.Data[0xFF10]
 	NR11 := s.GB.Memory.Data[0xFF11]
 	NR12 := s.GB.Memory.Data[0xFF12]
-	NR13 := s.GB.Memory.Data[0xFF13]
 
 	sweep_time := (NR10 >> 4) & 0x7
 	sweep_increase := !bits.Test(NR10, 3)
@@ -243,9 +250,7 @@ func (s *Sound) StartChannel1(NR14 byte) {
 	pattern := (NR11 >> 6) & 0x3
 	s.Channel1.FuncMod = squarelimits[pattern]
 
-	freq_val := uint16(NR13) | (uint16(NR14&0x7) << 8)
-	freq := 131072 / (2048 - float64(freq_val))
-	s.Channel1.Freq = freq
+	s.UpdateChan1Freq()
 
 	// Envelope
 	env_volume := (NR12 >> 4) & 0xF
@@ -261,6 +266,15 @@ func (s *Sound) StartChannel1(NR14 byte) {
 
 	s.Toggle(1, s.ShouldPlay(1))
 	s.Channel1.Amp = 1
+}
+
+func (s *Sound) UpdateChan1Freq() {
+	NR13 := s.GB.Memory.Data[0xFF13]
+	NR14 := s.GB.Memory.Data[0xFF14]
+
+	freq_val := uint16(NR13) | (uint16(NR14&0x7) << 8)
+	freq := 131072 / (2048 - float64(freq_val))
+	s.Channel1.Freq = freq
 }
 
 func (s *Sound) StartChannel2(NR24 byte) {
