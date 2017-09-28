@@ -64,6 +64,10 @@ func (cart *Cartridge) Load(filename string) error {
 
 	log.Printf("Cart type: %#02x", mbc_flag)
 
+	if cart.Data[0x0143] == 0x80 {
+		log.Print("GBC Mode")
+	}
+
 	switch mbc_flag {
 	case 0x00, 0x08, 0x09, 0x0B, 0x0C, 0x0D:
 		log.Println("ROM/MMM01")
@@ -82,7 +86,7 @@ func (cart *Cartridge) Load(filename string) error {
 			log.Println("Warning: MBC4 carts are not supported.")
 		case mbc_flag < 0x1E:
 			cart.MBC5 = true
-			log.Println("Warning: MBC5 carts are not supported.")
+			log.Println("MBC5")
 		default:
 			log.Printf("Warning: This cart may not be supported: %02x", mbc_flag)
 		}

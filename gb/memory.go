@@ -2,6 +2,7 @@ package gb
 
 import (
 	"github.com/humpheh/goboy/bits"
+	"log"
 )
 
 type Memory struct {
@@ -60,60 +61,14 @@ func (mem *Memory) LoadCart(loc string) error {
 
 func (mem *Memory) Write(address uint16, value byte) {
 	switch {
-	case address == 0xFF13:
-		mem.Data[0xFF13] = value
-		mem.GB.Sound.UpdateChan1Freq()
-
-	case address == 0xFF14:
-		mem.Data[0xFF14] = value
-		if bits.Test(value, 7) {
-			mem.GB.Sound.StartChannel1(value)
-		}
-
-	case address == 0xFF19:
-		mem.Data[0xFF19] = value
-		if bits.Test(value, 7) {
-			mem.GB.Sound.StartChannel2(value)
-		}
-
-	case address == 0xFF1E:
-		mem.Data[0xFF1E] = value
-		if bits.Test(value, 7) {
-			mem.GB.Sound.StartChannel3(value)
-		}
-
-	case address == 0xFF23:
-		mem.Data[0xFF23] = value
-		if bits.Test(value, 7) {
-			mem.GB.Sound.StartChannel4(value)
-		}
-
-	case address == 0xFF24:
-		mem.Data[0xFF24] = value
-		mem.GB.Sound.SetVolume(value)
-
-	case address == 0xFF25:
-		mem.Data[0xFF25] = value
-		mem.GB.Sound.UpdateOutput(value)
-
-	case address == 0xFF26:
-		mem.Data[0xFF26] = value
-		mem.GB.Sound.UpdateOutput(value)
-
-	case address == 0xFF1A:
-		mem.Data[0xFF1A] = value
-		mem.GB.Sound.ToggleCh3(value)
-
-	case address == 0xFF1C:
-		mem.Data[0xFF1C] = value
-		mem.GB.Sound.ToggleCh3Volume(value)
+	case address >= 0xFF10 && address <= 0xFF26:
+		mem.GB.Sound.Write(address, value)
 
 	case address >= 0xFF30 && address <= 0xFF3F:
 		mem.Data[address] = value
 		sound_index := (address - 0xFF30) * 2
 		mem.GB.Sound.WaveformRam[sound_index] = int8((value >> 4) & 0xF)
 		mem.GB.Sound.WaveformRam[sound_index + 1] = int8(value & 0xF)
-
 
 	// Timer control
 	case address == TMC:
@@ -145,6 +100,9 @@ func (mem *Memory) Write(address uint16, value byte) {
 	// DMA transfer
 	case address == 0xFF46:
 		mem.DMATransfer(value)
+
+	case address == 0xFF4D:
+		log.Print("WARN: 0xFF4D WRITTEN", value)
 
 	// ROM
 	case address < 0x8000:
@@ -219,6 +177,31 @@ func (mem *Memory) HandleBanking(address uint16, value byte) {
 		// Switch RAM bank
 		case address < 0x6000:
 			mem.Cart.RAMBank = uint16(value & 0x3)
+		}
+		return
+	}
+	/*
+	4000-7FFF - ROM Bank 00-1FF (Read Only)
+Same as for MBC1, except that accessing up to bank 1E0h is supported now. Also, bank 0 is actually bank 0.
+	A000-BFFF - RAM Bank 00-0F, if any (Read/Write)
+Same as for MBC1, except RAM sizes are 64kbit, 256kbit and 1mbit.
+
+	 */
+	if mem.Cart.MBC5 {
+		switch {
+		// Enable RAM bank
+		case address < 0x2000:
+			mem.enableRAMBank(address, value)
+
+		case address < 0x3000:
+			mem.Cart.ROMBank = mem.Cart.ROMBank & 0x100 | uint16(value)
+
+		case address < 0x4000:
+			mem.Cart.ROMBank = mem.Cart.ROMBank & 0xFF | (uint16(value & 1) << 8)
+
+		// Switch RAM bank
+		case address < 0x6000:
+			mem.Cart.RAMBank = uint16(value & 0xF)
 		}
 		return
 	}
