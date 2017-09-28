@@ -1,5 +1,5 @@
 # GoBoy
-GoBoy is a Nintendo GameBoy emulator written in golang. While it is work in progress it currently runs the majority of normal GameBoy games. There is currently no sound engine implemented. This emulator was primarily built as a development exercise.
+GoBoy is a Nintendo GameBoy emulator written in go. While it is work in progress it currently runs the majority of normal GameBoy games. There is an experimental sound engine implemented on a development branch. This emulator was primarily built as a development exercise.
 
 <img src="images/links-awakening.png" width="400"><img src="images/pkmn-red.png" width="400">
 
@@ -36,6 +36,11 @@ This rom is included in the source code along with a test to check the output is
 ## Contributing
 
 Feel free to open pull requests to this project or play around if you're interested!
+
+## Known Bugs 
+- [ ] Sprite Z-drawing
+- [ ] Top half of sprite disappearing off top of screen
+- [ ] Small sprites row glitch
 
 ## TODO List
 - [x] MBC3 banking support
