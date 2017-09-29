@@ -94,6 +94,7 @@ func (mon *PixelsMonitor) SetTitle(fps int) {
 	mon.Window.SetTitle(title)
 }
 
+// Mapping from keys to GB index.
 var key_map = map[pixelgl.Button]byte{
 	// A button
 	pixelgl.KeyZ: 0,
@@ -113,20 +114,27 @@ var key_map = map[pixelgl.Button]byte{
 	pixelgl.KeyDown: 7,
 }
 
+// Extra key bindings to functions.
 var extra_map = map[pixelgl.Button]func(*PixelsMonitor){
+	// Change GB colour palette
+	pixelgl.KeyEqual: func(mon *PixelsMonitor) {
+		current_palette = (current_palette + 1) % byte(len(palettes))
+	},
+
+	// GPU debugging
 	pixelgl.KeyQ: func(mon *PixelsMonitor) {
 		mon.Gameboy.Debug.HideBackground = !mon.Gameboy.Debug.HideBackground
 	},
 	pixelgl.KeyW: func(mon *PixelsMonitor) {
 		mon.Gameboy.Debug.HideSprites = !mon.Gameboy.Debug.HideSprites
 	},
+
+	// CPU debugging
 	pixelgl.KeyE: func(mon *PixelsMonitor) {
 		mon.Gameboy.Debug.OutputOpcodes = !mon.Gameboy.Debug.OutputOpcodes
 	},
-	pixelgl.KeyEqual: func(mon *PixelsMonitor) {
-		current_palette = (current_palette + 1) % byte(len(palettes))
-	},
 
+	// Audio channel debugging
 	pixelgl.Key7: func(mon *PixelsMonitor) {
 		mon.Gameboy.Debug.MuteChannel1 = !mon.Gameboy.Debug.MuteChannel1
 		log.Print("Channel 1 mute =", mon.Gameboy.Debug.MuteChannel1)

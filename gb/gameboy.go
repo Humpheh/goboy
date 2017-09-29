@@ -426,7 +426,7 @@ func (gb *Gameboy) RenderSprites(lcdControl byte, scanline byte) {
 			}
 
 			// Load the data containing the sprite data for this line
-			data_address := 0x8000 + (uint16(tile_location) * 16) + uint16(line*2)
+			data_address := 0x8000 + (uint16(tile_location) * 16) + uint16(line * 2)
 			data1 := gb.Memory.Data[data_address]
 			data2 := gb.Memory.Data[data_address+1]
 

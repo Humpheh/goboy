@@ -41,6 +41,11 @@ func (env *Envelope) Update(secs float64, channel *Channel) {
 	}
 }
 
+func (env *Envelope) Reset() {
+	env.Steps = env.StepsInit
+	env.Time = 0
+}
+
 type Sweep struct {
 	Time float64
 	StepLen byte
@@ -83,8 +88,7 @@ The change of frequency (NR13,NR14) at each shift is calculated by the
 following formula where X(0) is initial freq & X(t-1) is last freq:
   X(t) = X(t-1) +/- X(t-1)/2^n
 */
-
-	if swp.Step < swp.Steps && swp.StepLen != 0 {
+	if swp.Step < swp.Steps {
 		t := sweeptime[swp.StepLen]
 		swp.Time += secs
 		if swp.Time > t {
@@ -155,6 +159,10 @@ func (s *Sound) makeSweep(value byte) *Sweep {
 	sweep_increase := !bits.Test(value, 3)
 	sweep_shift := value & 0x7
 
+	if sweep_time == 0 {
+		return nil
+	}
+
 	return &Sweep{
 		StepLen: sweep_time,
 		Steps: sweep_shift,
@@ -189,14 +197,19 @@ func (s *Sound) Write(address uint16, value byte) {
 		env_increase := bits.Test(value, 3)
 		env_sweep := value & 0x7
 
-		s.Channel1Env = &Envelope{
-			StepLen:    float64(env_sweep) / 64,
-			Steps:      env_volume,
-			StepsInit:  env_volume,
-			Increasing: env_increase,
-		}
 		if env_volume == 0 {
 			s.Toggle(1, false)
+		}
+
+		if env_sweep == 0 {
+			s.Channel1Env = nil
+		} else {
+			s.Channel1Env = &Envelope{
+				StepLen:    float64(env_sweep) / 64,
+				Steps:      env_volume,
+				StepsInit:  env_volume,
+				Increasing: env_increase,
+			}
 		}
 
 	case 0xFF13:
@@ -211,10 +224,10 @@ func (s *Sound) Write(address uint16, value byte) {
 			s.Channel1.Amp = 1
 			s.Channel1Time = s.Channel1TimeVal
 			if s.Channel1Env != nil {
-				s.Channel1Env.Steps = s.Channel1Env.StepsInit
+				s.Channel1Env.Reset()
 			}
 			if s.Channel1Sweep != nil {
-				s.Channel1Sweep.Step = s.Channel1Sweep.Steps
+				s.Channel1Sweep.Step = 0
 			}
 		}
 
@@ -237,14 +250,19 @@ func (s *Sound) Write(address uint16, value byte) {
 		env_increase := bits.Test(value, 3)
 		env_sweep := value & 0x7
 
-		s.Channel2Env = &Envelope{
-			StepLen:    float64(env_sweep) / 64,
-			Steps:      env_volume,
-			StepsInit:  env_volume,
-			Increasing: env_increase,
-		}
 		if env_volume == 0 {
 			s.Toggle(2, false)
+		}
+
+		if env_sweep == 0 {
+			s.Channel2Env = nil
+		} else {
+			s.Channel2Env = &Envelope{
+				StepLen:    float64(env_sweep) / 64,
+				Steps:      env_volume,
+				StepsInit:  env_volume,
+				Increasing: env_increase,
+			}
 		}
 
 	case 0xFF18:
@@ -259,7 +277,7 @@ func (s *Sound) Write(address uint16, value byte) {
 			s.Channel2.Amp = 1
 			s.Channel2Time = s.Channel2TimeVal
 			if s.Channel2Env != nil {
-				s.Channel2Env.Steps = s.Channel2Env.StepsInit
+				s.Channel2Env.Reset()
 			}
 		}
 
@@ -439,14 +457,18 @@ func (s *Sound) StartChannel4(NR44 byte) {
 	env_increase := bits.Test(NR42, 3)
 	env_sweep := NR42 & 0x7
 
-	s.Channel4Env = &Envelope{
-		StepLen:   float64(env_sweep) / 64,
-		Steps:     env_volume,
-		StepsInit: env_volume,
-		Increasing: env_increase,
+	if env_sweep == 0 {
+		s.Channel4Env = nil
+	} else {
+		s.Channel4Env = &Envelope{
+			StepLen:    float64(env_sweep) / 64,
+			Steps:      env_volume,
+			StepsInit:  env_volume,
+			Increasing: env_increase,
+		}
 	}
 
-	s.Toggle(4, s.ShouldPlay(4))
+	s.Toggle(4, env_volume != 0 && s.ShouldPlay(4))
 	s.Channel4.Amp = 1
 }
 

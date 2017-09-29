@@ -14,10 +14,10 @@ var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 var rom = flag.String("rom", "", "location of rom file")
 
 func main() {
-	pixelgl.Run(main2)
+	pixelgl.Run(start)
 }
 
-func main2() {
+func start() {
 	flag.Parse()
 	if *cpuprofile != "" {
 		log.Print("start profile")
