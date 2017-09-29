@@ -4,17 +4,21 @@ import (
 	"io/ioutil"
 	"log"
 	"time"
-	"bytes"
+	"strings"
+)
+
+const (
+	MBC1 = iota + 1
+	MBC2
+	MBC3
+	MBC5
 )
 
 type Cartridge struct {
 	Data     []byte // max len 0x200000
-	ROMBank  uint16
-	MBC1     bool
-	MBC2     bool
-	MBC3     bool
-	MBC5     bool
 	RAM      []byte
+	Type int
+	ROMBank  uint16
 	RAMBank  uint16
 	Name     string
 	filename string
@@ -32,8 +36,8 @@ func (cart *Cartridge) Load(filename string) error {
 	}
 
 	// Get the cart name from the rom
-	name_bytes := data[0x0134:0x0142]
-	cart.Name = string(bytes.Trim(name_bytes, "\x00"))
+	cart_name := string(data[0x0134:0x0142])
+	cart.Name = strings.Replace(cart_name, "\x00", "", -1)
 
 	cart.Data = data
 
@@ -64,8 +68,10 @@ func (cart *Cartridge) Load(filename string) error {
 
 	log.Printf("Cart type: %#02x", mbc_flag)
 
-	if cart.Data[0x0143] == 0x80 {
-		log.Print("GBC Mode")
+	switch cart.Data[0x0143] {
+	case 0x80: log.Print("GB/GBC mode")
+	case 0xC0: log.Print("GBC only mode")
+	default: log.Print("GB mode")
 	}
 
 	switch mbc_flag {
@@ -74,18 +80,18 @@ func (cart *Cartridge) Load(filename string) error {
 	default:
 		switch {
 		case mbc_flag <= 0x03:
-			cart.MBC1 = true
+			cart.Type = MBC1
 			log.Println("MBC1")
 		case mbc_flag <= 0x06:
-			cart.MBC2 = true
+			cart.Type = MBC2
 			log.Println("MBC2")
 		case mbc_flag <= 0x13:
-			cart.MBC3 = true
+			cart.Type = MBC3
 			log.Println("MBC3")
 		case mbc_flag < 0x17:
 			log.Println("Warning: MBC4 carts are not supported.")
 		case mbc_flag < 0x1E:
-			cart.MBC5 = true
+			cart.Type = MBC5
 			log.Println("MBC5")
 		default:
 			log.Printf("Warning: This cart may not be supported: %02x", mbc_flag)

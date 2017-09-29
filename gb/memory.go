@@ -41,6 +41,16 @@ func (mem *Memory) Init(gameboy *Gameboy) {
 	mem.Data[0xFF24] = 0x77
 	mem.Data[0xFF25] = 0xF3
 	mem.Data[0xFF26] = 0xF1
+
+	// Sets wave ram to
+	// 00 FF 00 FF  00 FF 00 FF  00 FF 00 FF  00 FF 00 FF
+	for x := 0xFF30; x < 0xFF3F; x++ {
+		if x & 2 == 0 {
+			mem.Data[x] = 0x00
+		} else {
+			mem.Data[x] = 0xFF
+		}
+	}
 	mem.Data[0xFF40] = 0x91
 	mem.Data[0xFF41] = 0x85
 	mem.Data[0xFF42] = 0x00
@@ -160,7 +170,7 @@ func (mem *Memory) Read(address uint16) byte {
 
 func (mem *Memory) HandleBanking(address uint16, value byte) {
 	// MBC3 banking TODO: merge this into main banking switch
-	if mem.Cart.MBC3 {
+	if mem.Cart.Type == MBC3 {
 		switch {
 		// Enable RAM bank
 		case address < 0x2000:
@@ -187,7 +197,7 @@ Same as for MBC1, except that accessing up to bank 1E0h is supported now. Also, 
 Same as for MBC1, except RAM sizes are 64kbit, 256kbit and 1mbit.
 
 	 */
-	if mem.Cart.MBC5 {
+	if mem.Cart.Type == MBC5 {
 		switch {
 		// Enable RAM bank
 		case address < 0x2000:
@@ -209,19 +219,19 @@ Same as for MBC1, except RAM sizes are 64kbit, 256kbit and 1mbit.
 	switch {
 	// Enable RAM
 	case address < 0x2000:
-		if mem.Cart.MBC1 || mem.Cart.MBC2 {
+		if mem.Cart.Type == MBC1 || mem.Cart.Type == MBC2 {
 			mem.enableRAMBank(address, value)
 		}
 
 	// Change ROM bank
 	case address >= 0x200 && address < 0x4000:
-		if mem.Cart.MBC1 || mem.Cart.MBC2 {
+		if mem.Cart.Type == MBC1 || mem.Cart.Type == MBC2 {
 			mem.changeLoROMBank(value, false)
 		}
 
 	// Change ROM or RAM
 	case address >= 0x4000 && address < 0x6000:
-		if mem.Cart.MBC1 {
+		if mem.Cart.Type == MBC1 {
 			if mem.ROMBanking {
 				mem.changeHiROMBank(value)
 			} else {
@@ -231,14 +241,14 @@ Same as for MBC1, except RAM sizes are 64kbit, 256kbit and 1mbit.
 
 	// Change if ROM/RAM banking
 	case address >= 0x6000 && address < 0x8000:
-		if mem.Cart.MBC1 {
+		if mem.Cart.Type == MBC1 {
 			mem.changeROMRAMMode(value)
 		}
 	}
 }
 
 func (mem *Memory) enableRAMBank(address uint16, value byte) {
-	if mem.Cart.MBC2 {
+	if mem.Cart.Type == MBC2 {
 		if bits.Test(byte(address), 4) {
 			return
 		}
@@ -253,7 +263,7 @@ func (mem *Memory) enableRAMBank(address uint16, value byte) {
 }
 
 func (mem *Memory) changeLoROMBank(value byte, allowZero bool) {
-	if mem.Cart.MBC2 {
+	if mem.Cart.Type == MBC2 {
 		mem.Cart.ROMBank = uint16(value & 0xF)
 	} else {
 		var lower byte = value & 31
