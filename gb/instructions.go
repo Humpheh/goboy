@@ -4,7 +4,7 @@ import (
 	"log"
 )
 
-var OPCODE_CYCLES = []int{
+var OpcodeCycles = []int{
 	//  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 	1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1, // 0
 	1, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1, // 1
@@ -24,7 +24,7 @@ var OPCODE_CYCLES = []int{
 	3, 3, 2, 1, 1, 4, 2, 4, 3, 2, 4, 1, 0, 1, 2, 4, // f
 }
 
-var CB_OPCODE_CYCLES = []int{
+var CBOpcodeCycles = []int{
 	//  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 1
@@ -44,26 +44,30 @@ var CB_OPCODE_CYCLES = []int{
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // F
 }
 
+// Get the value at the current PC address, increment the PC, update
+// the CPU ticks and execute the opcode.
 func (gb *Gameboy) ExecuteNextOpcode() int {
 	opcode := gb.popPC()
-	gb.thisCpuTicks = OPCODE_CYCLES[opcode] * 4
+	gb.thisCpuTicks = OpcodeCycles[opcode] * 4
 	gb.ExecuteOpcode(opcode)
-
 	return gb.thisCpuTicks
 }
 
+// Read the value at the PC and increment the PC.
 func (gb *Gameboy) popPC() byte {
 	opcode := gb.Memory.Read(gb.CPU.PC)
 	gb.CPU.PC++
 	return opcode
 }
 
+// Read the next 16bit value at the PC.
 func (gb *Gameboy) popPC16() uint16 {
 	b1 := uint16(gb.popPC())
 	b2 := uint16(gb.popPC())
 	return b2<<8 | b1
 }
 
+// Large switch statement containing the opcode operations.
 func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	switch opcode {
 	// LD B, n
@@ -1238,7 +1242,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	// CB!
 	case 0xCB:
 		nextInst := gb.popPC()
-		gb.thisCpuTicks += CB_OPCODE_CYCLES[nextInst] * 4
+		gb.thisCpuTicks += CBOpcodeCycles[nextInst] * 4
 		gb.CBInst[nextInst]()
 
 	default:
