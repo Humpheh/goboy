@@ -1,3 +1,9 @@
 language: go
+sudo: required
 go:
   - master
+
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install libasound2-dev alsa-utils alsa-oss
+  - sudo apt-get install libgl1-mesa-dev xorg-dev
