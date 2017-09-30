@@ -12,28 +12,28 @@ const two_pi = 2 * math.Pi
 
 func GetChannel(gen func(float64, float64) float64, start float64) *Channel {
 	return &Channel{
-		on: false,
-		Func: gen,
-		t: start,
+		on:     false,
+		Func:   gen,
+		t:      start,
 		buffer: [][2]float64{{0, 0}},
 		Volume: 1,
 	}
 }
 
 type Channel struct {
-	Freq float64
-	Amp  float64
-	Func func(t float64, mod float64) float64
-	FuncMod float64
+	Freq      float64
+	Amp       float64
+	Func      func(t float64, mod float64) float64
+	FuncMod   float64
 	DebugMute bool
-	Volume float64
-	on   bool
-	so1vol float64
-	so2vol float64
-	t float64
+	Volume    float64
+	on        bool
+	so1vol    float64
+	so2vol    float64
+	t         float64
 
-	buffer [][2]float64
-	counter int
+	buffer     [][2]float64
+	counter    int
 	bufferlock sync.Mutex
 }
 
@@ -45,7 +45,7 @@ func (chn *Channel) Stream(sr float64) beep.StreamerFunc {
 		for i := range samples {
 			index := chn.counter
 			if chn.counter < buflen {
-				chn.counter ++
+				chn.counter++
 			} else {
 				chn.counter -= 684
 				if chn.counter < 0 {
@@ -62,8 +62,8 @@ func (chn *Channel) Stream(sr float64) beep.StreamerFunc {
 func (chn *Channel) Buffer(samples int) {
 	chn.bufferlock.Lock()
 	// Remove end of buffer if its getting long
-	if len(chn.buffer) > samples * 120 {
-		chn.buffer = chn.buffer[samples * 60:]
+	if len(chn.buffer) > samples*120 {
+		chn.buffer = chn.buffer[samples*60:]
 		chn.counter -= samples * 60
 	}
 
@@ -113,8 +113,8 @@ func Noise(t float64, _ float64) float64 {
 
 func MakeWaveform(data *[32]int8) func(float64, float64) float64 {
 	return func(t float64, _ float64) float64 {
-		idx := int(math.Floor(t / two_pi * 32)) % 32
-		data := int16(int8(data[idx] << 4) >> 4)
+		idx := int(math.Floor(t/two_pi*32)) % 32
+		data := int16(int8(data[idx]<<4) >> 4)
 		return float64(data) / 7
 	}
 }

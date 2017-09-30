@@ -1,9 +1,9 @@
 package gb
 
 import (
-	"github.com/humpheh/goboy/bits"
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/speaker"
+	"github.com/humpheh/goboy/bits"
 	"math"
 	"time"
 )
@@ -47,15 +47,15 @@ func (env *Envelope) Reset() {
 }
 
 type Sweep struct {
-	Time float64
-	StepLen byte
-	Steps byte
-	Step byte
+	Time     float64
+	StepLen  byte
+	Steps    byte
+	Step     byte
 	Increase bool
 }
 
 var sweeptime = map[byte]float64{
-	1: 7.8  / 1000,
+	1: 7.8 / 1000,
 	2: 15.6 / 1000,
 	3: 23.4 / 1000,
 	4: 31.3 / 1000,
@@ -68,26 +68,26 @@ func (swp *Sweep) Update(secs float64, channel *Channel) {
 
 	/*
 
-FF10 - NR10 - Channel 1 Sweep register (R/W)
-  Bit 6-4 - Sweep Time
-  Bit 3   - Sweep Increase/Decrease
-             0: Addition    (frequency increases)
-             1: Subtraction (frequency decreases)
-  Bit 2-0 - Number of sweep shift (n: 0-7)
-Sweep Time:
-  000: sweep off - no freq change
-  001: 7.8 ms  (1/128Hz)
-  010: 15.6 ms (2/128Hz)
-  011: 23.4 ms (3/128Hz)
-  100: 31.3 ms (4/128Hz)
-  101: 39.1 ms (5/128Hz)
-  110: 46.9 ms (6/128Hz)
-  111: 54.7 ms (7/128Hz)
+	FF10 - NR10 - Channel 1 Sweep register (R/W)
+	  Bit 6-4 - Sweep Time
+	  Bit 3   - Sweep Increase/Decrease
+	             0: Addition    (frequency increases)
+	             1: Subtraction (frequency decreases)
+	  Bit 2-0 - Number of sweep shift (n: 0-7)
+	Sweep Time:
+	  000: sweep off - no freq change
+	  001: 7.8 ms  (1/128Hz)
+	  010: 15.6 ms (2/128Hz)
+	  011: 23.4 ms (3/128Hz)
+	  100: 31.3 ms (4/128Hz)
+	  101: 39.1 ms (5/128Hz)
+	  110: 46.9 ms (6/128Hz)
+	  111: 54.7 ms (7/128Hz)
 
-The change of frequency (NR13,NR14) at each shift is calculated by the
-following formula where X(0) is initial freq & X(t-1) is last freq:
-  X(t) = X(t-1) +/- X(t-1)/2^n
-*/
+	The change of frequency (NR13,NR14) at each shift is calculated by the
+	following formula where X(0) is initial freq & X(t-1) is last freq:
+	  X(t) = X(t-1) +/- X(t-1)/2^n
+	*/
 	if swp.Step < swp.Steps {
 		t := sweeptime[swp.StepLen]
 		swp.Time += secs
@@ -105,25 +105,25 @@ following formula where X(0) is initial freq & X(t-1) is last freq:
 }
 
 type Sound struct {
-	GB           *Gameboy
-	Channel1     *Channel
+	GB              *Gameboy
+	Channel1        *Channel
 	Channel1TimeVal float64
-	Channel1Time float64
-	Channel1Env  *Envelope
-	Channel1Sweep *Sweep
-	Channel2     *Channel
-	Channel2Time float64
+	Channel1Time    float64
+	Channel1Env     *Envelope
+	Channel1Sweep   *Sweep
+	Channel2        *Channel
+	Channel2Time    float64
 	Channel2TimeVal float64
-	Channel2Env  *Envelope
-	Channel2Sweep *Sweep
-	Channel3     *Channel
-	Channel3Time float64
-	Channel4     *Channel
-	Channel4Time float64
-	Channel4Env  *Envelope
+	Channel2Env     *Envelope
+	Channel2Sweep   *Sweep
+	Channel3        *Channel
+	Channel3Time    float64
+	Channel4        *Channel
+	Channel4Time    float64
+	Channel4Env     *Envelope
 
 	WaveformRam [32]int8
-	Time float64
+	Time        float64
 }
 
 func (s *Sound) Init(gb *Gameboy) {
@@ -142,7 +142,9 @@ func (s *Sound) Init(gb *Gameboy) {
 		s.Channel3.Stream(float64(sample_rate)),
 		s.Channel4.Stream(float64(sample_rate)),
 	)
-	speaker.Play(mix)
+	if gb.EnableSound {
+		speaker.Play(mix)
+	}
 	s.GB = gb
 }
 
@@ -164,9 +166,9 @@ func (s *Sound) makeSweep(value byte) *Sweep {
 	}
 
 	return &Sweep{
-		StepLen: sweep_time,
-		Steps: sweep_shift,
-		Step: 0,
+		StepLen:  sweep_time,
+		Steps:    sweep_shift,
+		Step:     0,
 		Increase: sweep_increase,
 	}
 }
@@ -332,11 +334,11 @@ func (s *Sound) Write(address uint16, value byte) {
 		s.UpdateOutput(value)
 	}
 
-	s.GB.Memory.Data[address] = value & sound_mask[address - 0xFF10]
+	s.GB.Memory.Data[address] = value & sound_mask[address-0xFF10]
 }
 
 func (s *Sound) Tick(clocks int) {
-	secs := float64(clocks) / CLOCK_SPEED
+	secs := float64(clocks) / ClockSpeed
 	s.Time += secs
 
 	if s.Channel1Time > 0 {
@@ -407,7 +409,7 @@ func (s *Sound) ShouldPlay(channel byte) bool {
 
 	// Individual sound control
 	return bits.Test(FF25, channel-1) && bits.Test(FF25, channel+3) &&
-	// All sound on/off
+		// All sound on/off
 		bits.Test(FF26, 7)
 }
 
@@ -436,7 +438,7 @@ func (s *Sound) StartChannel4(NR44 byte) {
 	if bits.Test(NR44, 6) {
 		// Counter
 		NR41 := s.GB.Memory.Data[0xFF20]
-		s.Channel4Time = (64 - float64(NR41 & 0x3F)) * (1 / 256)
+		s.Channel4Time = (64 - float64(NR41&0x3F)) * (1 / 256)
 	} else {
 		// Consecutive
 		s.Channel4Time = 100000
@@ -448,7 +450,7 @@ func (s *Sound) StartChannel4(NR44 byte) {
 	if freq_divier == 0 {
 		freq_divier = 0.5
 	}
-	freq := 524288 / freq_divier / math.Pow(2, freq_shift_clock + 1)
+	freq := 524288 / freq_divier / math.Pow(2, freq_shift_clock+1)
 	// TODO: Bit 3 NR43 modifier
 	s.Channel4.Freq = freq
 
@@ -475,24 +477,27 @@ func (s *Sound) StartChannel4(NR44 byte) {
 func (s *Sound) Toggle(channel byte, on bool) {
 	c := s.Channel1
 	switch channel {
-	case 2: c = s.Channel2
-	case 3: c = s.Channel3
-	case 4: c = s.Channel4
+	case 2:
+		c = s.Channel2
+	case 3:
+		c = s.Channel3
+	case 4:
+		c = s.Channel4
 	}
 	if on && s.ShouldPlay(channel) {
 		//fmt.Print("chn ", channel)
 		c.On()
 
-		s.GB.Memory.Data[0xFF26] = bits.Set(s.GB.Memory.Data[0xFF26], channel - 1)
+		s.GB.Memory.Data[0xFF26] = bits.Set(s.GB.Memory.Data[0xFF26], channel-1)
 	} else {
 		c.Off()
-		s.GB.Memory.Data[0xFF26] = bits.Reset(s.GB.Memory.Data[0xFF26], channel - 1)
+		s.GB.Memory.Data[0xFF26] = bits.Reset(s.GB.Memory.Data[0xFF26], channel-1)
 	}
 }
 
 func (s *Sound) SetVolume(value byte) {
-	so1vol := float64(value & 0x7) / 7
-	so2vol := float64((value >> 4) & 0x7) / 7
+	so1vol := float64(value&0x7) / 7
+	so2vol := float64((value>>4)&0x7) / 7
 
 	s.Channel1.SetVolume(so1vol, so2vol)
 	s.Channel2.SetVolume(so1vol, so2vol)
@@ -514,10 +519,10 @@ var ch3vols = map[byte]float64{
 
 func (s *Sound) ToggleCh3Volume(value byte) {
 	/*
-	0: Mute (No sound)
-    1: 100% Volume (Produce Wave Pattern RAM Data as it is)
-    2:  50% Volume (Produce Wave Pattern RAM data shifted once to the right)
-    3:  25% Volume (Produce Wave Pattern RAM data shifted twice to the right)
+		0: Mute (No sound)
+	    1: 100% Volume (Produce Wave Pattern RAM Data as it is)
+	    2:  50% Volume (Produce Wave Pattern RAM data shifted once to the right)
+	    3:  25% Volume (Produce Wave Pattern RAM data shifted twice to the right)
 	*/
 	// TODO: What does that mean/
 	vol := value >> 5 & 0x3
