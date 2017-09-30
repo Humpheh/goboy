@@ -1,5 +1,7 @@
 # GoBoy
 
+[![Build Status](https://travis-ci.org/Humpheh/goboy.svg?branch=master)](https://travis-ci.org/Humpheh/goboy)
+
 GoBoy is a multi-platform Nintendo GameBoy emulator written in golang. 
 This emulator was primarily built as a development exercise, and while still 
 work in progress it should run the majority of GB games. There is also experimental
