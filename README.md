@@ -38,11 +38,15 @@ Other options:
         location of rom file
   -sound
         set to enable sound emulation (experimental)
-
 ```
 
 ### Debugging
-There are a few keyboard shortcuts useful for debugging: <kbd>Q</kbd> - force toggle background, <kbd>W</kbd> - force toggle sprites,<kbd>E</kbd> - toggle opcode printing to console (will slow down execution massively).
+There are a few keyboard shortcuts useful for debugging: 
+
+<kbd>Q</kbd> - force toggle background<br/>
+<kbd>W</kbd> - force toggle sprites<br/>
+<kbd>E</kbd> - toggle opcode printing to console (will slow down execution)<br/>
+<kbd>7-9</kbd> - toggle sound channels 1 through 4.
 
 ### Saving 
 If the loaded rom supports a battery a `<rom-name>.sav` (e.g. `zelda.gb.sav`) file will be created next to the loaded rom containing a dump of the RAM from the cartridge. A loop in the program will update this save file every second while the game is running.
@@ -79,9 +83,9 @@ Feel free to open pull requests to this project or play around if you're interes
 
 ## Resources
 A large variety of resources were used to understand and test the GameBoy hardware. Some of these include:
-* http://www.codeslinger.co.uk/pages/projects/gameboy/files/GB.pdf
-* https://github.com/retrio/gb-test-roms
-* http://www.codeslinger.co.uk/pages/projects/gameboy/beginning.html
-* http://bgb.bircd.org/ - invaluable for debugging
-* https://github.com/AntonioND/giibiiadvance/tree/master/docs
-* https://github.com/trekawek/coffee-gb
+* <http://www.codeslinger.co.uk/pages/projects/gameboy/files/GB.pdf>
+* <https://github.com/retrio/gb-test-roms>
+* <http://www.codeslinger.co.uk/pages/projects/gameboy/beginning.html>
+* <http://bgb.bircd.org/> - invaluable for debugging
+* <https://github.com/AntonioND/giibiiadvance/tree/master/docs>
+* <https://github.com/trekawek/coffee-gb>
