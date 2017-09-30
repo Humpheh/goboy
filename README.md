@@ -1,9 +1,9 @@
 # GoBoy
+
 GoBoy is a multi-platform Nintendo GameBoy emulator written in golang. 
 This emulator was primarily built as a development exercise, and while still 
 work in progress it should run the majority of GB games. There is also experimental
 sound support implemented.
-
 
 <img src="images/links-awakening.png" width="400"><img src="images/pkmn-red.png" width="400">
 
@@ -58,10 +58,16 @@ This rom is included in the source code along with a test to check the output is
 
 Feel free to open pull requests to this project or play around if you're interested!
 
+## Known Bugs 
+- [ ] Sprite Z-drawing
+- [ ] Top half of sprite disappearing off top of screen
+- [ ] Small sprites row glitch
+
 ## TODO List
 - [x] MBC3 banking support
 - [ ] MBC3 clock support
 - [ ] Refactor
+- [ ] Sound
 - [ ] Speed up CPU (investigate switch vs map)
 - [ ] Resizable window
 - [ ] MBC4-7 support
