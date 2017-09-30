@@ -88,7 +88,7 @@ func GetDebugNum(scanner *bufio.Scanner) (CPU, uint16) {
 	}, uint16(val2)
 }
 
-func WaitForInput(){
+func WaitForInput() {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter text: ")
 	reader.ReadString('\n')
@@ -98,4 +98,9 @@ type DebugFlags struct {
 	HideSprites    bool
 	HideBackground bool
 	OutputOpcodes  bool
+
+	MuteChannel1 bool
+	MuteChannel2 bool
+	MuteChannel3 bool
+	MuteChannel4 bool
 }

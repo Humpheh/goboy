@@ -1,5 +1,9 @@
 # GoBoy
-GoBoy is a Nintendo GameBoy emulator written in go. While it is work in progress it currently runs the majority of normal GameBoy games. There is an experimental sound engine implemented on a development branch. This emulator was primarily built as a development exercise.
+
+GoBoy is a multi-platform Nintendo GameBoy emulator written in golang. 
+This emulator was primarily built as a development exercise, and while still 
+work in progress it should run the majority of GB games. There is also experimental
+sound support implemented.
 
 <img src="images/links-awakening.png" width="400"><img src="images/pkmn-red.png" width="400">
 
@@ -10,15 +14,32 @@ The program includes debugging functions which make it useful for understanding 
 go get github.com/Humpheh/goboy
 ```
 
-GoBoy currently uses pixel for control binding and graphics rendering. This requires the installation of OpenGL. Instructions on installing them can be found on the [pixels readme](https://github.com/faiface/pixel#requirements).
+The program has been tested on Mac OSX and Windows 10, and is likely to work on Linux. Building on Windows 10
+requires MinGW (I recommend [msys2](http://www.msys2.org/)).
+
+GoBoy uses pixel for control binding and graphics rendering. This requires the installation of OpenGL. Instructions on installing them can be found on the [pixels readme](https://github.com/faiface/pixel#requirements).
 
 ## Usage 
 ```sh
-goboy -rom zelda.gb
+goboy -sound -rom zelda.gb
 ```
 Controls: <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd> <kbd>Z</kbd> <kbd>X</kbd> <kbd>Enter</kbd> <kbd>Backspace</kbd>
 
 The colour palette can be cycled with <kbd>=</kbd>
+
+
+Other options:
+```sh
+  -cpuprofile string
+        write cpu profile to file
+  -disableVsync
+        set to disable vsync
+  -rom string
+        location of rom file
+  -sound
+        set to enable sound emulation (experimental)
+
+```
 
 ### Debugging
 There are a few keyboard shortcuts useful for debugging: <kbd>Q</kbd> - force toggle background, <kbd>W</kbd> - force toggle sprites,<kbd>E</kbd> - toggle opcode printing to console (will slow down execution massively).
