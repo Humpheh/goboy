@@ -14,4 +14,5 @@ before_install:
 
 after_success:
   - go get github.com/karalabe/xgo
-  - xgo github.com/Humpheh/goboy --targets=windows/*,darwin/*
+  - pwd
+  - xgo --targets=windows/*,darwin/* github.com/Humpheh/goboy
