@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/faiface/pixel/pixelgl"
-	"github.com/humpheh/goboy/gb"
+	"github.com/Humpheh/goboy/gb"
 	"log"
 	"os"
 	"runtime/pprof"

@@ -1,7 +1,7 @@
 package gb
 
 import (
-	"github.com/humpheh/goboy/bits"
+	"github.com/Humpheh/goboy/bits"
 	"io/ioutil"
 	"log"
 	"strings"

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
-	"github.com/humpheh/goboy/bits"
+	"github.com/Humpheh/goboy/bits"
 	"image/color"
 	"log"
 )
