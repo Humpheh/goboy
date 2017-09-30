@@ -88,7 +88,7 @@ func GetDebugNum(scanner *bufio.Scanner) (CPU, uint16) {
 	}, uint16(val2)
 }
 
-func WaitForInput(){
+func WaitForInput() {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter text: ")
 	reader.ReadString('\n')

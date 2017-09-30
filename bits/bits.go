@@ -2,7 +2,7 @@ package bits
 
 // Test if a bit is set.
 func Test(value byte, bit byte) bool {
-	return (value >> bit) & 1 == 1
+	return (value>>bit)&1 == 1
 }
 
 // Get the value of a bit.
