@@ -1,7 +1,7 @@
 package gb
 
 import (
-	"github.com/humpheh/goboy/bits"
+	"github.com/Humpheh/goboy/bits"
 )
 
 var CB_NAMES map[byte]string = map[byte]string{}

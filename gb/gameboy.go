@@ -2,7 +2,7 @@ package gb
 
 import (
 	"fmt"
-	"github.com/humpheh/goboy/bits"
+	"github.com/Humpheh/goboy/bits"
 )
 
 const (

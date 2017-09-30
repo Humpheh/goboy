@@ -3,7 +3,7 @@ package gb
 import (
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/speaker"
-	"github.com/humpheh/goboy/bits"
+	"github.com/Humpheh/goboy/bits"
 	"math"
 	"time"
 )
