@@ -46,7 +46,7 @@ There are a few keyboard shortcuts useful for debugging:
 <kbd>Q</kbd> - force toggle background<br/>
 <kbd>W</kbd> - force toggle sprites<br/>
 <kbd>E</kbd> - toggle opcode printing to console (will slow down execution)<br/>
-<kbd>7-9</kbd> - toggle sound channels 1 through 4.
+<kbd>7,8,9,0</kbd> - toggle sound channels 1 through 4.
 
 ### Saving 
 If the loaded rom supports a battery a `<rom-name>.sav` (e.g. `zelda.gb.sav`) file will be created next to the loaded rom containing a dump of the RAM from the cartridge. A loop in the program will update this save file every second while the game is running.
