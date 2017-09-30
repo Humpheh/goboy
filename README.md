@@ -70,14 +70,12 @@ Feel free to open pull requests to this project or play around if you're interes
 ## TODO List
 - [x] MBC3 banking support
 - [ ] MBC3 clock support
-- [ ] Refactor
-- [ ] Sound
+- [ ] Complete Sound emulation
 - [ ] Speed up CPU (investigate switch vs map)
 - [ ] Resizable window
 - [ ] MBC4-7 support
 - [ ] More colour palettes
 - [ ] STOP opcode behaviour
-- [ ] Sound
 - [ ] [Blargg's test ROMs](http://gbdev.gg8.se/wiki/articles/Test_ROMs) 
 - [ ] GameBoy Color support
 
