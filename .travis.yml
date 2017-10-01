@@ -17,6 +17,7 @@ before_deploy:
   - go get github.com/karalabe/xgo
   - xgo --targets=windows/*,darwin/* -out goboy-$TRAVIS_TAG github.com/Humpheh/goboy
   - ls -l
+  - cd ../
 
 deploy:
   provider: releases
