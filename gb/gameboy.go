@@ -287,7 +287,7 @@ func (gb *Gameboy) DrawScanline(scanline byte) {
 	}
 
 	if bits.Test(control, 1) && !gb.Debug.HideSprites {
-		gb.RenderSprites(control, scanline)
+		gb.RenderSprites(control, int32(scanline))
 	}
 }
 
@@ -328,9 +328,9 @@ func (gb *Gameboy) RenderTiles(lcdControl byte, scanline byte) {
 	// yPos is used to calc which of 32 v-lines the current scanline is drawing
 	var yPos byte = 0
 	if !usingWindow {
-		yPos = scrollY + gb.Memory.Read(0xFF44)
+		yPos = scrollY + scanline
 	} else {
-		yPos = gb.Memory.Read(0xFF44) - windowY
+		yPos = scanline - windowY
 	}
 
 	// which of the 8 vertical pixels of the current tile is the scanline on?
@@ -399,8 +399,8 @@ func (gb *Gameboy) GetColour(colourNum byte, address uint16) (uint8, uint8, uint
 
 // Render the sprites to the screen. Takes the lcdControl register
 // and current scanline to write to the correct place
-func (gb *Gameboy) RenderSprites(lcdControl byte, scanline byte) {
-	var ySize byte = 8
+func (gb *Gameboy) RenderSprites(lcdControl byte, scanline int32) {
+	var ySize int32 = 8
 	if bits.Test(lcdControl, 2) {
 		ySize = 16
 	}
@@ -410,7 +410,7 @@ func (gb *Gameboy) RenderSprites(lcdControl byte, scanline byte) {
 		// we are accessing the Data array directly instead of using
 		// the read() method.
 		index := sprite * 4
-		yPos := gb.Memory.Data[uint16(0xFE00+index)] - 16
+		yPos := int32(gb.Memory.Data[uint16(0xFE00+index)]) - 16
 		xPos := gb.Memory.Data[uint16(0xFE00+index+1)] - 8
 		tileLocation := gb.Memory.Data[uint16(0xFE00+index+2)]
 		attributes := gb.Memory.Data[uint16(0xFE00+index+3)]
@@ -421,9 +421,9 @@ func (gb *Gameboy) RenderSprites(lcdControl byte, scanline byte) {
 
 		if scanline >= yPos && scanline < (yPos+ySize) {
 			// Set the line to draw based on if the sprite is flipped on the y
-			line := int32(scanline - yPos)
+			line := scanline - yPos
 			if yFlip {
-				line = (line - int32(ySize)) * -1
+				line = (line - ySize) * -1
 			}
 
 			// Load the data containing the sprite data for this line
@@ -457,7 +457,7 @@ func (gb *Gameboy) RenderSprites(lcdControl byte, scanline byte) {
 				// Set the pixel if it is in bounds
 				if pixel >= 0 && pixel < 160 {
 					red, green, blue := gb.GetColour(colourNum, colourAddress)
-					gb.SetPixel(pixel, scanline, red, green, blue, priority)
+					gb.SetPixel(pixel, byte(scanline), red, green, blue, priority)
 				}
 			}
 		}

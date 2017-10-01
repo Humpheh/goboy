@@ -66,7 +66,7 @@ Feel free to open pull requests to this project or play around if you're interes
 
 ## Known Bugs 
 - [ ] Sprite Z-drawing
-- [ ] Top half of sprite disappearing off top of screen
+- [x] Top half of sprite disappearing off top of screen
 - [ ] Small sprites row glitch
 
 ## TODO List
