@@ -13,6 +13,9 @@ before_install:
   - sudo apt-get install libgl1-mesa-dev xorg-dev
 
 after_success:
+  - mkdir /build
+  - cd /build
   - go get github.com/karalabe/xgo
   - pwd
   - xgo --targets=windows/*,darwin/* github.com/Humpheh/goboy
+  - ls -l
