@@ -33,6 +33,7 @@ type Cartridge struct {
 	filename         string
 	enableRAM        bool
 	enableROMBanking bool
+	writtenRAM       bool
 }
 
 // Returns the name of the file which should contain the save data.
@@ -131,12 +132,15 @@ func (cart *Cartridge) initGameSaves() {
 	if err == nil {
 		cart.RAM = saveData
 	}
-	// Write the RAM to file every second
+	// Write the RAM to file every second if it has changed
 	ticker := time.NewTicker(time.Second)
 	go func() {
 		for range ticker.C {
-			log.Println("saving")
-			cart.Save()
+			if cart.writtenRAM {
+				cart.writtenRAM = false
+				log.Println("saving cartridge RAM")
+				cart.Save()
+			}
 		}
 	}()
 }
@@ -145,7 +149,7 @@ func (cart *Cartridge) initGameSaves() {
 func (cart *Cartridge) Save() {
 	err := ioutil.WriteFile(cart.GetSaveFilename(), cart.RAM, 0644)
 	if err != nil {
-		panic("Couldn't save?")
+		log.Printf("error in saving the game: %v", err)
 	}
 }
 
@@ -256,6 +260,7 @@ func (cart *Cartridge) Write(address uint16, value byte) {
 // will have no function.
 func (cart *Cartridge) WriteRAM(address uint16, value byte) {
 	if cart.enableRAM {
+		cart.writtenRAM = true
 		newAddress := address - 0xA000
 		cart.RAM[newAddress+cart.RAMBank*0x2000] = value
 	}
