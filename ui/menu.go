@@ -10,18 +10,21 @@ import (
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/golang/freetype/truetype"
 	"image/color"
+	"github.com/Humpheh/goboy/ui/uifont"
+	"os"
+	"path/filepath"
 )
 
 type ROMOption struct {
-	file string
-	name string
+	file     string
+	name     string
 	selected bool
 }
 
 type Menu struct {
-	txt *text.Text
-	romList []*ROMOption
-	romIndex int
+	txt        *text.Text
+	romList    []*ROMOption
+	romIndex   int
 	background *pixel.PictureData
 }
 
@@ -30,7 +33,7 @@ func (menu *Menu) Init() {
 	menu.loadROMList()
 	menu.updateROMText()
 
-	col := color.RGBA{R: 0, G: 0, B: 0, A: 0xFF/2}
+	col := color.RGBA{R: 0, G: 0, B: 0, A: 0xFF / 2}
 	pixels := make([]color.RGBA, 144*160)
 	for i := range pixels {
 		pixels[i] = col
@@ -43,7 +46,7 @@ func (menu *Menu) Init() {
 }
 
 func (menu *Menu) loadROMList() {
-	dir := "roms"
+	dir := "/Users/humphreyshotton/pygb/_roms/"
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		log.Fatal(err)
@@ -51,7 +54,7 @@ func (menu *Menu) loadROMList() {
 
 	menu.romList = []*ROMOption{}
 	for _, file := range files {
-		if file.IsDir() {
+		if file.IsDir() || !menu.isROMFile(file) {
 			continue
 		}
 		menu.romList = append(menu.romList, &ROMOption{
@@ -59,6 +62,14 @@ func (menu *Menu) loadROMList() {
 			name: file.Name(),
 		})
 	}
+}
+
+func (menu *Menu) isROMFile(f os.FileInfo) bool {
+	switch filepath.Ext(f.Name()) {
+	case ".gb", ".gbc", ".rom", ".bin":
+		return true
+	}
+	return false
 }
 
 func (menu *Menu) updateROMText() {
@@ -91,7 +102,7 @@ func (menu *Menu) Render(window *pixelgl.Window) {
 	spr := pixel.NewSprite(pixel.Picture(menu.background), pixel.R(0, 0, 160, 144))
 	spr.Draw(window, pixel.IM.Scaled(pixel.ZV, scale))
 
-	m := pixel.IM.Moved(pixel.V(-78, 144/2 - menu.txt.LineHeight)).Scaled(pixel.ZV, scale)
+	m := pixel.IM.Moved(pixel.V(-78, 144/2-menu.txt.LineHeight)).Scaled(pixel.ZV, scale)
 	menu.txt.Draw(window, m)
 }
 
@@ -130,17 +141,13 @@ func (menu *Menu) ProcessInput(window *pixelgl.Window) string {
 }
 
 func getFont() *text.Atlas {
-	fontBytes, err := ioutil.ReadFile("ui/Early Gameboy.ttf")
-	if err != nil {
-		panic(err)
-	}
-	ttfFromBytes, err := truetype.Parse(fontBytes)
+	ttfFromBytes, err := truetype.Parse(uifont.GBFONT)
 	if err != nil {
 		panic(err)
 	}
 
 	return text.NewAtlas(truetype.NewFace(ttfFromBytes, &truetype.Options{
-		Size: 8,
+		Size:              8,
 		GlyphCacheEntries: 1,
 	}), text.ASCII)
 }
