@@ -204,9 +204,9 @@ func (gb *Gameboy) UpdateGraphics(cycles int) {
 
 		if current_line == 144 {
 			gb.RequestInterrupt(0)
+		} else if current_line > 153 {
 			gb.PreparedData = gb.ScreenData
 			gb.ScreenData = [160][144][3]uint8{}
-		} else if current_line > 153 {
 			gb.Memory.Data[0xFF44] = 0
 			gb.DrawScanline(0)
 		} else if current_line < 144 {

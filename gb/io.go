@@ -10,7 +10,7 @@ import (
 	"github.com/Humpheh/goboy/ui"
 )
 
-const PixelScale float64 = 3
+var PixelScale float64 = 3
 
 // Interface the screen and input bindings.
 type IOBinding interface {
@@ -59,8 +59,7 @@ func (mon *PixelsIOBinding) Init(disableVsync bool) {
 		panic(err)
 	}
 	mon.Window = win
-	cam := pixel.IM.Scaled(pixel.ZV, 1).Moved(win.Bounds().Center().Sub(pixel.ZV))
-	win.SetMatrix(cam)
+	mon.UpdateCamera()
 
 	mon.picture = &pixel.PictureData{
 		Pix:    make([]color.RGBA, 144*160),
@@ -70,6 +69,17 @@ func (mon *PixelsIOBinding) Init(disableVsync bool) {
 
 	mon.menu = &ui.Menu{}
 	mon.menu.Init()
+}
+
+// Update the window camera to center the output.
+func (mon *PixelsIOBinding) UpdateCamera() {
+	center := pixel.Vec{X: 80 * PixelScale, Y: 72 * PixelScale}
+	if mon.Window.Monitor() != nil {
+		width, _ := mon.Window.Monitor().Size()
+		center.X += width / 2 - center.X
+	}
+	cam := pixel.IM.Scaled(pixel.ZV, 1).Moved(center.Sub(pixel.ZV))
+	mon.Window.SetMatrix(cam)
 }
 
 // Returns a bool of if the game should still be running. When
@@ -89,10 +99,11 @@ func (mon *PixelsIOBinding) RenderScreen() {
 		}
 	}
 
-	spr := pixel.NewSprite(pixel.Picture(mon.picture), pixel.R(0, 0, 160, 144))
-	r, g, b := GetPaletteColour(0)
+	r, g, b := GetPaletteColour(3)
 	bg := color.RGBA{R: r, G: g, B: b, A: 0xFF}
 	mon.Window.Clear(bg)
+
+	spr := pixel.NewSprite(pixel.Picture(mon.picture), pixel.R(0, 0, 160, 144))
 	spr.Draw(mon.Window, pixel.IM.Scaled(pixel.ZV, PixelScale))
 
 	// Draw the menu
@@ -177,6 +188,25 @@ var extraKeyMap = map[pixelgl.Button]func(*PixelsIOBinding){
 		mon.Gameboy.Debug.MuteChannel4 = !mon.Gameboy.Debug.MuteChannel4
 		log.Print("Channel 4 mute =", mon.Gameboy.Debug.MuteChannel4)
 	},
+
+	// Fullscreen toggle
+	pixelgl.KeyF: func(mon *PixelsIOBinding) {
+		mon.toggleFullscreen()
+	},
+}
+
+// Toggle the fullscreen window on the main monitor.
+func (mon *PixelsIOBinding) toggleFullscreen() {
+	if mon.Window.Monitor() == nil {
+		monitor := pixelgl.PrimaryMonitor()
+		_, height := monitor.Size()
+		mon.Window.SetMonitor(monitor)
+		PixelScale = height / 144
+	} else {
+		mon.Window.SetMonitor(nil)
+		PixelScale = 3
+	}
+	mon.UpdateCamera()
 }
 
 // Check the input and process it.
