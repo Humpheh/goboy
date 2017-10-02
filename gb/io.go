@@ -7,6 +7,7 @@ import (
 	"github.com/Humpheh/goboy/bits"
 	"image/color"
 	"log"
+	"github.com/Humpheh/goboy/ui"
 )
 
 const PixelScale float64 = 3
@@ -39,6 +40,7 @@ type PixelsIOBinding struct {
 	Window  *pixelgl.Window
 	picture *pixel.PictureData
 	Frames  int
+	menu *ui.Menu
 }
 
 // Initalise the Pixels bindings.
@@ -50,6 +52,7 @@ func (mon *PixelsIOBinding) Init(disableVsync bool) {
 			float64(160*PixelScale), float64(144*PixelScale),
 		),
 		VSync: !disableVsync,
+		Resizable: true,
 	}
 	win, err := pixelgl.NewWindow(cfg)
 	if err != nil {
@@ -64,6 +67,9 @@ func (mon *PixelsIOBinding) Init(disableVsync bool) {
 		Stride: 160,
 		Rect:   pixel.R(0, 0, 160, 144),
 	}
+
+	mon.menu = &ui.Menu{}
+	mon.menu.Init()
 }
 
 // Returns a bool of if the game should still be running. When
@@ -88,14 +94,22 @@ func (mon *PixelsIOBinding) RenderScreen() {
 	bg := color.RGBA{R: r, G: g, B: b, A: 0xFF}
 	mon.Window.Clear(bg)
 	spr.Draw(mon.Window, pixel.IM.Scaled(pixel.ZV, PixelScale))
+
+	// Draw the menu
+	if !mon.Gameboy.IsGameLoaded() || mon.Gameboy.ExecutionPaused {
+		mon.menu.Render(mon.Window)
+	}
 	mon.Window.Update()
 }
 
 // Set the title of the game window.
 func (mon *PixelsIOBinding) SetTitle(fps int) {
-	title := fmt.Sprintf("GoBoy - %s", mon.Gameboy.Memory.Cart.Name)
-	if fps != 0 {
-		title += fmt.Sprintf(" (FPS: %2v)", fps)
+	title := "GoBoy"
+	if mon.Gameboy.IsGameLoaded() {
+		title += fmt.Sprintf(" - %s", mon.Gameboy.Memory.Cart.Name)
+		if fps != 0 {
+			title += fmt.Sprintf(" (FPS: %2v)", fps)
+		}
 	}
 	log.Println(title)
 	mon.Window.SetTitle(title)
@@ -123,6 +137,11 @@ var keyMap = map[pixelgl.Button]byte{
 
 // Extra key bindings to functions.
 var extraKeyMap = map[pixelgl.Button]func(*PixelsIOBinding){
+	// Pause execution
+	pixelgl.KeyEscape: func(mon *PixelsIOBinding) {
+		mon.Gameboy.ExecutionPaused = !mon.Gameboy.ExecutionPaused
+	},
+
 	// Change GB colour palette
 	pixelgl.KeyEqual: func(mon *PixelsIOBinding) {
 		current_palette = (current_palette + 1) % byte(len(palettes))
@@ -162,6 +181,25 @@ var extraKeyMap = map[pixelgl.Button]func(*PixelsIOBinding){
 
 // Check the input and process it.
 func (mon *PixelsIOBinding) ProcessInput() {
+	if mon.Gameboy.IsGameLoaded() && !mon.Gameboy.ExecutionPaused {
+		mon.processGBInput()
+	} else {
+		result := mon.menu.ProcessInput(mon.Window)
+		// If string returned we have a location to load
+		if result != "" {
+			mon.Gameboy.Init(result)
+		}
+	}
+	// Extra keys not related to emulation
+	for key, f := range extraKeyMap {
+		if mon.Window.JustPressed(key) {
+			f(mon)
+		}
+	}
+}
+
+// Check the input and process it.
+func (mon *PixelsIOBinding) processGBInput() {
 	for key, offset := range keyMap {
 		if mon.Window.JustPressed(key) {
 			mon.Gameboy.InputMask = bits.Reset(mon.Gameboy.InputMask, offset)
@@ -169,12 +207,6 @@ func (mon *PixelsIOBinding) ProcessInput() {
 		}
 		if mon.Window.JustReleased(key) {
 			mon.Gameboy.InputMask = bits.Set(mon.Gameboy.InputMask, offset)
-		}
-	}
-	// Extra keys not related to emulation
-	for key, f := range extraKeyMap {
-		if mon.Window.JustPressed(key) {
-			f(mon)
 		}
 	}
 }

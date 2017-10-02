@@ -37,12 +37,17 @@ type Gameboy struct {
 	TransferFunction func(byte)
 	Debug            DebugFlags
 	EnableSound      bool
+	ExecutionPaused bool
 
 	thisCpuTicks int
 }
 
 // Should be called 60 times/second
 func (gb *Gameboy) Update() int {
+	if gb.ExecutionPaused {
+		return 0
+	}
+
 	cycles := 0
 	for cycles < CyclesFrame {
 		cycles_op := 4
@@ -483,7 +488,13 @@ func (gb *Gameboy) JoypadValue(current byte) byte {
 	return current | 0xc0 | in
 }
 
+func (gb *Gameboy) IsGameLoaded() bool {
+	return gb.Memory != nil && gb.Memory.Cart != nil
+}
+
 func (gb *Gameboy) Init(romFile string) error {
+	gb.ExecutionPaused = false
+
 	// Initialise the CPU
 	gb.CPU = &CPU{}
 	gb.CPU.Init()

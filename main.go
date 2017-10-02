@@ -34,20 +34,22 @@ func start() {
 		defer pprof.StopCPUProfile()
 	}
 
-	// Get the name of the ROM cartridge.
-	romFile := *rom
-	if romFile == "" {
-		flag.PrintDefaults()
-		os.Exit(1)
-	}
-
 	// Initalise the GameBoy.
 	gameboy := gb.Gameboy{
 		EnableSound: *sound,
 	}
-	err := gameboy.Init(romFile)
-	if err != nil {
-		log.Fatal(err)
+
+	// Get the name of the ROM cartridge.
+	romFile := *rom
+	if romFile == "" {
+		// If no rom, use menu
+		gameboy.EnableSound = true
+	} else {
+		err := gameboy.Init(romFile)
+		if err != nil {
+			flag.PrintDefaults()
+			log.Fatal(err)
+		}
 	}
 
 	monitor := gb.NewPixelsIOBinding(&gameboy, *vsyncOff)
@@ -66,7 +68,9 @@ func start() {
 		frames++
 		monitor.ProcessInput()
 
-		cycles += gameboy.Update()
+		if gameboy.IsGameLoaded() {
+			cycles += gameboy.Update()
+		}
 		monitor.RenderScreen()
 
 		since := time.Since(start)
