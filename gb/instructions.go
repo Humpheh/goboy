@@ -493,35 +493,35 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// PUSH AF
 	case 0xF5:
-		gb.PushStack(gb.CPU.AF.HiLo())
+		gb.pushStack(gb.CPU.AF.HiLo())
 
 	// PUSH BC
 	case 0xC5:
-		gb.PushStack(gb.CPU.BC.HiLo())
+		gb.pushStack(gb.CPU.BC.HiLo())
 
 	// PUSH DE
 	case 0xD5:
-		gb.PushStack(gb.CPU.DE.HiLo())
+		gb.pushStack(gb.CPU.DE.HiLo())
 
 	// PUSH HL
 	case 0xE5:
-		gb.PushStack(gb.CPU.HL.HiLo())
+		gb.pushStack(gb.CPU.HL.HiLo())
 
 	// POP AF
 	case 0xF1:
-		gb.CPU.AF.Set(gb.PopStack())
+		gb.CPU.AF.Set(gb.popStack())
 
 	// POP BC
 	case 0xC1:
-		gb.CPU.BC.Set(gb.PopStack())
+		gb.CPU.BC.Set(gb.popStack())
 
 	// POP DE
 	case 0xD1:
-		gb.CPU.DE.Set(gb.PopStack())
+		gb.CPU.DE.Set(gb.popStack())
 
 	// POP HL
 	case 0xE1:
-		gb.CPU.HL.Set(gb.PopStack())
+		gb.CPU.HL.Set(gb.popStack())
 
 	// ========== 8-Bit ALU ===========
 

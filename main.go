@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-	"github.com/faiface/pixel/pixelgl"
 	"github.com/Humpheh/goboy/gb"
+	"github.com/faiface/pixel/pixelgl"
 	"log"
 	"os"
 	"runtime/pprof"

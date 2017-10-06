@@ -6,7 +6,7 @@ type Memory struct {
 	Data [0x10000]byte
 }
 
-// Init the gb2 memory to the post-boot values
+// Init the gb memory to the post-boot values.
 func (mem *Memory) Init(gameboy *Gameboy) {
 	mem.GB = gameboy
 
@@ -112,16 +112,15 @@ func (mem *Memory) Write(address uint16, value byte) {
 		// Write to the cartridge ram
 		mem.Cart.WriteRAM(address, value)
 
-	// ECHO RAM
 	case address >= 0xE000 && address < 0xFE00:
+		// Echo RAM
 		mem.Data[address] = value
 		mem.Write(address-0x2000, value)
 
-	// Restricted
 	case address >= 0xFEA0 && address < 0xFEFF:
+		// Restricted RAM
 		return
 
-	// Not restricted RAM
 	default:
 		mem.Data[address] = value
 	}

@@ -17,7 +17,7 @@ func compare(val1 uint16, val2 uint16) string {
 	}
 }
 
-func CPUCompareString(cpu *CPU, other *CPU) string {
+func cpuCompareString(cpu *CPU, other *CPU) string {
 	return fmt.Sprintf("%5s       %s      %s      %s      %s      %s      %s",
 		"     ",
 		compare(cpu.AF.HiLo(), other.AF.HiLo()),
@@ -29,14 +29,14 @@ func CPUCompareString(cpu *CPU, other *CPU) string {
 	)
 }
 
-func CPUStateString(cpu *CPU, label string) string {
+func cpuStateString(cpu *CPU, label string) string {
 	return fmt.Sprintf("%5v - AF: %0#4x  BC: %0#4x  DE: %0#4x  HL: %0#4x  PC: %0#4x  SP: %0#4x",
 		label, cpu.AF.HiLo(), cpu.BC.HiLo(), cpu.DE.HiLo(), cpu.HL.HiLo(),
 		cpu.PC, cpu.SP.HiLo(),
 	)
 }
 
-func GetDebugScanner(filename string) (*bufio.Scanner, error) {
+func getDebugScanner(filename string) (*bufio.Scanner, error) {
 	// Load debug file
 	file, err := os.Open(filename)
 	if err != nil {
@@ -48,7 +48,7 @@ func GetDebugScanner(filename string) (*bufio.Scanner, error) {
 	return scanner, nil
 }
 
-func LogOpcode(gb *Gameboy) {
+func logOpcode(gb *Gameboy) {
 	pc := gb.CPU.PC
 	opcode := gb.Memory.Read(pc)
 
@@ -65,7 +65,7 @@ func LogOpcode(gb *Gameboy) {
 	fmt.Print(" ]]\n")
 }
 
-func GetDebugNum(scanner *bufio.Scanner) (CPU, uint16) {
+func getDebugNum(scanner *bufio.Scanner) (CPU, uint16) {
 	scanner.Scan()
 	line := scanner.Text()
 
@@ -88,7 +88,7 @@ func GetDebugNum(scanner *bufio.Scanner) (CPU, uint16) {
 	}, uint16(val2)
 }
 
-func WaitForInput() {
+func waitForInput() {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter text: ")
 	reader.ReadString('\n')

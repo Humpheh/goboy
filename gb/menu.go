@@ -1,24 +1,29 @@
-package ui
+package gb
 
 import (
-	"github.com/faiface/pixel/text"
+	"github.com/Humpheh/goboy/gb/uifont"
 	"github.com/faiface/pixel"
-	"io/ioutil"
-	"log"
-	"path"
-	"bytes"
 	"github.com/faiface/pixel/pixelgl"
+	"github.com/faiface/pixel/text"
 	"github.com/golang/freetype/truetype"
 	"image/color"
-	"github.com/Humpheh/goboy/ui/uifont"
+	"io/ioutil"
+	"log"
 	"os"
+	"path"
 	"path/filepath"
 )
 
 type ROMOption struct {
 	file     string
 	name     string
+	romName  string
 	selected bool
+}
+
+func Col(num, a byte) color.RGBA {
+	r, g, b := GetPaletteColour(num)
+	return color.RGBA{R: r, G: g, B: b, A: a}
 }
 
 type Menu struct {
@@ -33,7 +38,7 @@ func (menu *Menu) Init() {
 	menu.loadROMList()
 	menu.updateROMText()
 
-	col := color.RGBA{R: 0, G: 0, B: 0, A: 0xFF / 2}
+	col := Col(0, 0xFF)
 	pixels := make([]color.RGBA, 144*160)
 	for i := range pixels {
 		pixels[i] = col
@@ -57,9 +62,20 @@ func (menu *Menu) loadROMList() {
 		if file.IsDir() || !menu.isROMFile(file) {
 			continue
 		}
+
+		data, err := ioutil.ReadFile(path.Join(dir, file.Name()))
+		if err != nil {
+			continue
+		}
+		name := GetRomName(data)
+		if name == "" {
+			name = "* unknown cart"
+		}
+
 		menu.romList = append(menu.romList, &ROMOption{
-			file: path.Join(dir, file.Name()),
-			name: file.Name(),
+			file:    path.Join(dir, file.Name()),
+			name:    file.Name(),
+			romName: name,
 		})
 	}
 }
@@ -75,17 +91,20 @@ func (menu *Menu) isROMFile(f os.FileInfo) bool {
 func (menu *Menu) updateROMText() {
 	menu.txt.Clear()
 	menu.txt.Dot = pixel.V(0, 0)
-	var buffer bytes.Buffer
 	for i, rom := range menu.romList {
+		menu.txt.LineHeight = 1 * menu.txt.Atlas().LineHeight()
+		menu.txt.Color = Col(3, 0xFF)
 		if i == menu.romIndex {
-			buffer.WriteString("~ ")
-		} else {
-			buffer.WriteString("  ")
+			menu.txt.WriteString("~")
+			menu.txt.Dot.X = 0
 		}
-		buffer.WriteString(rom.name)
-		buffer.WriteString("\n")
+
+		menu.txt.WriteString("  " + rom.romName + "\n")
+
+		menu.txt.LineHeight = 1.5 * menu.txt.Atlas().LineHeight()
+		menu.txt.Color = Col(2, 0xFF)
+		menu.txt.WriteString("  " + rom.name + "\n")
 	}
-	menu.txt.WriteString(buffer.String())
 }
 
 func (menu *Menu) GetROMLocation() string {
@@ -102,7 +121,8 @@ func (menu *Menu) Render(window *pixelgl.Window) {
 	spr := pixel.NewSprite(pixel.Picture(menu.background), pixel.R(0, 0, 160, 144))
 	spr.Draw(window, pixel.IM.Scaled(pixel.ZV, scale))
 
-	m := pixel.IM.Moved(pixel.V(-78, 144/2-menu.txt.LineHeight)).Scaled(pixel.ZV, scale)
+	offset := menu.txt.Atlas().LineHeight() * 2.5 * float64(menu.romIndex)
+	m := pixel.IM.Moved(pixel.V(-78, 50-menu.txt.LineHeight+offset)).Scaled(pixel.ZV, scale)
 	menu.txt.Draw(window, m)
 }
 

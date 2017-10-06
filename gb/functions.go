@@ -137,11 +137,11 @@ func (gb *Gameboy) instJump(next uint16) {
 // Perform a CALL operation by pushing the current PC to the stack and jumping to
 // the next address.
 func (gb *Gameboy) instCall(next uint16) {
-	gb.PushStack(gb.CPU.PC)
+	gb.pushStack(gb.CPU.PC)
 	gb.CPU.PC = next
 }
 
 // Perform a RET operation by setting the PC to the next value popped off the stack.
 func (gb *Gameboy) instRet() {
-	gb.CPU.PC = gb.PopStack()
+	gb.CPU.PC = gb.popStack()
 }

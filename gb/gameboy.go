@@ -37,7 +37,7 @@ type Gameboy struct {
 	TransferFunction func(byte)
 	Debug            DebugFlags
 	EnableSound      bool
-	ExecutionPaused bool
+	ExecutionPaused  bool
 
 	thisCpuTicks int
 }
@@ -53,7 +53,7 @@ func (gb *Gameboy) Update() int {
 		cycles_op := 4
 		if !gb.Halted {
 			if gb.Debug.OutputOpcodes {
-				LogOpcode(gb)
+				logOpcode(gb)
 			}
 			cycles_op = gb.ExecuteNextOpcode()
 			cycles += cycles_op
@@ -61,16 +61,16 @@ func (gb *Gameboy) Update() int {
 			// TODO: This is incorrect
 			cycles += 4
 		}
-		gb.UpdateTimers(cycles_op)
-		gb.UpdateGraphics(cycles_op)
-		gb.DoInterrupts()
+		gb.updateTimers(cycles_op)
+		gb.updateGraphics(cycles_op)
+		gb.doInterrupts()
 	}
 	gb.Sound.Tick(cycles)
 
 	return cycles
 }
 
-func (gb *Gameboy) UpdateTimers(cycles int) {
+func (gb *Gameboy) updateTimers(cycles int) {
 	gb.dividerRegister(cycles)
 
 	if gb.isClockEnabled() {
@@ -125,7 +125,7 @@ func (gb *Gameboy) RequestInterrupt(interrupt byte) {
 	gb.Memory.Write(0xFF0F, req)
 }
 
-func (gb *Gameboy) DoInterrupts() {
+func (gb *Gameboy) doInterrupts() {
 	if gb.InterruptsEnabling {
 		gb.InterruptsOn = true
 		gb.InterruptsEnabling = false
@@ -142,13 +142,13 @@ func (gb *Gameboy) DoInterrupts() {
 		var i byte
 		for i = 0; i < 5; i++ {
 			if bits.Test(req, i) && bits.Test(enabled, i) {
-				gb.ServiceInterrupt(i)
+				gb.serviceInterrupt(i)
 			}
 		}
 	}
 }
 
-// Address that should be jumped to by interrupt number
+// Address that should be jumped to by interrupt.
 var interrupt_addresses = map[byte]uint16{
 	0: 0x40, // V-Blank
 	1: 0x48, // LCDC Status
@@ -157,7 +157,9 @@ var interrupt_addresses = map[byte]uint16{
 	4: 0x60, // Hi-Lo P10-P13
 }
 
-func (gb *Gameboy) ServiceInterrupt(interrupt byte) {
+// Called if an interrupt has been raised. Will check if interrupts are
+// enabled and will jump to the interrupt address.
+func (gb *Gameboy) serviceInterrupt(interrupt byte) {
 	// If was halted without interrupts, do not jump or reset IF
 	if !gb.InterruptsOn && gb.Halted {
 		gb.Halted = false
@@ -170,18 +172,20 @@ func (gb *Gameboy) ServiceInterrupt(interrupt byte) {
 	req = bits.Reset(req, interrupt)
 	gb.Memory.Write(0xFF0F, req)
 
-	gb.PushStack(gb.CPU.PC)
+	gb.pushStack(gb.CPU.PC)
 	gb.CPU.PC = interrupt_addresses[interrupt]
 }
 
-func (gb *Gameboy) PushStack(address uint16) {
+// Push a 16 bit value onto the stack and decrement SP.
+func (gb *Gameboy) pushStack(address uint16) {
 	sp := gb.CPU.SP.HiLo()
 	gb.Memory.Write(sp-1, byte(uint16(address&0xFF00)>>8))
 	gb.Memory.Write(sp-2, byte(address&0xFF))
 	gb.CPU.SP.Set(gb.CPU.SP.HiLo() - 2)
 }
 
-func (gb *Gameboy) PopStack() uint16 {
+// Pop the next 16 bit value off the stack and increment SP.
+func (gb *Gameboy) popStack() uint16 {
 	sp := gb.CPU.SP.HiLo()
 	byte1 := uint16(gb.Memory.Read(sp))
 	byte2 := uint16(gb.Memory.Read(sp+1)) << 8
@@ -189,7 +193,7 @@ func (gb *Gameboy) PopStack() uint16 {
 	return byte1 | byte2
 }
 
-func (gb *Gameboy) UpdateGraphics(cycles int) {
+func (gb *Gameboy) updateGraphics(cycles int) {
 	gb.setLCDStatus()
 
 	if !gb.IsLCDEnabled() {

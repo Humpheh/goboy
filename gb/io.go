@@ -2,12 +2,11 @@ package gb
 
 import (
 	"fmt"
+	"github.com/Humpheh/goboy/bits"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
-	"github.com/Humpheh/goboy/bits"
 	"image/color"
 	"log"
-	"github.com/Humpheh/goboy/ui"
 )
 
 var PixelScale float64 = 3
@@ -40,7 +39,7 @@ type PixelsIOBinding struct {
 	Window  *pixelgl.Window
 	picture *pixel.PictureData
 	Frames  int
-	menu *ui.Menu
+	menu    *Menu
 }
 
 // Initalise the Pixels bindings.
@@ -51,7 +50,7 @@ func (mon *PixelsIOBinding) Init(disableVsync bool) {
 			0, 0,
 			float64(160*PixelScale), float64(144*PixelScale),
 		),
-		VSync: !disableVsync,
+		VSync:     !disableVsync,
 		Resizable: true,
 	}
 	win, err := pixelgl.NewWindow(cfg)
@@ -67,7 +66,7 @@ func (mon *PixelsIOBinding) Init(disableVsync bool) {
 		Rect:   pixel.R(0, 0, 160, 144),
 	}
 
-	mon.menu = &ui.Menu{}
+	mon.menu = &Menu{}
 	mon.menu.Init()
 }
 
@@ -76,7 +75,7 @@ func (mon *PixelsIOBinding) UpdateCamera() {
 	center := pixel.Vec{X: 80 * PixelScale, Y: 72 * PixelScale}
 	if mon.Window.Monitor() != nil {
 		width, _ := mon.Window.Monitor().Size()
-		center.X += width / 2 - center.X
+		center.X += width/2 - center.X
 	}
 	cam := pixel.IM.Scaled(pixel.ZV, 1).Moved(center.Sub(pixel.ZV))
 	mon.Window.SetMatrix(cam)

@@ -1,9 +1,9 @@
 package gb
 
 import (
+	"github.com/Humpheh/goboy/bits"
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/speaker"
-	"github.com/Humpheh/goboy/bits"
 	"math"
 	"time"
 )
@@ -68,25 +68,25 @@ func (swp *Sweep) Update(secs float64, channel *Channel) {
 
 	/*
 
-	FF10 - NR10 - Channel 1 Sweep register (R/W)
-	  Bit 6-4 - Sweep Time
-	  Bit 3   - Sweep Increase/Decrease
-	             0: Addition    (frequency increases)
-	             1: Subtraction (frequency decreases)
-	  Bit 2-0 - Number of sweep shift (n: 0-7)
-	Sweep Time:
-	  000: sweep off - no freq change
-	  001: 7.8 ms  (1/128Hz)
-	  010: 15.6 ms (2/128Hz)
-	  011: 23.4 ms (3/128Hz)
-	  100: 31.3 ms (4/128Hz)
-	  101: 39.1 ms (5/128Hz)
-	  110: 46.9 ms (6/128Hz)
-	  111: 54.7 ms (7/128Hz)
+		FF10 - NR10 - Channel 1 Sweep register (R/W)
+		  Bit 6-4 - Sweep Time
+		  Bit 3   - Sweep Increase/Decrease
+		             0: Addition    (frequency increases)
+		             1: Subtraction (frequency decreases)
+		  Bit 2-0 - Number of sweep shift (n: 0-7)
+		Sweep Time:
+		  000: sweep off - no freq change
+		  001: 7.8 ms  (1/128Hz)
+		  010: 15.6 ms (2/128Hz)
+		  011: 23.4 ms (3/128Hz)
+		  100: 31.3 ms (4/128Hz)
+		  101: 39.1 ms (5/128Hz)
+		  110: 46.9 ms (6/128Hz)
+		  111: 54.7 ms (7/128Hz)
 
-	The change of frequency (NR13,NR14) at each shift is calculated by the
-	following formula where X(0) is initial freq & X(t-1) is last freq:
-	  X(t) = X(t-1) +/- X(t-1)/2^n
+		The change of frequency (NR13,NR14) at each shift is calculated by the
+		following formula where X(0) is initial freq & X(t-1) is last freq:
+		  X(t) = X(t-1) +/- X(t-1)/2^n
 	*/
 	if swp.Step < swp.Steps {
 		t := sweeptime[swp.StepLen]
@@ -131,10 +131,10 @@ func (s *Sound) Init(gb *Gameboy) {
 	speaker.Init(sample_rate, sample_rate.N(time.Second/30))
 
 	s.Time = 0
-	s.Channel1 = GetChannel(Square, s.Time)
-	s.Channel2 = GetChannel(Square, s.Time)
-	s.Channel3 = GetChannel(MakeWaveform(&s.WaveformRam), s.Time)
-	s.Channel4 = GetChannel(Noise, s.Time)
+	s.Channel1 = NewChannel(Square, s.Time)
+	s.Channel2 = NewChannel(Square, s.Time)
+	s.Channel3 = NewChannel(MakeWaveform(&s.WaveformRam), s.Time)
+	s.Channel4 = NewChannel(Noise, s.Time)
 
 	mix := beep.Mix(
 		s.Channel1.Stream(float64(sample_rate)),
@@ -519,10 +519,10 @@ var ch3vols = map[byte]float64{
 
 func (s *Sound) ToggleCh3Volume(value byte) {
 	/*
-		0: Mute (No sound)
-	    1: 100% Volume (Produce Wave Pattern RAM Data as it is)
-	    2:  50% Volume (Produce Wave Pattern RAM data shifted once to the right)
-	    3:  25% Volume (Produce Wave Pattern RAM data shifted twice to the right)
+			0: Mute (No sound)
+		    1: 100% Volume (Produce Wave Pattern RAM Data as it is)
+		    2:  50% Volume (Produce Wave Pattern RAM data shifted once to the right)
+		    3:  25% Volume (Produce Wave Pattern RAM data shifted twice to the right)
 	*/
 	// TODO: What does that mean/
 	vol := value >> 5 & 0x3
