@@ -316,10 +316,47 @@ func (s *Sound) Write(address uint16, value byte) {
 		}
 
 		// TODO: Channel 4
+	case 0xFF20:
+		NR44 := s.GB.Memory.Read(0xFF23)
+		if bits.Test(NR44, 6) {
+			// Counter
+			s.Channel4Time = (64 - float64(value&0x3F)) * (1 / 256)
+		} else {
+			// Consecutive
+			s.Channel4Time = 100000
+		}
+
+	case 0xFF21:
+		// Envelope
+		env_volume := (value >> 4) & 0xF
+		env_increase := bits.Test(value, 3)
+		env_sweep := value & 0x7
+
+		if env_sweep == 0 {
+			s.Channel4Env = nil
+		} else {
+			s.Channel4Env = &Envelope{
+				StepLen:    float64(env_sweep) / 64,
+				Steps:      env_volume,
+				StepsInit:  env_volume,
+				Increasing: env_increase,
+			}
+		}
+
+	case 0xFF22:
+		freq_shift_clock := float64((value >> 4) & 0xF)
+		freq_divier := float64(value & 0x7)
+		if freq_divier == 0 {
+			freq_divier = 0.5
+		}
+		freq := 524288 / freq_divier / math.Pow(2, freq_shift_clock+1)
+		// TODO: Bit 3 NR43 modifier
+		s.Channel4.Freq = freq
 
 	case 0xFF23:
 		if bits.Test(value, 7) {
-			s.StartChannel4(value)
+			env_volume := (s.GB.Memory.Read(0xFF21) >> 4) & 0xF
+			s.Toggle(4, env_volume != 0 && s.ShouldPlay(4))
 		}
 
 	case 0xFF26:
@@ -334,7 +371,7 @@ func (s *Sound) Write(address uint16, value byte) {
 		s.UpdateOutput(value)
 	}
 
-	s.GB.Memory.Data[address] = value & sound_mask[address-0xFF10]
+	//s.GB.Memory.Data[address] = value & sound_mask[address-0xFF10]
 }
 
 func (s *Sound) Tick(clocks int) {
@@ -429,49 +466,6 @@ func (s *Sound) UpdateChan3Freq(NR33 byte, NR34 byte) {
 	freq_val := uint16(NR33) | (uint16(NR34&0x7) << 8)
 	freq := 65536 / (2048 - float64(freq_val))
 	s.Channel3.Freq = freq
-}
-
-func (s *Sound) StartChannel4(NR44 byte) {
-	NR42 := s.GB.Memory.Data[0xFF21]
-	NR43 := s.GB.Memory.Data[0xFF22]
-
-	if bits.Test(NR44, 6) {
-		// Counter
-		NR41 := s.GB.Memory.Data[0xFF20]
-		s.Channel4Time = (64 - float64(NR41&0x3F)) * (1 / 256)
-	} else {
-		// Consecutive
-		s.Channel4Time = 100000
-	}
-	//pattern := (channel >> 6) & 0x3
-
-	freq_shift_clock := float64((NR43 >> 4) & 0xF)
-	freq_divier := float64(NR43 & 0x7)
-	if freq_divier == 0 {
-		freq_divier = 0.5
-	}
-	freq := 524288 / freq_divier / math.Pow(2, freq_shift_clock+1)
-	// TODO: Bit 3 NR43 modifier
-	s.Channel4.Freq = freq
-
-	// Envelope
-	env_volume := (NR42 >> 4) & 0xF
-	env_increase := bits.Test(NR42, 3)
-	env_sweep := NR42 & 0x7
-
-	if env_sweep == 0 {
-		s.Channel4Env = nil
-	} else {
-		s.Channel4Env = &Envelope{
-			StepLen:    float64(env_sweep) / 64,
-			Steps:      env_volume,
-			StepsInit:  env_volume,
-			Increasing: env_increase,
-		}
-	}
-
-	s.Toggle(4, env_volume != 0 && s.ShouldPlay(4))
-	s.Channel4.Amp = 1
 }
 
 func (s *Sound) Toggle(channel byte, on bool) {
