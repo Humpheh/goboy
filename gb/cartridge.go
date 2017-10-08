@@ -113,7 +113,7 @@ func (cart *Cartridge) Load(filename string) error {
 			log.Println("MBC3")
 		case mbc_flag < 0x17:
 			log.Println("Warning: MBC4 carts are not supported.")
-		case mbc_flag < 0x1E:
+		case mbc_flag < 0x1F:
 			cart.Type = MBC5
 			log.Println("MBC5")
 		default:
