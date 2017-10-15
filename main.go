@@ -15,6 +15,7 @@ var (
 	rom        = flag.String("rom", "", "location of rom file (required)")
 	sound      = flag.Bool("sound", false, "set to enable sound emulation (experimental)")
 	vsyncOff   = flag.Bool("disableVsync", false, "set to disable vsync")
+	cgbMode    = flag.Bool("cgb", false, "set to enable cgb mode")
 )
 
 func main() {
@@ -45,14 +46,14 @@ func start() {
 		// If no rom, use menu
 		gameboy.EnableSound = true
 	} else {
-		err := gameboy.Init(romFile)
+		err := gameboy.Init(romFile, *cgbMode)
 		if err != nil {
 			flag.PrintDefaults()
 			log.Fatal(err)
 		}
 	}
 
-	monitor := gb.NewPixelsIOBinding(&gameboy, *vsyncOff)
+	monitor := gb.NewPixelsIOBinding(&gameboy, *vsyncOff, *cgbMode)
 
 	perframe := time.Second / gb.FramesSecond
 	ticker := time.NewTicker(perframe)
