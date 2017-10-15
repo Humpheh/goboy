@@ -2,9 +2,9 @@ package gb
 
 import (
 	"fmt"
+	"github.com/Humpheh/goboy/bits"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
-	"github.com/Humpheh/goboy/bits"
 	"image/color"
 	"log"
 )
@@ -26,8 +26,8 @@ type IOBinding interface {
 }
 
 // Get an Pixelsgl IOBinding
-func NewPixelsIOBinding(gameboy *Gameboy, disableVsync bool) PixelsIOBinding {
-	monitor := PixelsIOBinding{Gameboy: gameboy}
+func NewPixelsIOBinding(gameboy *Gameboy, disableVsync bool, cgbMode bool) PixelsIOBinding {
+	monitor := PixelsIOBinding{Gameboy: gameboy, cgbMode: cgbMode}
 	monitor.Init(disableVsync)
 	return monitor
 }
@@ -39,6 +39,8 @@ type PixelsIOBinding struct {
 	Window  *pixelgl.Window
 	picture *pixel.PictureData
 	Frames  int
+	menu    *Menu
+	cgbMode bool
 }
 
 // Initalise the Pixels bindings.
@@ -49,7 +51,8 @@ func (mon *PixelsIOBinding) Init(disableVsync bool) {
 			0, 0,
 			float64(160*PixelScale), float64(144*PixelScale),
 		),
-		VSync: !disableVsync,
+		VSync:     !disableVsync,
+		Resizable: true,
 	}
 	win, err := pixelgl.NewWindow(cfg)
 	if err != nil {
@@ -63,6 +66,9 @@ func (mon *PixelsIOBinding) Init(disableVsync bool) {
 		Stride: 160,
 		Rect:   pixel.R(0, 0, 160, 144),
 	}
+
+	mon.menu = &Menu{}
+	mon.menu.Init()
 }
 
 // Update the window camera to center the output.
@@ -70,7 +76,7 @@ func (mon *PixelsIOBinding) UpdateCamera() {
 	center := pixel.Vec{X: 80 * PixelScale, Y: 72 * PixelScale}
 	if mon.Window.Monitor() != nil {
 		width, _ := mon.Window.Monitor().Size()
-		center.X += width / 2 - center.X
+		center.X += width/2 - center.X
 	}
 	cam := pixel.IM.Scaled(pixel.ZV, 1).Moved(center.Sub(pixel.ZV))
 	mon.Window.SetMatrix(cam)
@@ -99,14 +105,22 @@ func (mon *PixelsIOBinding) RenderScreen() {
 
 	spr := pixel.NewSprite(pixel.Picture(mon.picture), pixel.R(0, 0, 160, 144))
 	spr.Draw(mon.Window, pixel.IM.Scaled(pixel.ZV, PixelScale))
+
+	// Draw the menu
+	if !mon.Gameboy.IsGameLoaded() || mon.Gameboy.ExecutionPaused {
+		mon.menu.Render(mon.Window)
+	}
 	mon.Window.Update()
 }
 
 // Set the title of the game window.
 func (mon *PixelsIOBinding) SetTitle(fps int) {
-	title := fmt.Sprintf("GoBoy - %s", mon.Gameboy.Memory.Cart.Name)
-	if fps != 0 {
-		title += fmt.Sprintf(" (FPS: %2v)", fps)
+	title := "GoBoy"
+	if mon.Gameboy.IsGameLoaded() {
+		title += fmt.Sprintf(" - %s", mon.Gameboy.Memory.Cart.Name)
+		if fps != 0 {
+			title += fmt.Sprintf(" (FPS: %2v)", fps)
+		}
 	}
 	log.Println(title)
 	mon.Window.SetTitle(title)
@@ -134,6 +148,11 @@ var keyMap = map[pixelgl.Button]byte{
 
 // Extra key bindings to functions.
 var extraKeyMap = map[pixelgl.Button]func(*PixelsIOBinding){
+	// Pause execution
+	pixelgl.KeyEscape: func(mon *PixelsIOBinding) {
+		mon.Gameboy.ExecutionPaused = !mon.Gameboy.ExecutionPaused
+	},
+
 	// Change GB colour palette
 	pixelgl.KeyEqual: func(mon *PixelsIOBinding) {
 		current_palette = (current_palette + 1) % byte(len(palettes))
@@ -145,6 +164,14 @@ var extraKeyMap = map[pixelgl.Button]func(*PixelsIOBinding){
 	},
 	pixelgl.KeyW: func(mon *PixelsIOBinding) {
 		mon.Gameboy.Debug.HideSprites = !mon.Gameboy.Debug.HideSprites
+	},
+	pixelgl.KeyA: func(mon *PixelsIOBinding) {
+		fmt.Println("BG Tile Palette:")
+		fmt.Println(mon.Gameboy.BGPalette.String())
+	},
+	pixelgl.KeyS: func(mon *PixelsIOBinding) {
+		fmt.Println("Sprite Palette:")
+		fmt.Println(mon.Gameboy.SpritePalette.String())
 	},
 
 	// CPU debugging
@@ -192,6 +219,25 @@ func (mon *PixelsIOBinding) toggleFullscreen() {
 
 // Check the input and process it.
 func (mon *PixelsIOBinding) ProcessInput() {
+	if mon.Gameboy.IsGameLoaded() && !mon.Gameboy.ExecutionPaused {
+		mon.processGBInput()
+	} else {
+		result := mon.menu.ProcessInput(mon.Window)
+		// If string returned we have a location to load
+		if result != "" {
+			mon.Gameboy.Init(result, mon.cgbMode)
+		}
+	}
+	// Extra keys not related to emulation
+	for key, f := range extraKeyMap {
+		if mon.Window.JustPressed(key) {
+			f(mon)
+		}
+	}
+}
+
+// Check the input and process it.
+func (mon *PixelsIOBinding) processGBInput() {
 	for key, offset := range keyMap {
 		if mon.Window.JustPressed(key) {
 			mon.Gameboy.InputMask = bits.Reset(mon.Gameboy.InputMask, offset)
@@ -199,12 +245,6 @@ func (mon *PixelsIOBinding) ProcessInput() {
 		}
 		if mon.Window.JustReleased(key) {
 			mon.Gameboy.InputMask = bits.Set(mon.Gameboy.InputMask, offset)
-		}
-	}
-	// Extra keys not related to emulation
-	for key, f := range extraKeyMap {
-		if mon.Window.JustPressed(key) {
-			f(mon)
 		}
 	}
 }

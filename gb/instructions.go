@@ -2,6 +2,7 @@ package gb
 
 import (
 	"log"
+	"fmt"
 )
 
 var OpcodeCycles = []int{
@@ -47,6 +48,19 @@ var CBOpcodeCycles = []int{
 // Get the value at the current PC address, increment the PC, update
 // the CPU ticks and execute the opcode.
 func (gb *Gameboy) ExecuteNextOpcode() int {
+	if gb.DebugScanner != nil {
+		expectedCPU, ff0f := getDebugNum(gb.DebugScanner)
+		myff0f := uint16(gb.Memory.Read(0xFF05))
+		logOpcode(gb)
+		fmt.Println(cpuStateString(gb.CPU, "GoBoy"), fmt.Sprintf("%b", myff0f))
+		fmt.Println(cpuStateString(&expectedCPU, "Exp"), fmt.Sprintf("%b", ff0f))
+		fmt.Println(cpuCompareString(gb.CPU, &expectedCPU))
+
+		if !isEqual(gb.CPU, &expectedCPU) || myff0f != ff0f {
+			waitForInput()
+		}
+	}
+
 	opcode := gb.popPC()
 	gb.thisCpuTicks = OpcodeCycles[opcode] * 4
 	gb.ExecuteOpcode(opcode)
@@ -493,35 +507,35 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// PUSH AF
 	case 0xF5:
-		gb.PushStack(gb.CPU.AF.HiLo())
+		gb.pushStack(gb.CPU.AF.HiLo())
 
 	// PUSH BC
 	case 0xC5:
-		gb.PushStack(gb.CPU.BC.HiLo())
+		gb.pushStack(gb.CPU.BC.HiLo())
 
 	// PUSH DE
 	case 0xD5:
-		gb.PushStack(gb.CPU.DE.HiLo())
+		gb.pushStack(gb.CPU.DE.HiLo())
 
 	// PUSH HL
 	case 0xE5:
-		gb.PushStack(gb.CPU.HL.HiLo())
+		gb.pushStack(gb.CPU.HL.HiLo())
 
 	// POP AF
 	case 0xF1:
-		gb.CPU.AF.Set(gb.PopStack())
+		gb.CPU.AF.Set(gb.popStack())
 
 	// POP BC
 	case 0xC1:
-		gb.CPU.BC.Set(gb.PopStack())
+		gb.CPU.BC.Set(gb.popStack())
 
 	// POP DE
 	case 0xD1:
-		gb.CPU.DE.Set(gb.PopStack())
+		gb.CPU.DE.Set(gb.popStack())
 
 	// POP HL
 	case 0xE1:
-		gb.CPU.HL.Set(gb.PopStack())
+		gb.CPU.HL.Set(gb.popStack())
 
 	// ========== 8-Bit ALU ===========
 
@@ -995,6 +1009,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// STOP
 	case 0x10:
+		//gb.Halted = true
 		log.Print("0x10 (STOP) unimplemented (is 0x00 follows)")
 
 	// DI
@@ -1247,5 +1262,6 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	default:
 		log.Printf("Unimplemented opcode: %#2x", opcode)
+		waitForInput()
 	}
 }

@@ -68,9 +68,13 @@ type CPU struct {
 }
 
 // Init CPU and its registers to the initial values.
-func (cpu *CPU) Init() {
+func (cpu *CPU) Init(cgb bool) {
 	cpu.PC = 0x100
-	cpu.AF.Set(0x01B0)
+	if cgb {
+		cpu.AF.Set(0x11B0)
+	} else {
+		cpu.AF.Set(0x01B0)
+	}
 	cpu.BC.Set(0x0013)
 	cpu.DE.Set(0x00D8)
 	cpu.HL.Set(0x014D)

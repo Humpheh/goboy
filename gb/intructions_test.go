@@ -12,8 +12,8 @@ import (
 // in the cpu_instrs rom.
 func TestInstructions(t *testing.T) {
 	gb := Gameboy{}
-	err := gb.Init("./../roms/cpu_instrs.gb")
-	require.NoError(t, err, "error in init gb2 %v", err)
+	err := gb.Init("./../roms/cpu_instrs.gb", false)
+	require.NoError(t, err, "error in init gb %v", err)
 
 	// Expect the output to be 68 characters long
 	expected := 106

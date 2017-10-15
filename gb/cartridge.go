@@ -15,6 +15,11 @@ const (
 	MBC5
 )
 
+func GetRomName(data []byte) string {
+	cartName := string(data[0x0134:0x0142])
+	return strings.Replace(cartName, "\x00", "", -1)
+}
+
 type Cartridge struct {
 	// Cartridge ROM data.
 	ROM []byte
@@ -41,19 +46,19 @@ func (cart *Cartridge) GetSaveFilename() string {
 	return cart.filename + ".sav"
 }
 
-// Load a bin file as a cartridge.
-func (cart *Cartridge) Load(filename string) error {
+// Load a bin file as a cartridge. Returns a boolean if the cart
+// has a cgb mode.
+func (cart *Cartridge) Load(filename string, enableCGB bool) (bool, error) {
 	// Load the file into ROM
 	cart.filename = filename
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return err
+		return false, err
 	}
 	cart.ROM = data
 
 	// Get the cart name from the rom
-	cartName := string(data[0x0134:0x0142])
-	cart.Name = strings.Replace(cartName, "\x00", "", -1)
+	cart.Name = GetRomName(data)
 
 	// RAM banking
 	cart.RAMBank = 0
@@ -63,33 +68,36 @@ func (cart *Cartridge) Load(filename string) error {
 	mbc_flag := cart.ROM[0x147]
 
 	/*
-		00h  ROM ONLY                 13h  MBC3+RAM+BATTERY
-	  	01h  MBC1                     15h  MBC4
-	  	02h  MBC1+RAM                 16h  MBC4+RAM
-	  	03h  MBC1+RAM+BATTERY         17h  MBC4+RAM+BATTERY
-	  	05h  MBC2                     19h  MBC5
-	  	06h  MBC2+BATTERY             1Ah  MBC5+RAM
-	  	08h  ROM+RAM                  1Bh  MBC5+RAM+BATTERY
-	  	09h  ROM+RAM+BATTERY          1Ch  MBC5+RUMBLE
-	  	0Bh  MMM01                    1Dh  MBC5+RUMBLE+RAM
-	  	0Ch  MMM01+RAM                1Eh  MBC5+RUMBLE+RAM+BATTERY
-	  	0Dh  MMM01+RAM+BATTERY        FCh  POCKET CAMERA
-	  	0Fh  MBC3+TIMER+BATTERY       FDh  BANDAI TAMA5
-	  	10h  MBC3+TIMER+RAM+BATTERY   FEh  HuC3
-	  	11h  MBC3                     FFh  HuC1+RAM+BATTERY
-	  	12h  MBC3+RAM
+			00h  ROM ONLY                 13h  MBC3+RAM+BATTERY
+		  	01h  MBC1                     15h  MBC4
+		  	02h  MBC1+RAM                 16h  MBC4+RAM
+		  	03h  MBC1+RAM+BATTERY         17h  MBC4+RAM+BATTERY
+		  	05h  MBC2                     19h  MBC5
+		  	06h  MBC2+BATTERY             1Ah  MBC5+RAM
+		  	08h  ROM+RAM                  1Bh  MBC5+RAM+BATTERY
+		  	09h  ROM+RAM+BATTERY          1Ch  MBC5+RUMBLE
+		  	0Bh  MMM01                    1Dh  MBC5+RUMBLE+RAM
+		  	0Ch  MMM01+RAM                1Eh  MBC5+RUMBLE+RAM+BATTERY
+		  	0Dh  MMM01+RAM+BATTERY        FCh  POCKET CAMERA
+		  	0Fh  MBC3+TIMER+BATTERY       FDh  BANDAI TAMA5
+		  	10h  MBC3+TIMER+RAM+BATTERY   FEh  HuC3
+		  	11h  MBC3                     FFh  HuC1+RAM+BATTERY
+		  	12h  MBC3+RAM
 	*/
 
 	log.Printf("Cart type: %#02x", mbc_flag)
 
 	// Check for GB mode
+	hasCGB := false
 	switch cart.ROM[0x0143] {
 	case 0x80:
-		log.Print("GB/GBC mode")
+		log.Print("DMG/CGB mode")
+		hasCGB = true
 	case 0xC0:
-		log.Print("GBC only mode")
+		log.Print("CGB only mode")
+		hasCGB = true
 	default:
-		log.Print("GB mode")
+		log.Print("DMG mode")
 	}
 
 	// Determine cartridge type
@@ -109,7 +117,7 @@ func (cart *Cartridge) Load(filename string) error {
 			log.Println("MBC3")
 		case mbc_flag < 0x17:
 			log.Println("Warning: MBC4 carts are not supported.")
-		case mbc_flag < 0x1E:
+		case mbc_flag < 0x1F:
 			cart.Type = MBC5
 			log.Println("MBC5")
 		default:
@@ -123,7 +131,7 @@ func (cart *Cartridge) Load(filename string) error {
 		cart.initGameSaves()
 	}
 
-	return nil
+	return hasCGB, nil
 }
 
 // Attempt to load a save game from the expected location.
@@ -177,83 +185,96 @@ func (cart *Cartridge) Read(address uint16) byte {
 func (cart *Cartridge) Write(address uint16, value byte) {
 	switch cart.Type {
 	case MBC1:
-		switch {
-		case address < 0x2000:
-			// Enable RAM
-			cart.enableRAMBank(address, value)
-
-		case address >= 0x200 && address < 0x4000:
-			// Change ROM bank
-			cart.changeLoROMBank(value, false)
-
-		case address >= 0x4000 && address < 0x6000:
-			// Change ROM or RAM
-			if cart.enableROMBanking {
-				cart.changeHiROMBank(value)
-			} else {
-				cart.RAMBank = uint16(value & 0x3)
-			}
-
-		case address >= 0x6000 && address < 0x8000:
-			// Change if ROM/RAM banking
-			if value&0x1 == 0 {
-				cart.enableROMBanking = true
-				cart.RAMBank = 0
-			} else {
-				cart.enableROMBanking = false
-			}
-		}
-
+		cart.doMBC1(address, value)
 	case MBC2:
-		switch {
-		case address < 0x2000:
-			// Enable RAM
-			cart.enableRAMBank(address, value)
-
-		case address >= 0x200 && address < 0x4000:
-			// Change ROM bank
-			cart.changeLoROMBank(value, false)
-		}
-
+		cart.doMBC2(address, value)
 	case MBC3:
-		switch {
-		case address < 0x2000:
-			// Enable RAM bank
-			cart.enableRAMBank(address, value)
+		cart.doMBC3(address, value)
+	case MBC5:
+		cart.doMBC5(address, value)
+	}
+	return
+}
 
-		case address < 0x4000:
-			// Switch ROM bank
-			var lower byte = value & 127
-			cart.ROMBank = uint16(lower)
-			if cart.ROMBank == 0 {
-				cart.ROMBank++
-			}
+func (cart *Cartridge) doMBC1(address uint16, value byte) {
+	switch {
+	case address < 0x2000:
+		// Enable RAM
+		cart.enableRAMBank(address, value)
 
-		case address < 0x6000:
-			// Switch RAM bank
+	case address >= 0x200 && address < 0x4000:
+		// Change ROM bank
+		cart.changeLoROMBank(value, false)
+
+	case address >= 0x4000 && address < 0x6000:
+		// Change ROM or RAM
+		if cart.enableROMBanking {
+			cart.changeHiROMBank(value)
+		} else {
 			cart.RAMBank = uint16(value & 0x3)
 		}
 
-	case MBC5:
-		switch {
-		case address < 0x2000:
-			// Enable RAM bank
-			cart.enableRAMBank(address, value)
-
-		case address < 0x3000:
-			// Switch ROM bank lower bits
-			cart.ROMBank = cart.ROMBank&0x100 | uint16(value)
-
-		case address < 0x4000:
-			// Switch ROM bank upper bits
-			cart.ROMBank = cart.ROMBank&0xFF | (uint16(value&1) << 8)
-
-		case address < 0x6000:
-			// Switch RAM bank
-			cart.RAMBank = uint16(value & 0xF)
+	case address >= 0x6000 && address < 0x8000:
+		// Change if ROM/RAM banking
+		if value&0x1 == 0 {
+			cart.enableROMBanking = true
+			cart.RAMBank = 0
+		} else {
+			cart.enableROMBanking = false
 		}
 	}
-	return
+}
+
+func (cart *Cartridge) doMBC2(address uint16, value byte) {
+	switch {
+	case address < 0x2000:
+		// Enable RAM
+		cart.enableRAMBank(address, value)
+
+	case address >= 0x200 && address < 0x4000:
+		// Change ROM bank
+		cart.changeLoROMBank(value, false)
+	}
+}
+
+func (cart *Cartridge) doMBC3(address uint16, value byte) {
+	switch {
+	case address < 0x2000:
+		// Enable RAM bank
+		cart.enableRAMBank(address, value)
+
+	case address < 0x4000:
+		// Switch ROM bank
+		var lower byte = value & 127
+		cart.ROMBank = uint16(lower)
+		if cart.ROMBank == 0 {
+			cart.ROMBank++
+		}
+
+	case address < 0x6000:
+		// Switch RAM bank
+		cart.RAMBank = uint16(value & 0x3)
+	}
+}
+
+func (cart *Cartridge) doMBC5(address uint16, value byte) {
+	switch {
+	case address < 0x2000:
+		// Enable RAM bank
+		cart.enableRAMBank(address, value)
+
+	case address < 0x3000:
+		// Switch ROM bank lower bits
+		cart.ROMBank = cart.ROMBank&0x100 | uint16(value)
+
+	case address < 0x4000:
+		// Switch ROM bank upper bits
+		cart.ROMBank = cart.ROMBank&0xFF | (uint16(value&1) << 8)
+
+	case address < 0x6000:
+		// Switch RAM bank
+		cart.RAMBank = uint16(value & 0xF)
+	}
 }
 
 // Attempt to write to the cartridges RAM. If it is not enabled this
