@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-	"github.com/faiface/pixel/pixelgl"
 	"github.com/Humpheh/goboy/gb"
+	"github.com/faiface/pixel/pixelgl"
 	"log"
 	"os"
 	"runtime/pprof"
@@ -15,6 +15,7 @@ var (
 	rom        = flag.String("rom", "", "location of rom file (required)")
 	sound      = flag.Bool("sound", false, "set to enable sound emulation (experimental)")
 	vsyncOff   = flag.Bool("disableVsync", false, "set to disable vsync")
+	cgbMode    = flag.Bool("cgb", false, "set to enable cgb mode")
 )
 
 func main() {
@@ -34,23 +35,25 @@ func start() {
 		defer pprof.StopCPUProfile()
 	}
 
-	// Get the name of the ROM cartridge.
-	romFile := *rom
-	if romFile == "" {
-		flag.PrintDefaults()
-		os.Exit(1)
-	}
-
 	// Initalise the GameBoy.
 	gameboy := gb.Gameboy{
 		EnableSound: *sound,
 	}
-	err := gameboy.Init(romFile)
-	if err != nil {
-		log.Fatal(err)
+
+	// Get the name of the ROM cartridge.
+	romFile := *rom
+	if romFile == "" {
+		// If no rom, use menu
+		gameboy.EnableSound = true
+	} else {
+		err := gameboy.Init(romFile, *cgbMode)
+		if err != nil {
+			flag.PrintDefaults()
+			log.Fatal(err)
+		}
 	}
 
-	monitor := gb.NewPixelsIOBinding(&gameboy, *vsyncOff)
+	monitor := gb.NewPixelsIOBinding(&gameboy, *vsyncOff, *cgbMode)
 
 	perframe := time.Second / gb.FramesSecond
 	ticker := time.NewTicker(perframe)
@@ -66,7 +69,9 @@ func start() {
 		frames++
 		monitor.ProcessInput()
 
-		cycles += gameboy.Update()
+		if gameboy.IsGameLoaded() {
+			cycles += gameboy.Update()
+		}
 		monitor.RenderScreen()
 
 		since := time.Since(start)

@@ -10,7 +10,8 @@ import (
 const volume = 0.1
 const two_pi = 2 * math.Pi
 
-func GetChannel(gen func(float64, float64) float64, start float64) *Channel {
+// Create a new sound channel using a sampling function.
+func NewChannel(gen func(float64, float64) float64, start float64) *Channel {
 	return &Channel{
 		on:     false,
 		Func:   gen,
@@ -37,6 +38,9 @@ type Channel struct {
 	bufferlock sync.Mutex
 }
 
+// Get a StreamerFunc for streaming the sound output. Uses the
+// buffer in the sound channel which can be extended using the
+// Buffer function.
 func (chn *Channel) Stream(sr float64) beep.StreamerFunc {
 	chn.counter = 0
 	return beep.StreamerFunc(func(samples [][2]float64) (n int, ok bool) {
@@ -59,6 +63,7 @@ func (chn *Channel) Stream(sr float64) beep.StreamerFunc {
 	})
 }
 
+// Buffer a number of samples for streaming.
 func (chn *Channel) Buffer(samples int) {
 	chn.bufferlock.Lock()
 	// Remove end of buffer if its getting long
@@ -82,29 +87,32 @@ func (chn *Channel) Buffer(samples int) {
 	chn.bufferlock.Unlock()
 }
 
+// Set the amplitude of the sound channel.
 func (chn *Channel) SetAmp(amp float64) {
 	chn.Amp = amp
 }
 
+// Enable the sound channel.
 func (chn *Channel) On() {
 	chn.on = true
 }
 
+// Disable the sound channel.
 func (chn *Channel) Off() {
 	chn.on = false
 }
 
+// Set the volume of the sound channel for the two output terminals.
 func (chn *Channel) SetVolume(so1vol float64, so2vol float64) {
 	chn.so1vol = so1vol
 	chn.so2vol = so2vol
 }
 
 func Square(t float64, mod float64) float64 {
-	val := float64(1)
 	if math.Sin(t) <= mod {
-		val = -1
+		return -1
 	}
-	return val
+	return 1
 }
 
 func Noise(t float64, _ float64) float64 {
