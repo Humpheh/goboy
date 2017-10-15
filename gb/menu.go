@@ -51,7 +51,7 @@ func (menu *Menu) Init() {
 }
 
 func (menu *Menu) loadROMList() {
-	dir := "/Users/humphreyshotton/pygb/_roms/"
+	dir := "roms/"
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		log.Fatal(err)
@@ -82,7 +82,7 @@ func (menu *Menu) loadROMList() {
 
 func (menu *Menu) isROMFile(f os.FileInfo) bool {
 	switch filepath.Ext(f.Name()) {
-	case ".gb", ".gbc", ".rom", ".bin":
+	case ".gb", ".gbc", ".cgb", ".dmg", ".rom", ".bin":
 		return true
 	}
 	return false

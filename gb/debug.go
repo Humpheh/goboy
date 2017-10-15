@@ -29,6 +29,15 @@ func cpuCompareString(cpu *CPU, other *CPU) string {
 	)
 }
 
+func isEqual(cpu *CPU, other *CPU) bool {
+	return cpu.AF.HiLo() == other.AF.HiLo() &&
+		cpu.BC.HiLo() == other.BC.HiLo() &&
+		cpu.DE.HiLo() == other.DE.HiLo() &&
+		cpu.HL.HiLo() == other.HL.HiLo() &&
+		cpu.PC        == other.PC        &&
+		cpu.SP.HiLo() == other.SP.HiLo()
+}
+
 func cpuStateString(cpu *CPU, label string) string {
 	return fmt.Sprintf("%5v - AF: %0#4x  BC: %0#4x  DE: %0#4x  HL: %0#4x  PC: %0#4x  SP: %0#4x",
 		label, cpu.AF.HiLo(), cpu.BC.HiLo(), cpu.DE.HiLo(), cpu.HL.HiLo(),
@@ -36,7 +45,7 @@ func cpuStateString(cpu *CPU, label string) string {
 	)
 }
 
-func getDebugScanner(filename string) (*bufio.Scanner, error) {
+func GetDebugScanner(filename string) (*bufio.Scanner, error) {
 	// Load debug file
 	file, err := os.Open(filename)
 	if err != nil {

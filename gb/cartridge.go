@@ -46,13 +46,14 @@ func (cart *Cartridge) GetSaveFilename() string {
 	return cart.filename + ".sav"
 }
 
-// Load a bin file as a cartridge.
-func (cart *Cartridge) Load(filename string) error {
+// Load a bin file as a cartridge. Returns a boolean if the cart
+// has a cgb mode.
+func (cart *Cartridge) Load(filename string, enableCGB bool) (bool, error) {
 	// Load the file into ROM
 	cart.filename = filename
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return err
+		return false, err
 	}
 	cart.ROM = data
 
@@ -87,13 +88,16 @@ func (cart *Cartridge) Load(filename string) error {
 	log.Printf("Cart type: %#02x", mbc_flag)
 
 	// Check for GB mode
+	hasCGB := false
 	switch cart.ROM[0x0143] {
 	case 0x80:
-		log.Print("GB/GBC mode")
+		log.Print("DMG/CGB mode")
+		hasCGB = true
 	case 0xC0:
-		log.Print("GBC only mode")
+		log.Print("CGB only mode")
+		hasCGB = true
 	default:
-		log.Print("GB mode")
+		log.Print("DMG mode")
 	}
 
 	// Determine cartridge type
@@ -127,7 +131,7 @@ func (cart *Cartridge) Load(filename string) error {
 		cart.initGameSaves()
 	}
 
-	return nil
+	return hasCGB, nil
 }
 
 // Attempt to load a save game from the expected location.

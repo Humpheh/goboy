@@ -1,9 +1,29 @@
 package gb
 
+import (
+	"log"
+	"github.com/Humpheh/goboy/bits"
+)
+
 type Memory struct {
 	GB   *Gameboy
 	Cart *Cartridge
 	Data [0x10000]byte
+	// VRAM bank 1-2 data
+	VRAM [0x4000]byte
+	// Index of the current VRAM bank
+	VRAMBank byte
+	// WRAM bank 1-7 data
+	WRAM1 [0x7000]byte
+	// Index of the current WRAM bank
+	WRAM1Bank byte
+
+	// H-Blank DMA transfer variables
+	hbDMADestination uint16
+	hbDMASource      uint16
+	hbDMALength      byte
+	hbDMAActive      bool
+	// TODO: Block bank change when active
 }
 
 // Init the gb memory to the post-boot values.
@@ -54,13 +74,19 @@ func (mem *Memory) Init(gameboy *Gameboy) {
 	mem.Data[0xFF4A] = 0x00
 	mem.Data[0xFF4B] = 0x00
 	mem.Data[0xFFFF] = 0x00
+
+	mem.WRAM1Bank = 1
 }
 
-func (mem *Memory) LoadCart(loc string) error {
+// Load a cart into memory.
+func (mem *Memory) LoadCart(loc string, enableCGB bool) (bool, error) {
 	mem.Cart = &Cartridge{}
-	return mem.Cart.Load(loc)
+	return mem.Cart.Load(loc, enableCGB)
 }
 
+// Write a value at an address to the relevant location based on the
+// current state of the gameboy. This handles banking and side effects
+// of writing to certain addresses.
 func (mem *Memory) Write(address uint16, value byte) {
 	switch {
 	case address >= 0xFF10 && address <= 0xFF26:
@@ -94,7 +120,13 @@ func (mem *Memory) Write(address uint16, value byte) {
 
 	case address == 0xFF04:
 		// Trap divider register
+		mem.GB.SetClockFreq()
+		mem.GB.CPU.Divider = 0
 		mem.Data[0xFF04] = 0
+
+	case address == 0xFF05:
+		mem.GB.SetClockFreq()
+		mem.Data[0xFF05] = value
 
 	case address == 0xFF44:
 		// Trap scanline register
@@ -103,6 +135,58 @@ func (mem *Memory) Write(address uint16, value byte) {
 	case address == 0xFF46:
 		// DMA transfer
 		mem.DMATransfer(value)
+
+	case address == 0xFF55:
+		mem.HDMATransfer(value)
+
+	case address == 0xFF4F:
+		// VRAM bank (CGB only)
+		if mem.GB.IsCGB() {
+			mem.VRAMBank = value & 0x1
+		}
+
+	case address == 0xFF70:
+		// WRAM1 bank (CGB mode)
+		if mem.GB.IsCGB() {
+			mem.WRAM1Bank = value & 0x7
+			if mem.WRAM1Bank == 0 {
+				mem.WRAM1Bank = 1
+			}
+		}
+
+	case address == 0xFF68:
+		// BG palette index
+		if mem.GB.IsCGB() {
+			mem.GB.BGPalette.updateIndex(value)
+		}
+
+	case address == 0xFF69:
+		// BG Palette data
+		if mem.GB.IsCGB() {
+			mem.GB.BGPalette.write(value)
+		}
+
+	case address == 0xFF6A:
+		// Sprite palette index
+		if mem.GB.IsCGB() {
+			mem.GB.SpritePalette.updateIndex(value)
+		}
+
+	case address == 0xFF6B:
+		// Sprite Palette data
+		if mem.GB.IsCGB() {
+			mem.GB.SpritePalette.write(value)
+		}
+
+	case address == 0xFF4D:
+		// CGB speed change
+		if mem.GB.IsCGB() {
+			log.Print("Change speed")
+			mem.GB.PrepareSpeed = bits.Test(value, 0)
+		}
+
+	case address >= 0xFF72 && address <= 0xFF77:
+		log.Print("write to ", address)
 
 	case address < 0x8000:
 		// Write to the cartridge ROM (banking)
@@ -121,10 +205,19 @@ func (mem *Memory) Write(address uint16, value byte) {
 		// Restricted RAM
 		return
 
+	case address >= 0x8000 && address < 0xA000:
+		// VRAM Banking
+		bankOffset := uint16(mem.VRAMBank) * 0x2000
+		mem.VRAM[address-0x8000+bankOffset] = value
+
+	case address >= 0xD000 && address < 0xE000:
+		// WRAM Bank 1-7
+		bankOffset := uint16(mem.WRAM1Bank-1) * 0x1000
+		mem.WRAM1[address-0xD000+bankOffset] = value
+
 	default:
 		mem.Data[address] = value
 	}
-	mem.Data[address] = value
 }
 
 // Read from memory. Will go and read from cartridge memory if the
@@ -138,10 +231,66 @@ func (mem *Memory) Read(address uint16) byte {
 	case address == 0xFF0F:
 		return mem.Data[0xFF0F] | 0xE0
 
+	case address >= 0xFF72 && address <= 0xFF77:
+		log.Print("read from ", address)
+		return 0
+
+	case address == 0xFF68:
+		// BG palette index
+		if mem.GB.IsCGB() {
+			return mem.GB.BGPalette.readIndex()
+		} else {
+			return 0
+		}
+
+	case address == 0xFF69:
+		// BG Palette data
+		if mem.GB.IsCGB() {
+			return mem.GB.BGPalette.read()
+		} else {
+			return 0
+		}
+
+	case address == 0xFF6A:
+		// Sprite palette index
+		if mem.GB.IsCGB() {
+			return mem.GB.SpritePalette.readIndex()
+		} else {
+			return 0
+		}
+
+	case address == 0xFF6B:
+		// Sprite Palette data
+		if mem.GB.IsCGB() {
+			return mem.GB.SpritePalette.read()
+		} else {
+			return 0
+		}
+
+	case address == 0xFF4D:
+		// Speed switch data
+		return mem.GB.CurrentSpeed << 8 | bits.B(mem.GB.PrepareSpeed)
+
+	case address == 0xFF4F:
+		return mem.VRAMBank
+
+	case address == 0xFF70:
+		return mem.WRAM1Bank
+
 	case address <= 0x7FFF || address >= 0xA000 && address <= 0xBFFF:
 		return mem.Cart.Read(address)
 
-	// Else return memory
+	case address >= 0x8000 && address < 0xA000:
+		// VRAM Banking
+		bankOffset := uint16(mem.VRAMBank) * 0x2000
+		return mem.VRAM[address-0x8000+bankOffset]
+
+	case address >= 0xD000 && address < 0xE000:
+		// WRAM Bank 1-7
+		bankOffset := uint16(mem.WRAM1Bank-1) * 0x1000
+		return mem.WRAM1[address-0xD000+bankOffset]
+
+		// Else return memory
 	default:
 		return mem.Data[address]
 	}
@@ -156,5 +305,57 @@ func (mem *Memory) DMATransfer(value byte) {
 	for i = 0; i < 0xA0; i++ {
 		// TODO: Check this doesn't prevent
 		mem.Write(0xFE00+i, mem.Read(address+i))
+	}
+}
+
+// Start a HDMA transfer.
+func (mem *Memory) HDMATransfer(value byte) {
+	if mem.hbDMAActive && bits.Val(value, 7) == 0 {
+		// Abort a HDMA transfer
+		mem.hbDMAActive = false
+		mem.Data[0xFF55] |= 0x80 // Set bit 7
+		return
+	}
+
+	source := (uint16(mem.Data[0xFF51])<<8 | uint16(mem.Data[0xFF52])) & 0xFFF0
+	destination := (uint16(mem.Data[0xFF53])<<8 | uint16(mem.Data[0xFF54])) & 0x1FF0
+
+	length := ((uint16(value) & 0x7F) + 1) * 0x10
+
+	dmaMode := value >> 7
+	if dmaMode == 0 {
+		// General purpose DMA
+		var i uint16 = 0
+		for i = 0; i < length; i++ {
+			mem.VRAM[destination+i] = mem.Read(source + i)
+		}
+		mem.Data[0xFF55] = 0xFF
+	} else {
+		// H-Blank DMA
+		mem.hbDMADestination = destination
+		mem.hbDMASource = source
+		mem.hbDMALength = byte(value)
+		mem.hbDMAActive = true
+	}
+}
+
+// Perform a HDMA transfer during a HBlank period.
+func (mem *Memory) hbHDMATransfer() {
+	if !mem.hbDMAActive {
+		return
+	}
+	var i uint16 = 0
+	for i = 0; i < 0x10; i++ {
+		mem.VRAM[mem.hbDMADestination] = mem.Read(mem.hbDMASource)
+		mem.hbDMADestination++
+		mem.hbDMASource++
+	}
+	if mem.hbDMALength > 0 {
+		mem.hbDMALength--
+		mem.Data[0xFF55] = mem.hbDMALength
+	} else {
+		// DMA has finished
+		mem.Data[0xFF55] = 0xFF
+		mem.hbDMAActive = false
 	}
 }

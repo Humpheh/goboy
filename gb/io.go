@@ -26,8 +26,8 @@ type IOBinding interface {
 }
 
 // Get an Pixelsgl IOBinding
-func NewPixelsIOBinding(gameboy *Gameboy, disableVsync bool) PixelsIOBinding {
-	monitor := PixelsIOBinding{Gameboy: gameboy}
+func NewPixelsIOBinding(gameboy *Gameboy, disableVsync bool, cgbMode bool) PixelsIOBinding {
+	monitor := PixelsIOBinding{Gameboy: gameboy, cgbMode: cgbMode}
 	monitor.Init(disableVsync)
 	return monitor
 }
@@ -40,6 +40,7 @@ type PixelsIOBinding struct {
 	picture *pixel.PictureData
 	Frames  int
 	menu    *Menu
+	cgbMode bool
 }
 
 // Initalise the Pixels bindings.
@@ -164,6 +165,14 @@ var extraKeyMap = map[pixelgl.Button]func(*PixelsIOBinding){
 	pixelgl.KeyW: func(mon *PixelsIOBinding) {
 		mon.Gameboy.Debug.HideSprites = !mon.Gameboy.Debug.HideSprites
 	},
+	pixelgl.KeyA: func(mon *PixelsIOBinding) {
+		fmt.Println("BG Tile Palette:")
+		fmt.Println(mon.Gameboy.BGPalette.String())
+	},
+	pixelgl.KeyS: func(mon *PixelsIOBinding) {
+		fmt.Println("Sprite Palette:")
+		fmt.Println(mon.Gameboy.SpritePalette.String())
+	},
 
 	// CPU debugging
 	pixelgl.KeyE: func(mon *PixelsIOBinding) {
@@ -216,7 +225,7 @@ func (mon *PixelsIOBinding) ProcessInput() {
 		result := mon.menu.ProcessInput(mon.Window)
 		// If string returned we have a location to load
 		if result != "" {
-			mon.Gameboy.Init(result)
+			mon.Gameboy.Init(result, mon.cgbMode)
 		}
 	}
 	// Extra keys not related to emulation

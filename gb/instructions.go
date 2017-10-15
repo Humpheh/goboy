@@ -2,6 +2,7 @@ package gb
 
 import (
 	"log"
+	"fmt"
 )
 
 var OpcodeCycles = []int{
@@ -47,6 +48,19 @@ var CBOpcodeCycles = []int{
 // Get the value at the current PC address, increment the PC, update
 // the CPU ticks and execute the opcode.
 func (gb *Gameboy) ExecuteNextOpcode() int {
+	if gb.DebugScanner != nil {
+		expectedCPU, ff0f := getDebugNum(gb.DebugScanner)
+		myff0f := uint16(gb.Memory.Read(0xFF05))
+		logOpcode(gb)
+		fmt.Println(cpuStateString(gb.CPU, "GoBoy"), fmt.Sprintf("%b", myff0f))
+		fmt.Println(cpuStateString(&expectedCPU, "Exp"), fmt.Sprintf("%b", ff0f))
+		fmt.Println(cpuCompareString(gb.CPU, &expectedCPU))
+
+		if !isEqual(gb.CPU, &expectedCPU) || myff0f != ff0f {
+			waitForInput()
+		}
+	}
+
 	opcode := gb.popPC()
 	gb.thisCpuTicks = OpcodeCycles[opcode] * 4
 	gb.ExecuteOpcode(opcode)
@@ -995,6 +1009,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// STOP
 	case 0x10:
+		//gb.Halted = true
 		log.Print("0x10 (STOP) unimplemented (is 0x00 follows)")
 
 	// DI
@@ -1247,5 +1262,6 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	default:
 		log.Printf("Unimplemented opcode: %#2x", opcode)
+		waitForInput()
 	}
 }

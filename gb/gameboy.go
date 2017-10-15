@@ -3,6 +3,8 @@ package gb
 import (
 	"fmt"
 	"github.com/Humpheh/goboy/bits"
+	"bufio"
+	"log"
 )
 
 const (
@@ -39,7 +41,15 @@ type Gameboy struct {
 	EnableSound      bool
 	ExecutionPaused  bool
 
+	CGBMode bool
+	BGPalette *CGBPalette
+	SpritePalette *CGBPalette
+
+	CurrentSpeed byte
+	PrepareSpeed bool
+
 	thisCpuTicks int
+	DebugScanner *bufio.Scanner
 }
 
 // Should be called 60 times/second
@@ -49,17 +59,21 @@ func (gb *Gameboy) Update() int {
 	}
 
 	cycles := 0
-	for cycles < CyclesFrame {
+	for cycles < CyclesFrame * gb.getSpeed() {
 		cycles_op := 4
 		if !gb.Halted {
 			if gb.Debug.OutputOpcodes {
 				logOpcode(gb)
+				fmt.Println(cpuStateString(gb.CPU, ""))
 			}
 			cycles_op = gb.ExecuteNextOpcode()
 			cycles += cycles_op
 		} else {
 			// TODO: This is incorrect
 			cycles += 4
+		}
+		if gb.IsCGB() {
+			gb.checkSpeedSwitch()
 		}
 		gb.updateTimers(cycles_op)
 		gb.updateGraphics(cycles_op)
@@ -70,6 +84,27 @@ func (gb *Gameboy) Update() int {
 	return cycles
 }
 
+// Get the current CPU speed multiplier (either 1 or 2).
+func (gb *Gameboy) getSpeed() int {
+	return int(gb.CurrentSpeed + 1)
+}
+
+// Check if the speed needs to be switched for CGB mode.
+func (gb *Gameboy) checkSpeedSwitch() {
+	// TODO: This should actually happen after a STOP after asking to switch
+	if gb.PrepareSpeed {
+		// Switch speed
+		gb.PrepareSpeed = false
+		if gb.CurrentSpeed == 0 {
+			gb.CurrentSpeed = 1
+		} else {
+			gb.CurrentSpeed = 0
+		}
+		log.Print("new speed", gb.CurrentSpeed)
+		gb.Halted = false
+	}
+}
+
 func (gb *Gameboy) updateTimers(cycles int) {
 	gb.dividerRegister(cycles)
 
@@ -77,7 +112,7 @@ func (gb *Gameboy) updateTimers(cycles int) {
 		gb.TimerCounter -= cycles
 
 		if gb.TimerCounter <= 0 {
-			gb.SetClockFreq()
+			gb.TimerCounter += gb.getClockFreqCount()
 
 			if gb.Memory.Read(TIMA) == 255 {
 				gb.Memory.Write(TIMA, gb.Memory.Read(TMA))
@@ -97,24 +132,27 @@ func (gb *Gameboy) GetClockFreq() byte {
 	return gb.Memory.Read(TMC) & 0x3
 }
 
-func (gb *Gameboy) SetClockFreq() {
-	// Set the frequency of the timer
+func (gb *Gameboy) getClockFreqCount() int {
 	switch gb.GetClockFreq() {
 	case 0:
-		gb.TimerCounter = 1024
+		return 1024
 	case 1:
-		gb.TimerCounter = 16
+		return 16
 	case 2:
-		gb.TimerCounter = 64
-	case 3:
-		gb.TimerCounter = 256
+		return 64
+	default:
+		return 256
 	}
+}
+
+func (gb *Gameboy) SetClockFreq() {
+	gb.TimerCounter = gb.getClockFreqCount()
 }
 
 func (gb *Gameboy) dividerRegister(cycles int) {
 	gb.CPU.Divider += cycles
 	if gb.CPU.Divider >= 255 {
-		gb.CPU.Divider = 0
+		gb.CPU.Divider -= 255
 		gb.Memory.Data[0xFF04]++
 	}
 }
@@ -204,7 +242,7 @@ func (gb *Gameboy) updateGraphics(cycles int) {
 	if gb.ScanlineCounter <= 0 {
 		gb.Memory.Data[0xFF44]++
 		current_line := gb.Memory.Read(0xFF44)
-		gb.ScanlineCounter += 456
+		gb.ScanlineCounter += 456 * gb.getSpeed()
 
 		if current_line == 144 {
 			gb.RequestInterrupt(0)
@@ -264,6 +302,9 @@ func (gb *Gameboy) setLCDStatus() {
 			status = bits.Reset(status, 0)
 			status = bits.Reset(status, 1)
 			requestInterrupt = bits.Test(status, 3)
+			if mode != currentMode {
+				gb.Memory.hbHDMATransfer()
+			}
 		}
 	}
 
@@ -364,24 +405,54 @@ func (gb *Gameboy) RenderTiles(lcdControl byte, scanline byte) {
 		// Deduce where this tile id is in memory
 		tileLocation := tileData
 		if unsig {
-			tileNum := int16(gb.Memory.Data[tileAddress])
+			tileNum := int16(gb.Memory.VRAM[tileAddress - 0x8000])
 			tileLocation = tileLocation + uint16(tileNum*16)
 		} else {
-			tileNum := int16(int8(gb.Memory.Data[tileAddress]))
+			tileNum := int16(int8(gb.Memory.VRAM[tileAddress - 0x8000]))
 			tileLocation = uint16(int32(tileLocation) + int32((tileNum+128)*16))
+		}
+
+		bankOffset := uint16(0x8000)
+
+		// Attributes used in CGB mode TODO: check in CGB mode
+		/*
+		Bit 0-2  Background Palette number  (BGP0-7)
+		Bit 5    Horizontal Flip            (0=Normal, 1=Mirror horizontally)
+		Bit 6    Vertical Flip              (0=Normal, 1=Mirror vertically)
+		Bit 7    BG-to-OAM Priority         (0=Use OAM priority bit, 1=BG Priority
+		 */
+		tileAttr := gb.Memory.VRAM[tileAddress - 0x6000]
+		if gb.IsCGB() && bits.Test(tileAttr, 3) {
+			bankOffset = 0x6000
 		}
 
 		// Get the tile data from in memory
 		var line byte = (yPos % 8) * 2
-		data1 := gb.Memory.Data[tileLocation+uint16(line)]
-		data2 := gb.Memory.Data[tileLocation+uint16(line)+1]
+		if gb.IsCGB() && bits.Test(tileAttr, 6) {
+			line = 16 - line
+		}
+		data1 := gb.Memory.VRAM[tileLocation+uint16(line) - bankOffset]
+		data2 := gb.Memory.VRAM[tileLocation+uint16(line)+1 - bankOffset]
 
+		// TODO: Fix this
+		if gb.IsCGB() && bits.Test(tileAttr, 5) {
+			xPos = 7 - xPos
+		}
 		colourBit := byte(int8((xPos%8)-7) * -1)
 		colourNum := (bits.Val(data2, colourBit) << 1) | bits.Val(data1, colourBit)
 
+		// TODO:
+
 		// Set the pixel
-		red, green, blue := gb.GetColour(colourNum, 0xFF47)
-		gb.SetPixel(pixel, scanline, red, green, blue, true)
+		if gb.IsCGB() {
+			cgbPalette := tileAttr & 0x7
+			red, green, blue := gb.BGPalette.get(cgbPalette, colourNum)
+			gb.SetPixel(pixel, scanline, red, green, blue, true)
+		} else {
+			red, green, blue := gb.GetColour(colourNum, 0xFF47)
+			gb.SetPixel(pixel, scanline, red, green, blue, true)
+		}
+
 		// Store for the current scanline so sprite priority can be managed
 		gb.TileScanline[pixel] = colourNum
 	}
@@ -419,14 +490,20 @@ func (gb *Gameboy) RenderSprites(lcdControl byte, scanline int32) {
 		// we are accessing the Data array directly instead of using
 		// the read() method.
 		index := sprite * 4
-		yPos := int32(gb.Memory.Data[uint16(0xFE00+index)]) - 16
-		xPos := gb.Memory.Data[uint16(0xFE00+index+1)] - 8
-		tileLocation := gb.Memory.Data[uint16(0xFE00+index+2)]
-		attributes := gb.Memory.Data[uint16(0xFE00+index+3)]
+		yPos := int32(gb.Memory.Read(uint16(0xFE00+index))) - 16
+		xPos := gb.Memory.Read(uint16(0xFE00+index+1)) - 8
+		tileLocation := gb.Memory.Read(uint16(0xFE00+index+2))
+		attributes := gb.Memory.Read(uint16(0xFE00+index+3))
 
 		yFlip := bits.Test(attributes, 6)
 		xFlip := bits.Test(attributes, 5)
 		priority := !bits.Test(attributes, 7)
+
+		// Bank the sprite data in is (CGB only)
+		var bank uint16 = 0
+		if gb.IsCGB() {
+			bank = uint16((attributes & 0x8) >> 3)
+		}
 
 		if scanline >= yPos && scanline < (yPos+ySize) {
 			// Set the line to draw based on if the sprite is flipped on the y
@@ -436,9 +513,9 @@ func (gb *Gameboy) RenderSprites(lcdControl byte, scanline int32) {
 			}
 
 			// Load the data containing the sprite data for this line
-			dataAddress := 0x8000 + (uint16(tileLocation) * 16) + uint16(line*2)
-			data1 := gb.Memory.Data[dataAddress]
-			data2 := gb.Memory.Data[dataAddress+1]
+			dataAddress := (uint16(tileLocation) * 16) + uint16(line*2) + (bank * 0x2000)
+			data1 := gb.Memory.VRAM[dataAddress]
+			data2 := gb.Memory.VRAM[dataAddress+1]
 
 			// Draw the line of the sprite
 			for tilePixel := byte(0); tilePixel < 8; tilePixel++ {
@@ -454,19 +531,23 @@ func (gb *Gameboy) RenderSprites(lcdControl byte, scanline int32) {
 				if colourNum == 0 {
 					continue
 				}
-
-				// Determine the colour palette to use
-				var colourAddress uint16 = 0xFF48
-				if bits.Test(attributes, 4) {
-					colourAddress = 0xFF49
-				}
-
 				pixel := xPos + (7 - tilePixel)
 
 				// Set the pixel if it is in bounds
 				if pixel >= 0 && pixel < 160 {
-					red, green, blue := gb.GetColour(colourNum, colourAddress)
-					gb.SetPixel(pixel, byte(scanline), red, green, blue, priority)
+					if gb.IsCGB() {
+						cgbPalette := attributes & 0x7
+						red, green, blue := gb.SpritePalette.get(cgbPalette, colourNum)
+						gb.SetPixel(pixel, byte(scanline), red, green, blue, priority)
+					} else {
+						// Determine the colour palette to use
+						var colourAddress uint16 = 0xFF48
+						if bits.Test(attributes, 4) {
+							colourAddress = 0xFF49
+						}
+						red, green, blue := gb.GetColour(colourNum, colourAddress)
+						gb.SetPixel(pixel, byte(scanline), red, green, blue, priority)
+					}
 				}
 			}
 		}
@@ -496,12 +577,17 @@ func (gb *Gameboy) IsGameLoaded() bool {
 	return gb.Memory != nil && gb.Memory.Cart != nil
 }
 
-func (gb *Gameboy) Init(romFile string) error {
+// Returns if we are using CGB features
+func (gb *Gameboy) IsCGB() bool {
+	return gb.CGBMode
+}
+
+func (gb *Gameboy) Init(romFile string, enableCGB bool) error {
 	gb.ExecutionPaused = false
 
 	// Initialise the CPU
 	gb.CPU = &CPU{}
-	gb.CPU.Init()
+	gb.CPU.Init(enableCGB)
 
 	// Initialise the memory
 	gb.Memory = &Memory{}
@@ -511,10 +597,12 @@ func (gb *Gameboy) Init(romFile string) error {
 	gb.Sound.Init(gb)
 
 	// Load the ROM file
-	err := gb.Memory.LoadCart(romFile)
+	hasCGB, err := gb.Memory.LoadCart(romFile, enableCGB)
 	if err != nil {
 		return fmt.Errorf("could not open rom file: %s", err)
 	}
+
+	gb.CGBMode = enableCGB && hasCGB
 
 	gb.Debug = DebugFlags{}
 	gb.ScanlineCounter = 456
@@ -522,6 +610,9 @@ func (gb *Gameboy) Init(romFile string) error {
 	gb.InputMask = 0xFF
 
 	gb.CBInst = gb.CBInstructions()
+
+	gb.SpritePalette = NewPalette()
+	gb.BGPalette = NewPalette()
 
 	return nil
 }
