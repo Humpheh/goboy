@@ -1,10 +1,11 @@
 package gb
 
 import (
-	"fmt"
-	"github.com/Humpheh/goboy/bits"
 	"bufio"
+	"fmt"
 	"log"
+
+	"github.com/Humpheh/goboy/bits"
 )
 
 const (
@@ -41,8 +42,8 @@ type Gameboy struct {
 	EnableSound      bool
 	ExecutionPaused  bool
 
-	CGBMode bool
-	BGPalette *CGBPalette
+	CGBMode       bool
+	BGPalette     *CGBPalette
 	SpritePalette *CGBPalette
 
 	CurrentSpeed byte
@@ -59,7 +60,7 @@ func (gb *Gameboy) Update() int {
 	}
 
 	cycles := 0
-	for cycles < CyclesFrame * gb.getSpeed() {
+	for cycles < CyclesFrame*gb.getSpeed() {
 		cycles_op := 4
 		if !gb.Halted {
 			if gb.Debug.OutputOpcodes {
@@ -405,10 +406,10 @@ func (gb *Gameboy) RenderTiles(lcdControl byte, scanline byte) {
 		// Deduce where this tile id is in memory
 		tileLocation := tileData
 		if unsig {
-			tileNum := int16(gb.Memory.VRAM[tileAddress - 0x8000])
+			tileNum := int16(gb.Memory.VRAM[tileAddress-0x8000])
 			tileLocation = tileLocation + uint16(tileNum*16)
 		} else {
-			tileNum := int16(int8(gb.Memory.VRAM[tileAddress - 0x8000]))
+			tileNum := int16(int8(gb.Memory.VRAM[tileAddress-0x8000]))
 			tileLocation = uint16(int32(tileLocation) + int32((tileNum+128)*16))
 		}
 
@@ -416,12 +417,12 @@ func (gb *Gameboy) RenderTiles(lcdControl byte, scanline byte) {
 
 		// Attributes used in CGB mode TODO: check in CGB mode
 		/*
-		Bit 0-2  Background Palette number  (BGP0-7)
-		Bit 5    Horizontal Flip            (0=Normal, 1=Mirror horizontally)
-		Bit 6    Vertical Flip              (0=Normal, 1=Mirror vertically)
-		Bit 7    BG-to-OAM Priority         (0=Use OAM priority bit, 1=BG Priority
-		 */
-		tileAttr := gb.Memory.VRAM[tileAddress - 0x6000]
+			Bit 0-2  Background Palette number  (BGP0-7)
+			Bit 5    Horizontal Flip            (0=Normal, 1=Mirror horizontally)
+			Bit 6    Vertical Flip              (0=Normal, 1=Mirror vertically)
+			Bit 7    BG-to-OAM Priority         (0=Use OAM priority bit, 1=BG Priority
+		*/
+		tileAttr := gb.Memory.VRAM[tileAddress-0x6000]
 		if gb.IsCGB() && bits.Test(tileAttr, 3) {
 			bankOffset = 0x6000
 		}
@@ -431,8 +432,8 @@ func (gb *Gameboy) RenderTiles(lcdControl byte, scanline byte) {
 		if gb.IsCGB() && bits.Test(tileAttr, 6) {
 			line = 16 - line
 		}
-		data1 := gb.Memory.VRAM[tileLocation+uint16(line) - bankOffset]
-		data2 := gb.Memory.VRAM[tileLocation+uint16(line)+1 - bankOffset]
+		data1 := gb.Memory.VRAM[tileLocation+uint16(line)-bankOffset]
+		data2 := gb.Memory.VRAM[tileLocation+uint16(line)+1-bankOffset]
 
 		// TODO: Fix this
 		if gb.IsCGB() && bits.Test(tileAttr, 5) {
@@ -492,8 +493,8 @@ func (gb *Gameboy) RenderSprites(lcdControl byte, scanline int32) {
 		index := sprite * 4
 		yPos := int32(gb.Memory.Read(uint16(0xFE00+index))) - 16
 		xPos := gb.Memory.Read(uint16(0xFE00+index+1)) - 8
-		tileLocation := gb.Memory.Read(uint16(0xFE00+index+2))
-		attributes := gb.Memory.Read(uint16(0xFE00+index+3))
+		tileLocation := gb.Memory.Read(uint16(0xFE00 + index + 2))
+		attributes := gb.Memory.Read(uint16(0xFE00 + index + 3))
 
 		yFlip := bits.Test(attributes, 6)
 		xFlip := bits.Test(attributes, 5)

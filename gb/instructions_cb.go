@@ -4,8 +4,6 @@ import (
 	"github.com/Humpheh/goboy/bits"
 )
 
-var CB_NAMES map[byte]string = map[byte]string{}
-
 func (gb *Gameboy) instRlc(setter func(byte), val byte) {
 	carry := val >> 7
 	rot := (val<<1)&0xFF | carry
@@ -18,15 +16,15 @@ func (gb *Gameboy) instRlc(setter func(byte), val byte) {
 }
 
 func (gb *Gameboy) instRl(setter func(byte), val byte) {
-	new_carry := val >> 7
-	old_carry := bits.B(gb.CPU.C())
-	rot := (val<<1)&0xFF | old_carry
+	newCarry := val >> 7
+	oldCarry := bits.B(gb.CPU.C())
+	rot := (val<<1)&0xFF | oldCarry
 	setter(rot)
 
 	gb.CPU.SetZ(rot == 0)
 	gb.CPU.SetN(false)
 	gb.CPU.SetH(false)
-	gb.CPU.SetC(new_carry == 1)
+	gb.CPU.SetC(newCarry == 1)
 }
 
 func (gb *Gameboy) instRrc(setter func(byte), val byte) {
@@ -41,15 +39,15 @@ func (gb *Gameboy) instRrc(setter func(byte), val byte) {
 }
 
 func (gb *Gameboy) instRr(setter func(byte), val byte) {
-	new_carry := val & 1
-	old_carry := bits.B(gb.CPU.C())
-	rot := (val >> 1) | (old_carry << 7)
+	newCarry := val & 1
+	oldCarry := bits.B(gb.CPU.C())
+	rot := (val >> 1) | (oldCarry << 7)
 	setter(rot)
 
 	gb.CPU.SetZ(rot == 0)
 	gb.CPU.SetN(false)
 	gb.CPU.SetH(false)
-	gb.CPU.SetC(new_carry == 1)
+	gb.CPU.SetC(newCarry == 1)
 }
 
 func (gb *Gameboy) instSla(setter func(byte), val byte) {
@@ -103,7 +101,7 @@ func (gb *Gameboy) instSwap(setter func(byte), val byte) {
 func (gb *Gameboy) CBInstructions() map[byte]func() {
 	instructions := map[byte]func(){}
 
-	get_map := []func() byte{
+	getMap := []func() byte{
 		gb.CPU.BC.Hi,
 		gb.CPU.BC.Lo,
 		gb.CPU.DE.Hi,
@@ -113,7 +111,7 @@ func (gb *Gameboy) CBInstructions() map[byte]func() {
 		func() byte { return gb.Memory.Read(gb.CPU.HL.HiLo()) },
 		gb.CPU.AF.Hi,
 	}
-	set_map := []func(byte){
+	setMap := []func(byte){
 		gb.CPU.BC.SetHi,
 		gb.CPU.BC.SetLo,
 		gb.CPU.DE.SetHi,
@@ -123,174 +121,49 @@ func (gb *Gameboy) CBInstructions() map[byte]func() {
 		func(v byte) { gb.Memory.Write(gb.CPU.HL.HiLo(), v) },
 		gb.CPU.AF.SetHi,
 	}
-	str_map := []string{
-		"B", "C", "D", "E", "H", "L", "(HL)", "A",
-	}
 
-	for x := 0; x < len(get_map); x++ {
+	for x := 0; x < 8; x++ {
+		// Store x so it can be used in the function scopes
 		var i = x
-		instructions[byte(0x00+i)] = func() {
-			gb.instRlc(set_map[i], get_map[i]())
-		}
-		CB_NAMES[byte(0x00+i)] = "RLC " + str_map[i]
 
-		instructions[byte(0x08+i)] = func() {
-			gb.instRrc(set_map[i], get_map[i]())
-		}
-		CB_NAMES[byte(0x08+i)] = "RRC " + str_map[i]
-
-		instructions[byte(0x10+i)] = func() {
-			gb.instRl(set_map[i], get_map[i]())
-		}
-		CB_NAMES[byte(0x10+i)] = "RL " + str_map[i]
-
-		instructions[byte(0x18+i)] = func() {
-			gb.instRr(set_map[i], get_map[i]())
-		}
-		CB_NAMES[byte(0x18+i)] = "RR " + str_map[i]
-
-		instructions[byte(0x20+i)] = func() {
-			gb.instSla(set_map[i], get_map[i]())
-		}
-		CB_NAMES[byte(0x20+i)] = "SLA " + str_map[i]
-
-		instructions[byte(0x28+i)] = func() {
-			gb.instSra(set_map[i], get_map[i]())
-		}
-		CB_NAMES[byte(0x28+i)] = "SRA " + str_map[i]
-
-		instructions[byte(0x30+i)] = func() {
-			gb.instSwap(set_map[i], get_map[i]())
-		}
-		CB_NAMES[byte(0x30+i)] = "SWAP " + str_map[i]
-
-		instructions[byte(0x38+i)] = func() {
-			gb.instSrl(set_map[i], get_map[i]())
-		}
-		CB_NAMES[byte(0x38+i)] = "SRL " + str_map[i]
+		instructions[byte(0x00+i)] = func() { gb.instRlc(setMap[i], getMap[i]()) }
+		instructions[byte(0x08+i)] = func() { gb.instRrc(setMap[i], getMap[i]()) }
+		instructions[byte(0x10+i)] = func() { gb.instRl(setMap[i], getMap[i]()) }
+		instructions[byte(0x18+i)] = func() { gb.instRr(setMap[i], getMap[i]()) }
+		instructions[byte(0x20+i)] = func() { gb.instSla(setMap[i], getMap[i]()) }
+		instructions[byte(0x28+i)] = func() { gb.instSra(setMap[i], getMap[i]()) }
+		instructions[byte(0x30+i)] = func() { gb.instSwap(setMap[i], getMap[i]()) }
+		instructions[byte(0x38+i)] = func() { gb.instSrl(setMap[i], getMap[i]()) }
 
 		// BIT instructions
-		instructions[byte(0x40+i)] = func() {
-			gb.instBit(0, get_map[i]())
-		}
-		CB_NAMES[byte(0x40+i)] = "BIT 0," + str_map[i]
-
-		instructions[byte(0x48+i)] = func() {
-			gb.instBit(1, get_map[i]())
-		}
-		CB_NAMES[byte(0x48+i)] = "BIT 1," + str_map[i]
-
-		instructions[byte(0x50+i)] = func() {
-			gb.instBit(2, get_map[i]())
-		}
-		CB_NAMES[byte(0x50+i)] = "BIT 2," + str_map[i]
-
-		instructions[byte(0x58+i)] = func() {
-			gb.instBit(3, get_map[i]())
-		}
-		CB_NAMES[byte(0x58+i)] = "BIT 3," + str_map[i]
-
-		instructions[byte(0x60+i)] = func() {
-			gb.instBit(4, get_map[i]())
-		}
-		CB_NAMES[byte(0x60+i)] = "BIT 4," + str_map[i]
-
-		instructions[byte(0x68+i)] = func() {
-			gb.instBit(5, get_map[i]())
-		}
-		CB_NAMES[byte(0x68+i)] = "BIT 5," + str_map[i]
-
-		instructions[byte(0x70+i)] = func() {
-			gb.instBit(6, get_map[i]())
-		}
-		CB_NAMES[byte(0x70+i)] = "BIT 6," + str_map[i]
-
-		instructions[byte(0x78+i)] = func() {
-			gb.instBit(7, get_map[i]())
-		}
-		CB_NAMES[byte(0x78+i)] = "BIT 7," + str_map[i]
+		instructions[byte(0x40+i)] = func() { gb.instBit(0, getMap[i]()) }
+		instructions[byte(0x48+i)] = func() { gb.instBit(1, getMap[i]()) }
+		instructions[byte(0x50+i)] = func() { gb.instBit(2, getMap[i]()) }
+		instructions[byte(0x58+i)] = func() { gb.instBit(3, getMap[i]()) }
+		instructions[byte(0x60+i)] = func() { gb.instBit(4, getMap[i]()) }
+		instructions[byte(0x68+i)] = func() { gb.instBit(5, getMap[i]()) }
+		instructions[byte(0x70+i)] = func() { gb.instBit(6, getMap[i]()) }
+		instructions[byte(0x78+i)] = func() { gb.instBit(7, getMap[i]()) }
 
 		// RES instructions
-		instructions[byte(0x80+i)] = func() {
-			set_map[i](bits.Reset(get_map[i](), 0))
-		}
-		CB_NAMES[byte(0x80+i)] = "RES 0," + str_map[i]
-
-		instructions[byte(0x88+i)] = func() {
-			set_map[i](bits.Reset(get_map[i](), 1))
-		}
-		CB_NAMES[byte(0x88+i)] = "RES 1," + str_map[i]
-
-		instructions[byte(0x90+i)] = func() {
-			set_map[i](bits.Reset(get_map[i](), 2))
-		}
-		CB_NAMES[byte(0x90+i)] = "RES 2," + str_map[i]
-
-		instructions[byte(0x98+i)] = func() {
-			set_map[i](bits.Reset(get_map[i](), 3))
-		}
-		CB_NAMES[byte(0x98+i)] = "RES 3," + str_map[i]
-
-		instructions[byte(0xA0+i)] = func() {
-			set_map[i](bits.Reset(get_map[i](), 4))
-		}
-		CB_NAMES[byte(0xA0+i)] = "RES 4," + str_map[i]
-
-		instructions[byte(0xA8+i)] = func() {
-			set_map[i](bits.Reset(get_map[i](), 5))
-		}
-		CB_NAMES[byte(0xA8+i)] = "RES 5," + str_map[i]
-
-		instructions[byte(0xB0+i)] = func() {
-			set_map[i](bits.Reset(get_map[i](), 6))
-		}
-		CB_NAMES[byte(0xB0+i)] = "RES 6," + str_map[i]
-
-		instructions[byte(0xB8+i)] = func() {
-			set_map[i](bits.Reset(get_map[i](), 7))
-		}
-		CB_NAMES[byte(0xD8+i)] = "RES 7," + str_map[i]
+		instructions[byte(0x80+i)] = func() { setMap[i](bits.Reset(getMap[i](), 0)) }
+		instructions[byte(0x88+i)] = func() { setMap[i](bits.Reset(getMap[i](), 1)) }
+		instructions[byte(0x90+i)] = func() { setMap[i](bits.Reset(getMap[i](), 2)) }
+		instructions[byte(0x98+i)] = func() { setMap[i](bits.Reset(getMap[i](), 3)) }
+		instructions[byte(0xA0+i)] = func() { setMap[i](bits.Reset(getMap[i](), 4)) }
+		instructions[byte(0xA8+i)] = func() { setMap[i](bits.Reset(getMap[i](), 5)) }
+		instructions[byte(0xB0+i)] = func() { setMap[i](bits.Reset(getMap[i](), 6)) }
+		instructions[byte(0xB8+i)] = func() { setMap[i](bits.Reset(getMap[i](), 7)) }
 
 		// SET instructions
-		instructions[byte(0xC0+i)] = func() {
-			set_map[i](bits.Set(get_map[i](), 0))
-		}
-		CB_NAMES[byte(0xC0+i)] = "SET 1," + str_map[i]
-
-		instructions[byte(0xC8+i)] = func() {
-			set_map[i](bits.Set(get_map[i](), 1))
-		}
-		CB_NAMES[byte(0xC8+i)] = "SET 1," + str_map[i]
-
-		instructions[byte(0xD0+i)] = func() {
-			set_map[i](bits.Set(get_map[i](), 2))
-		}
-		CB_NAMES[byte(0xD0+i)] = "SET 2," + str_map[i]
-
-		instructions[byte(0xD8+i)] = func() {
-			set_map[i](bits.Set(get_map[i](), 3))
-		}
-		CB_NAMES[byte(0xD8+i)] = "SET 3," + str_map[i]
-
-		instructions[byte(0xE0+i)] = func() {
-			set_map[i](bits.Set(get_map[i](), 4))
-		}
-		CB_NAMES[byte(0xE0+i)] = "SET 4," + str_map[i]
-
-		instructions[byte(0xE8+i)] = func() {
-			set_map[i](bits.Set(get_map[i](), 5))
-		}
-		CB_NAMES[byte(0xE8+i)] = "SET 5," + str_map[i]
-
-		instructions[byte(0xF0+i)] = func() {
-			set_map[i](bits.Set(get_map[i](), 6))
-		}
-		CB_NAMES[byte(0xF0+i)] = "SET 6," + str_map[i]
-
-		instructions[byte(0xF8+i)] = func() {
-			set_map[i](bits.Set(get_map[i](), 7))
-		}
-		CB_NAMES[byte(0xF8+i)] = "SET 7," + str_map[i]
+		instructions[byte(0xC0+i)] = func() { setMap[i](bits.Set(getMap[i](), 0)) }
+		instructions[byte(0xC8+i)] = func() { setMap[i](bits.Set(getMap[i](), 1)) }
+		instructions[byte(0xD0+i)] = func() { setMap[i](bits.Set(getMap[i](), 2)) }
+		instructions[byte(0xD8+i)] = func() { setMap[i](bits.Set(getMap[i](), 3)) }
+		instructions[byte(0xE0+i)] = func() { setMap[i](bits.Set(getMap[i](), 4)) }
+		instructions[byte(0xE8+i)] = func() { setMap[i](bits.Set(getMap[i](), 5)) }
+		instructions[byte(0xF0+i)] = func() { setMap[i](bits.Set(getMap[i](), 6)) }
+		instructions[byte(0xF8+i)] = func() { setMap[i](bits.Set(getMap[i](), 7)) }
 	}
 	return instructions
 }

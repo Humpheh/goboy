@@ -2,6 +2,7 @@ package gb
 
 import (
 	"log"
+
 	"github.com/Humpheh/goboy/bits"
 )
 
@@ -269,7 +270,7 @@ func (mem *Memory) Read(address uint16) byte {
 
 	case address == 0xFF4D:
 		// Speed switch data
-		return mem.GB.CurrentSpeed << 8 | bits.B(mem.GB.PrepareSpeed)
+		return mem.GB.CurrentSpeed<<8 | bits.B(mem.GB.PrepareSpeed)
 
 	case address == 0xFF4F:
 		return mem.VRAMBank

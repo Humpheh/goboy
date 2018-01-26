@@ -34,7 +34,7 @@ func isEqual(cpu *CPU, other *CPU) bool {
 		cpu.BC.HiLo() == other.BC.HiLo() &&
 		cpu.DE.HiLo() == other.DE.HiLo() &&
 		cpu.HL.HiLo() == other.HL.HiLo() &&
-		cpu.PC        == other.PC        &&
+		cpu.PC == other.PC &&
 		cpu.SP.HiLo() == other.SP.HiLo()
 }
 

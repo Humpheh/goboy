@@ -2,10 +2,11 @@ package gb
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Test that the CPU passes all of the test instructions
@@ -33,18 +34,18 @@ func TestInstructions(t *testing.T) {
 	}
 	require.Equal(t, len(output), expected, "did not finish getting output in 4000 iterations")
 
-	start_len := len("cpu_instr   ")
-	test_output := output[start_len:]
+	startLen := len("cpu_instr   ")
+	testOutput := output[startLen:]
 	for i := int64(0); i < 11; i++ {
 		t.Run(fmt.Sprintf("Test %02v", i), func(t *testing.T) {
-			test_str := test_output[0:7]
-			test_output = test_output[7:]
+			testString := testOutput[0:7]
+			testOutput = testOutput[7:]
 
-			test_num, err := strconv.ParseInt(test_str[:2], 10, 8)
-			assert.NoError(t, err, "error in parsing number: %s", test_str[:2])
-			assert.Equal(t, i+1, test_num, "unexpected test number")
+			testNum, err := strconv.ParseInt(testString[:2], 10, 8)
+			assert.NoError(t, err, "error in parsing number: %s", testString[:2])
+			assert.Equal(t, i+1, testNum, "unexpected test number")
 
-			status := test_str[3:5]
+			status := testString[3:5]
 			assert.Equal(t, "ok", status, "status was not ok")
 		})
 	}

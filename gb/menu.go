@@ -1,17 +1,18 @@
 package gb
 
 import (
-	"github.com/Humpheh/goboy/gb/uifont"
-	"github.com/faiface/pixel"
-	"github.com/faiface/pixel/pixelgl"
-	"github.com/faiface/pixel/text"
-	"github.com/golang/freetype/truetype"
 	"image/color"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
 	"path/filepath"
+
+	"github.com/Humpheh/goboy/gb/uifont"
+	"github.com/faiface/pixel"
+	"github.com/faiface/pixel/pixelgl"
+	"github.com/faiface/pixel/text"
+	"github.com/golang/freetype/truetype"
 )
 
 type ROMOption struct {

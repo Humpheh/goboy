@@ -2,12 +2,13 @@ package main
 
 import (
 	"flag"
-	"github.com/Humpheh/goboy/gb"
-	"github.com/faiface/pixel/pixelgl"
 	"log"
 	"os"
 	"runtime/pprof"
 	"time"
+
+	"github.com/Humpheh/goboy/gb"
+	"github.com/faiface/pixel/pixelgl"
 )
 
 var (
