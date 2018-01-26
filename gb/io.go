@@ -44,7 +44,7 @@ type PixelsIOBinding struct {
 	cgbMode bool
 }
 
-// Initalise the Pixels bindings.
+// Initialise the Pixels bindings.
 func (mon *PixelsIOBinding) Init(disableVsync bool) {
 	cfg := pixelgl.WindowConfig{
 		Title: "GoBoy",
