@@ -1,11 +1,12 @@
 package gb
 
 import (
-	"github.com/Humpheh/goboy/bits"
 	"io/ioutil"
 	"log"
 	"strings"
 	"time"
+
+	"github.com/Humpheh/goboy/bits"
 )
 
 const (
@@ -15,6 +16,8 @@ const (
 	MBC5
 )
 
+// Get the name of the game from the rom file.
+// The name is stored as a series of bytes between [0x134,0x142).
 func GetRomName(data []byte) string {
 	cartName := string(data[0x0134:0x0142])
 	return strings.Replace(cartName, "\x00", "", -1)
@@ -65,27 +68,27 @@ func (cart *Cartridge) Load(filename string, enableCGB bool) (bool, error) {
 	cart.RAM = make([]byte, 0x8000)
 
 	// ROM banking
-	mbc_flag := cart.ROM[0x147]
+	mbcFlag := cart.ROM[0x147]
 
 	/*
-			00h  ROM ONLY                 13h  MBC3+RAM+BATTERY
-		  	01h  MBC1                     15h  MBC4
-		  	02h  MBC1+RAM                 16h  MBC4+RAM
-		  	03h  MBC1+RAM+BATTERY         17h  MBC4+RAM+BATTERY
-		  	05h  MBC2                     19h  MBC5
-		  	06h  MBC2+BATTERY             1Ah  MBC5+RAM
-		  	08h  ROM+RAM                  1Bh  MBC5+RAM+BATTERY
-		  	09h  ROM+RAM+BATTERY          1Ch  MBC5+RUMBLE
-		  	0Bh  MMM01                    1Dh  MBC5+RUMBLE+RAM
-		  	0Ch  MMM01+RAM                1Eh  MBC5+RUMBLE+RAM+BATTERY
-		  	0Dh  MMM01+RAM+BATTERY        FCh  POCKET CAMERA
-		  	0Fh  MBC3+TIMER+BATTERY       FDh  BANDAI TAMA5
-		  	10h  MBC3+TIMER+RAM+BATTERY   FEh  HuC3
-		  	11h  MBC3                     FFh  HuC1+RAM+BATTERY
-		  	12h  MBC3+RAM
+		00h  ROM ONLY                 13h  MBC3+RAM+BATTERY
+		01h  MBC1                     15h  MBC4
+		02h  MBC1+RAM                 16h  MBC4+RAM
+		03h  MBC1+RAM+BATTERY         17h  MBC4+RAM+BATTERY
+		05h  MBC2                     19h  MBC5
+		06h  MBC2+BATTERY             1Ah  MBC5+RAM
+		08h  ROM+RAM                  1Bh  MBC5+RAM+BATTERY
+		09h  ROM+RAM+BATTERY          1Ch  MBC5+RUMBLE
+		0Bh  MMM01                    1Dh  MBC5+RUMBLE+RAM
+		0Ch  MMM01+RAM                1Eh  MBC5+RUMBLE+RAM+BATTERY
+		0Dh  MMM01+RAM+BATTERY        FCh  POCKET CAMERA
+		0Fh  MBC3+TIMER+BATTERY       FDh  BANDAI TAMA5
+		10h  MBC3+TIMER+RAM+BATTERY   FEh  HuC3
+		11h  MBC3                     FFh  HuC1+RAM+BATTERY
+		12h  MBC3+RAM
 	*/
 
-	log.Printf("Cart type: %#02x", mbc_flag)
+	log.Printf("Cart type: %#02x", mbcFlag)
 
 	// Check for GB mode
 	hasCGB := false
@@ -101,32 +104,32 @@ func (cart *Cartridge) Load(filename string, enableCGB bool) (bool, error) {
 	}
 
 	// Determine cartridge type
-	switch mbc_flag {
+	switch mbcFlag {
 	case 0x00, 0x08, 0x09, 0x0B, 0x0C, 0x0D:
 		log.Println("ROM/MMM01")
 	default:
 		switch {
-		case mbc_flag <= 0x03:
+		case mbcFlag <= 0x03:
 			cart.Type = MBC1
 			log.Println("MBC1")
-		case mbc_flag <= 0x06:
+		case mbcFlag <= 0x06:
 			cart.Type = MBC2
 			log.Println("MBC2")
-		case mbc_flag <= 0x13:
+		case mbcFlag <= 0x13:
 			cart.Type = MBC3
 			log.Println("MBC3")
-		case mbc_flag < 0x17:
+		case mbcFlag < 0x17:
 			log.Println("Warning: MBC4 carts are not supported.")
-		case mbc_flag < 0x1F:
+		case mbcFlag < 0x1F:
 			cart.Type = MBC5
 			log.Println("MBC5")
 		default:
-			log.Printf("Warning: This cart may not be supported: %02x", mbc_flag)
+			log.Printf("Warning: This cart may not be supported: %02x", mbcFlag)
 		}
 	}
 	cart.ROMBank = 1
 
-	switch mbc_flag {
+	switch mbcFlag {
 	case 0x3, 0x6, 0x9, 0xD, 0xF, 0x10, 0x13, 0x17, 0x1B, 0x1E:
 		cart.initGameSaves()
 	}
@@ -308,7 +311,7 @@ func (cart *Cartridge) changeLoROMBank(value byte, allowZero bool) {
 	if cart.Type == MBC2 {
 		cart.ROMBank = uint16(value & 0xF)
 	} else {
-		var lower byte = value & 31
+		var lower = value & 31
 		cart.ROMBank &= 224 // turn off the lower 5
 		cart.ROMBank |= uint16(lower)
 	}

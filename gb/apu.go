@@ -1,11 +1,12 @@
 package gb
 
 import (
+	"math"
+	"time"
+
 	"github.com/Humpheh/goboy/bits"
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/speaker"
-	"math"
-	"time"
 )
 
 var squarelimits = map[byte]float64{
@@ -344,12 +345,12 @@ func (s *Sound) Write(address uint16, value byte) {
 		}
 
 	case 0xFF22:
-		freq_shift_clock := float64((value >> 4) & 0xF)
-		freq_divier := float64(value & 0x7)
-		if freq_divier == 0 {
-			freq_divier = 0.5
+		freqShiftClock := float64((value >> 4) & 0xF)
+		freqDivier := float64(value & 0x7)
+		if freqDivier == 0 {
+			freqDivier = 0.5
 		}
-		freq := 524288 / freq_divier / math.Pow(2, freq_shift_clock+1)
+		freq := 524288 / freqDivier / math.Pow(2, freqShiftClock+1)
 		// TODO: Bit 3 NR43 modifier
 		s.Channel4.Freq = freq
 
@@ -440,6 +441,7 @@ func (s *Sound) UpdateOutput(value byte) {
 	}
 }
 
+// Determine if a channel should be playing.
 func (s *Sound) ShouldPlay(channel byte) bool {
 	FF25 := s.GB.Memory.Data[0xFF25]
 	FF26 := s.GB.Memory.Data[0xFF26]
@@ -450,21 +452,24 @@ func (s *Sound) ShouldPlay(channel byte) bool {
 		bits.Test(FF26, 7)
 }
 
+// Update the frequency of channel 1
 func (s *Sound) UpdateChan1Freq(NR13 byte, NR14 byte) {
-	freq_val := uint16(NR13) | (uint16(NR14&0x7) << 8)
-	freq := 131072 / (2048 - float64(freq_val))
+	freqVal := uint16(NR13) | (uint16(NR14&0x7) << 8)
+	freq := 131072 / (2048 - float64(freqVal))
 	s.Channel1.Freq = freq
 }
 
+// Update the frequency of channel 2
 func (s *Sound) UpdateChan2Freq(NR23 byte, NR24 byte) {
-	freq_val := uint16(NR23) | (uint16(NR24&0x7) << 8)
-	freq := 131072 / (2048 - float64(freq_val))
+	freqVal := uint16(NR23) | (uint16(NR24&0x7) << 8)
+	freq := 131072 / (2048 - float64(freqVal))
 	s.Channel2.Freq = freq
 }
 
+// Update the frequency of channel 3
 func (s *Sound) UpdateChan3Freq(NR33 byte, NR34 byte) {
-	freq_val := uint16(NR33) | (uint16(NR34&0x7) << 8)
-	freq := 65536 / (2048 - float64(freq_val))
+	freqVal := uint16(NR33) | (uint16(NR34&0x7) << 8)
+	freq := 65536 / (2048 - float64(freqVal))
 	s.Channel3.Freq = freq
 }
 
@@ -513,12 +518,12 @@ var ch3vols = map[byte]float64{
 
 func (s *Sound) ToggleCh3Volume(value byte) {
 	/*
-			0: Mute (No sound)
-		    1: 100% Volume (Produce Wave Pattern RAM Data as it is)
-		    2:  50% Volume (Produce Wave Pattern RAM data shifted once to the right)
-		    3:  25% Volume (Produce Wave Pattern RAM data shifted twice to the right)
+		0: Mute (No sound)
+		1: 100% Volume (Produce Wave Pattern RAM Data as it is)
+		2:  50% Volume (Produce Wave Pattern RAM data shifted once to the right)
+		3:  25% Volume (Produce Wave Pattern RAM data shifted twice to the right)
 	*/
-	// TODO: What does that mean/
+	// TODO: What does that mean?
 	vol := value >> 5 & 0x3
 	s.Channel3.Volume = ch3vols[vol]
 }

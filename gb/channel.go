@@ -1,14 +1,15 @@
 package gb
 
 import (
-	"github.com/faiface/beep"
 	"math"
 	"math/rand"
 	"sync"
+
+	"github.com/faiface/beep"
 )
 
 const volume = 0.1
-const two_pi = 2 * math.Pi
+const twoPi = 2 * math.Pi
 
 // Create a new sound channel using a sampling function.
 func NewChannel(gen func(float64, float64) float64, start float64) *Channel {
@@ -72,7 +73,7 @@ func (chn *Channel) Buffer(samples int) {
 		chn.counter -= samples * 60
 	}
 
-	step := chn.Freq * two_pi / float64(41040)
+	step := chn.Freq * twoPi / float64(41040)
 
 	for i := 0; i < samples; i++ {
 		chn.t += step
@@ -121,7 +122,7 @@ func Noise(t float64, _ float64) float64 {
 
 func MakeWaveform(data *[32]int8) func(float64, float64) float64 {
 	return func(t float64, _ float64) float64 {
-		idx := int(math.Floor(t/two_pi*32)) % 32
+		idx := int(math.Floor(t/twoPi*32)) % 32
 		data := int16(int8(data[idx]<<4) >> 4)
 		return float64(data) / 7
 	}

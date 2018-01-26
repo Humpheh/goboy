@@ -2,11 +2,12 @@ package gb
 
 import (
 	"fmt"
+	"image/color"
+	"log"
+
 	"github.com/Humpheh/goboy/bits"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
-	"image/color"
-	"log"
 )
 
 var PixelScale float64 = 3
@@ -155,7 +156,7 @@ var extraKeyMap = map[pixelgl.Button]func(*PixelsIOBinding){
 
 	// Change GB colour palette
 	pixelgl.KeyEqual: func(mon *PixelsIOBinding) {
-		current_palette = (current_palette + 1) % byte(len(palettes))
+		currentPalette = (currentPalette + 1) % byte(len(palettes))
 	},
 
 	// GPU debugging

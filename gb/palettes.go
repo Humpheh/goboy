@@ -1,8 +1,9 @@
 package gb
 
 import (
-	"github.com/Humpheh/goboy/bits"
 	"fmt"
+
+	"github.com/Humpheh/goboy/bits"
 )
 
 const (
@@ -11,7 +12,7 @@ const (
 	PaletteRGB
 )
 
-var current_palette = PaletteRGB
+var currentPalette = PaletteRGB
 var palettes = map[byte][4][3]uint8{
 	// Greyscale paletter
 	PaletteGreyscale: {
@@ -39,7 +40,7 @@ var palettes = map[byte][4][3]uint8{
 // Get the colour based on the colour index and the currently
 // selected palette.
 func GetPaletteColour(index byte) (uint8, uint8, uint8) {
-	col := palettes[current_palette][index]
+	col := palettes[currentPalette][index]
 	return col[0], col[1], col[2]
 }
 
@@ -94,7 +95,7 @@ func (pal *CGBPalette) write(value byte) {
 // Get the rgb colour for a palette at a colour number.
 func (pal *CGBPalette) get(palette byte, num byte) (uint8, uint8, uint8) {
 	idx := (palette * 8) + (num * 2)
-	colour := uint16(pal.palette[idx]) | uint16(pal.palette[idx + 1]) << 8
+	colour := uint16(pal.palette[idx]) | uint16(pal.palette[idx+1])<<8
 	r := uint8(colour & 0x1F)
 	g := uint8((colour >> 5) & 0x1F)
 	b := uint8((colour >> 10) & 0x1F)
@@ -106,7 +107,7 @@ func (pal *CGBPalette) String() string {
 	out := ""
 	for i := 0; i < len(pal.palette); i += 2 {
 		out += fmt.Sprintf("%02x%02x ", pal.palette[i+1], pal.palette[i])
-		if (i + 2) % 8 == 0 {
+		if (i+2)%8 == 0 {
 			out += "\n"
 		}
 	}
@@ -115,22 +116,22 @@ func (pal *CGBPalette) String() string {
 
 // Mapping of the 5 bit colour value to a 8 bit value.
 var colMap = map[uint8]uint8{
-	0x0: 0x0,
-	0x1: 0x8,
-	0x2: 0x10,
-	0x3: 0x18,
-	0x4: 0x20,
-	0x5: 0x29,
-	0x6: 0x31,
-	0x7: 0x39,
-	0x8: 0x41,
-	0x9: 0x4a,
-	0xa: 0x52,
-	0xb: 0x5a,
-	0xc: 0x62,
-	0xd: 0x6a,
-	0xe: 0x73,
-	0xf: 0x7b,
+	0x0:  0x0,
+	0x1:  0x8,
+	0x2:  0x10,
+	0x3:  0x18,
+	0x4:  0x20,
+	0x5:  0x29,
+	0x6:  0x31,
+	0x7:  0x39,
+	0x8:  0x41,
+	0x9:  0x4a,
+	0xa:  0x52,
+	0xb:  0x5a,
+	0xc:  0x62,
+	0xd:  0x6a,
+	0xe:  0x73,
+	0xf:  0x7b,
 	0x10: 0x83,
 	0x11: 0x8b,
 	0x12: 0x94,
