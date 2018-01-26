@@ -98,7 +98,7 @@ func (gb *Gameboy) instSwap(setter func(byte), val byte) {
 	gb.CPU.SetC(false)
 }
 
-func (gb *Gameboy) CBInstructions() map[byte]func() {
+func (gb *Gameboy) cbInstructions() map[byte]func() {
 	instructions := map[byte]func(){}
 
 	getMap := []func() byte{

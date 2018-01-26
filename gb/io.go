@@ -242,7 +242,7 @@ func (mon *PixelsIOBinding) processGBInput() {
 	for key, offset := range keyMap {
 		if mon.Window.JustPressed(key) {
 			mon.Gameboy.InputMask = bits.Reset(mon.Gameboy.InputMask, offset)
-			mon.Gameboy.RequestInterrupt(4) // Joypad interrupt
+			mon.Gameboy.requestInterrupt(4) // Joypad interrupt
 		}
 		if mon.Window.JustReleased(key) {
 			mon.Gameboy.InputMask = bits.Set(mon.Gameboy.InputMask, offset)

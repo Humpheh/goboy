@@ -296,7 +296,9 @@ func init() {
 	}
 }
 
-// Get the effective instruction of a opcode from its byte.
+// GetOpcodeName returns a string representation of the effective instruction
+// of a opcode from its byte.
+//
 // If the opcode is CB, then the next byte will be used for the
 // lookup in the CB opcode table.
 func GetOpcodeName(opcode, next byte) string {
