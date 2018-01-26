@@ -5,8 +5,8 @@ import (
 	"log"
 )
 
+// OpcodeCycles is the number of cpu cycles for each normal opcode.
 var OpcodeCycles = []int{
-	//  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 	1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1, // 0
 	0, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1, // 1
 	2, 3, 2, 2, 1, 1, 2, 1, 2, 2, 2, 2, 1, 1, 2, 1, // 2
@@ -23,10 +23,10 @@ var OpcodeCycles = []int{
 	2, 3, 3, 0, 3, 4, 2, 4, 2, 4, 3, 0, 3, 0, 2, 4, // d
 	3, 3, 2, 0, 0, 4, 2, 4, 4, 1, 4, 0, 0, 0, 2, 4, // e
 	3, 3, 2, 1, 0, 4, 2, 4, 3, 2, 4, 1, 0, 0, 2, 4, // f
-}
+} //0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 
+// CBOpcodeCycles is the number of cpu cycles for each CB opcode.
 var CBOpcodeCycles = []int{
-	//  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 1
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 2
@@ -43,10 +43,10 @@ var CBOpcodeCycles = []int{
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // D
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // E
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // F
-}
+} //0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 
-// Get the value at the current PC address, increment the PC, update
-// the CPU ticks and execute the opcode.
+// ExecuteNextOpcode gets the value at the current PC address, increments the PC,
+// updates the CPU ticks and executes the opcode.
 func (gb *Gameboy) ExecuteNextOpcode() int {
 	if gb.DebugScanner != nil {
 		expectedCPU, ff0f := getDebugNum(gb.DebugScanner)
@@ -81,7 +81,7 @@ func (gb *Gameboy) popPC16() uint16 {
 	return b2<<8 | b1
 }
 
-// Large switch statement containing the opcode operations.
+// ExecuteOpcode is a large switch statement containing the opcode operations.
 func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	switch opcode {
 	// LD B, n
@@ -1033,7 +1033,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	// RLA
 	case 0x17:
 		value := gb.CPU.AF.Hi()
-		var carry byte = 0
+		var carry byte
 		if gb.CPU.C() {
 			carry = 1
 		}
@@ -1057,7 +1057,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	// RRA
 	case 0x1F:
 		value := gb.CPU.AF.Hi()
-		var carry byte = 0
+		var carry byte
 		if gb.CPU.C() {
 			carry = 0x80
 		}

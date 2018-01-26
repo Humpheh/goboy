@@ -4,6 +4,8 @@ import (
 	"github.com/Humpheh/goboy/bits"
 )
 
+// Register represents a GB CPU 16bit register which provides functions
+// for setting and getting the higher and lower bytes.
 type Register struct {
 	// The value of the register.
 	val uint16
@@ -13,34 +15,34 @@ type Register struct {
 	mask uint16
 }
 
-// Get the higher byte of the register.
+// Hi gets the higher byte of the register.
 func (reg *Register) Hi() byte {
 	return byte(reg.val >> 8)
 }
 
-// Get the lower byte of the register.
+// Lo gets the lower byte of the register.
 func (reg *Register) Lo() byte {
 	return byte(reg.val & 0xFF)
 }
 
-// Get the 2 byte value of the register.
+// HiLo gets the 2 byte value of the register.
 func (reg *Register) HiLo() uint16 {
 	return reg.val
 }
 
-// Set the higher byte of the register.
+// SetHi sets the higher byte of the register.
 func (reg *Register) SetHi(val byte) {
 	reg.val = uint16(val)<<8 | (uint16(reg.val) & 0xFF)
 	reg.updateMask()
 }
 
-// Set the lower byte of the register.
+// SetLog sets the lower byte of the register.
 func (reg *Register) SetLo(val byte) {
 	reg.val = uint16(val) | (uint16(reg.val) & 0xFF00)
 	reg.updateMask()
 }
 
-// Set hte value of the register.
+// Set the value of the register.
 func (reg *Register) Set(val uint16) {
 	reg.val = val
 	reg.updateMask()
@@ -92,42 +94,42 @@ func (cpu *CPU) setFlag(index byte, on bool) {
 	}
 }
 
-// Set the value of the Z flag.
+// SetZ sets the value of the Z flag.
 func (cpu *CPU) SetZ(on bool) {
 	cpu.setFlag(7, on)
 }
 
-// Set the value of the N flag.
+// SetN sets the value of the N flag.
 func (cpu *CPU) SetN(on bool) {
 	cpu.setFlag(6, on)
 }
 
-// Set the value of the H flag.
+// SetH sets the value of the H flag.
 func (cpu *CPU) SetH(on bool) {
 	cpu.setFlag(5, on)
 }
 
-// Set the value of the C flag.
+// SetC sets the value of the C flag.
 func (cpu *CPU) SetC(on bool) {
 	cpu.setFlag(4, on)
 }
 
-// Get the value of the Z flag.
+// Z gets the value of the Z flag.
 func (cpu *CPU) Z() bool {
 	return cpu.AF.HiLo()>>7&1 == 1
 }
 
-// Get the value of the N flag.
+// N gets the value of the N flag.
 func (cpu *CPU) N() bool {
 	return cpu.AF.HiLo()>>6&1 == 1
 }
 
-// Get the value of the H flag.
+// H gets the value of the H flag.
 func (cpu *CPU) H() bool {
 	return cpu.AF.HiLo()>>5&1 == 1
 }
 
-// Get the value of the C flag.
+// C gets the value of the C flag.
 func (cpu *CPU) C() bool {
 	return cpu.AF.HiLo()>>4&1 == 1
 }

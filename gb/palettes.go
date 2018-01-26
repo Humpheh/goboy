@@ -7,8 +7,11 @@ import (
 )
 
 const (
+	// The default greyscale gameboy colour palette.
 	PaletteGreyscale = byte(iota)
+	// A more authentic looking green tinted gameboy colour palette.
 	PaletteOriginal
+	// Palette used by default in the BGB emulator.
 	PaletteRGB
 )
 
@@ -37,14 +40,14 @@ var palettes = map[byte][4][3]uint8{
 	},
 }
 
-// Get the colour based on the colour index and the currently
+// GetPaletteColour returns the colour based on the colour index and the currently
 // selected palette.
 func GetPaletteColour(index byte) (uint8, uint8, uint8) {
 	col := palettes[currentPalette][index]
 	return col[0], col[1], col[2]
 }
 
-// Get a new colour palette.
+// NewPalette makes a new CGB colour palette.
 func NewPalette() *CGBPalette {
 	pal := make([]byte, 0x40)
 	for i := range pal {
@@ -56,7 +59,7 @@ func NewPalette() *CGBPalette {
 	}
 }
 
-// Palette information tracking the palette colour info.
+// CGBPalette contains information tracking the palette colour info.
 type CGBPalette struct {
 	// Palette colour information.
 	palette []byte

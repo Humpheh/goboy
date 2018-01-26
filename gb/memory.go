@@ -6,6 +6,8 @@ import (
 	"github.com/Humpheh/goboy/bits"
 )
 
+// Memory stores gameboy ROM, RAM and cartridge data. It manages the
+// banking of these data banks.
 type Memory struct {
 	GB   *Gameboy
 	Cart *Cartridge
@@ -79,7 +81,7 @@ func (mem *Memory) Init(gameboy *Gameboy) {
 	mem.WRAM1Bank = 1
 }
 
-// Load a cart into memory.
+// LoadCart load a cart rom into memory.
 func (mem *Memory) LoadCart(loc string, enableCGB bool) (bool, error) {
 	mem.Cart = &Cartridge{}
 	return mem.Cart.Load(loc, enableCGB)
@@ -102,12 +104,12 @@ func (mem *Memory) Write(address uint16, value byte) {
 
 	case address == TMC:
 		// Timer control
-		currentFreq := mem.GB.GetClockFreq()
+		currentFreq := mem.GB.getClockFreq()
 		mem.Data[TMC] = value
-		newFreq := mem.GB.GetClockFreq()
+		newFreq := mem.GB.getClockFreq()
 
 		if currentFreq != newFreq {
-			mem.GB.SetClockFreq()
+			mem.GB.setClockFreq()
 		}
 
 	case address == 0xFF02:
@@ -121,12 +123,12 @@ func (mem *Memory) Write(address uint16, value byte) {
 
 	case address == 0xFF04:
 		// Trap divider register
-		mem.GB.SetClockFreq()
+		mem.GB.setClockFreq()
 		mem.GB.CPU.Divider = 0
 		mem.Data[0xFF04] = 0
 
 	case address == 0xFF05:
-		mem.GB.SetClockFreq()
+		mem.GB.setClockFreq()
 		mem.Data[0xFF05] = value
 
 	case address == 0xFF44:
@@ -135,10 +137,10 @@ func (mem *Memory) Write(address uint16, value byte) {
 
 	case address == 0xFF46:
 		// DMA transfer
-		mem.DMATransfer(value)
+		mem.doDMATransfer(value)
 
 	case address == 0xFF55:
-		mem.HDMATransfer(value)
+		mem.doHDMATransfer(value)
 
 	case address == 0xFF4F:
 		// VRAM bank (CGB only)
@@ -227,7 +229,7 @@ func (mem *Memory) Read(address uint16) byte {
 	switch {
 	// Joypad address
 	case address == 0xFF00:
-		return mem.GB.JoypadValue(mem.Data[0xFF00])
+		return mem.GB.joypadValue(mem.Data[0xFF00])
 
 	case address == 0xFF0F:
 		return mem.Data[0xFF0F] | 0xE0
@@ -240,33 +242,29 @@ func (mem *Memory) Read(address uint16) byte {
 		// BG palette index
 		if mem.GB.IsCGB() {
 			return mem.GB.BGPalette.readIndex()
-		} else {
-			return 0
 		}
+		return 0
 
 	case address == 0xFF69:
 		// BG Palette data
 		if mem.GB.IsCGB() {
 			return mem.GB.BGPalette.read()
-		} else {
-			return 0
 		}
+		return 0
 
 	case address == 0xFF6A:
 		// Sprite palette index
 		if mem.GB.IsCGB() {
 			return mem.GB.SpritePalette.readIndex()
-		} else {
-			return 0
 		}
+		return 0
 
 	case address == 0xFF6B:
 		// Sprite Palette data
 		if mem.GB.IsCGB() {
 			return mem.GB.SpritePalette.read()
-		} else {
-			return 0
 		}
+		return 0
 
 	case address == 0xFF4D:
 		// Speed switch data
@@ -298,7 +296,7 @@ func (mem *Memory) Read(address uint16) byte {
 }
 
 // Perform a DMA transfer.
-func (mem *Memory) DMATransfer(value byte) {
+func (mem *Memory) doDMATransfer(value byte) {
 	// TODO: This may need to be done instead of CPU ticks
 	address := uint16(value) << 8 // (data * 100)
 
@@ -310,7 +308,7 @@ func (mem *Memory) DMATransfer(value byte) {
 }
 
 // Start a HDMA transfer.
-func (mem *Memory) HDMATransfer(value byte) {
+func (mem *Memory) doHDMATransfer(value byte) {
 	if mem.hbDMAActive && bits.Val(value, 7) == 0 {
 		// Abort a HDMA transfer
 		mem.hbDMAActive = false
@@ -326,7 +324,7 @@ func (mem *Memory) HDMATransfer(value byte) {
 	dmaMode := value >> 7
 	if dmaMode == 0 {
 		// General purpose DMA
-		var i uint16 = 0
+		var i uint16
 		for i = 0; i < length; i++ {
 			mem.VRAM[destination+i] = mem.Read(source + i)
 		}
@@ -345,7 +343,7 @@ func (mem *Memory) hbHDMATransfer() {
 	if !mem.hbDMAActive {
 		return
 	}
-	var i uint16 = 0
+	var i uint16
 	for i = 0; i < 0x10; i++ {
 		mem.VRAM[mem.hbDMADestination] = mem.Read(mem.hbDMASource)
 		mem.hbDMADestination++
