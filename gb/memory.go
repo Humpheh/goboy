@@ -97,8 +97,8 @@ func (mem *Memory) Write(address uint16, value byte) {
 		// Writing to channel 3 waveform RAM.
 		mem.Data[address] = value
 		soundIndex := (address - 0xFF30) * 2
-		mem.GB.Sound.WaveformRam[soundIndex] = int8((value >> 4) & 0xF)
-		mem.GB.Sound.WaveformRam[soundIndex+1] = int8(value & 0xF)
+		mem.GB.Sound.waveformRam[soundIndex] = int8((value >> 4) & 0xF)
+		mem.GB.Sound.waveformRam[soundIndex+1] = int8(value & 0xF)
 
 	case address == TMC:
 		// Timer control
