@@ -61,14 +61,14 @@ func (gb *Gameboy) Update() int {
 
 	cycles := 0
 	for cycles < CyclesFrame*gb.getSpeed() {
-		cycles_op := 4
+		cyclesOp := 4
 		if !gb.Halted {
 			if gb.Debug.OutputOpcodes {
 				logOpcode(gb)
 				fmt.Println(cpuStateString(gb.CPU, ""))
 			}
-			cycles_op = gb.ExecuteNextOpcode()
-			cycles += cycles_op
+			cyclesOp = gb.ExecuteNextOpcode()
+			cycles += cyclesOp
 		} else {
 			// TODO: This is incorrect
 			cycles += 4
@@ -76,8 +76,8 @@ func (gb *Gameboy) Update() int {
 		if gb.IsCGB() {
 			gb.checkSpeedSwitch()
 		}
-		gb.updateTimers(cycles_op)
-		gb.updateGraphics(cycles_op)
+		gb.updateTimers(cyclesOp)
+		gb.updateGraphics(cyclesOp)
 		gb.doInterrupts()
 	}
 	gb.Sound.Tick(cycles)
@@ -188,7 +188,7 @@ func (gb *Gameboy) doInterrupts() {
 }
 
 // Address that should be jumped to by interrupt.
-var interrupt_addresses = map[byte]uint16{
+var interruptAddresses = map[byte]uint16{
 	0: 0x40, // V-Blank
 	1: 0x48, // LCDC Status
 	2: 0x50, // Timer Overflow
@@ -212,7 +212,7 @@ func (gb *Gameboy) serviceInterrupt(interrupt byte) {
 	gb.Memory.Write(0xFF0F, req)
 
 	gb.pushStack(gb.CPU.PC)
-	gb.CPU.PC = interrupt_addresses[interrupt]
+	gb.CPU.PC = interruptAddresses[interrupt]
 }
 
 // Push a 16 bit value onto the stack and decrement SP.
@@ -366,13 +366,13 @@ func (gb *Gameboy) RenderTiles(lcdControl byte, scanline byte) {
 		unsig = true
 	}
 
-	var test_bit byte = 3
+	var testBit byte = 3
 	if usingWindow {
-		test_bit = 6
+		testBit = 6
 	}
 
 	backgroundMemory := uint16(0x9800)
-	if bits.Test(lcdControl, test_bit) {
+	if bits.Test(lcdControl, testBit) {
 		backgroundMemory = 0x9C00
 	}
 
@@ -385,7 +385,7 @@ func (gb *Gameboy) RenderTiles(lcdControl byte, scanline byte) {
 	}
 
 	// which of the 8 vertical pixels of the current tile is the scanline on?
-	var tileRow uint16 = uint16(yPos/8) * 32
+	var tileRow = uint16(yPos/8) * 32
 
 	// start drawing the 160 horizontal pixels for this scanline
 	gb.TileScanline = [160]uint8{}
@@ -428,7 +428,7 @@ func (gb *Gameboy) RenderTiles(lcdControl byte, scanline byte) {
 		}
 
 		// Get the tile data from in memory
-		var line byte = (yPos % 8) * 2
+		var line = (yPos % 8) * 2
 		if gb.IsCGB() && bits.Test(tileAttr, 6) {
 			line = 16 - line
 		}
@@ -532,14 +532,14 @@ func (gb *Gameboy) RenderSprites(lcdControl byte, scanline int32) {
 				if colourNum == 0 {
 					continue
 				}
-				pixel := xPos + (7 - tilePixel)
+				pixel := int16(xPos) + int16(7-tilePixel)
 
 				// Set the pixel if it is in bounds
 				if pixel >= 0 && pixel < 160 {
 					if gb.IsCGB() {
 						cgbPalette := attributes & 0x7
 						red, green, blue := gb.SpritePalette.get(cgbPalette, colourNum)
-						gb.SetPixel(pixel, byte(scanline), red, green, blue, priority)
+						gb.SetPixel(byte(pixel), byte(scanline), red, green, blue, priority)
 					} else {
 						// Determine the colour palette to use
 						var colourAddress uint16 = 0xFF48
@@ -547,7 +547,7 @@ func (gb *Gameboy) RenderSprites(lcdControl byte, scanline int32) {
 							colourAddress = 0xFF49
 						}
 						red, green, blue := gb.GetColour(colourNum, colourAddress)
-						gb.SetPixel(pixel, byte(scanline), red, green, blue, priority)
+						gb.SetPixel(byte(pixel), byte(scanline), red, green, blue, priority)
 					}
 				}
 			}

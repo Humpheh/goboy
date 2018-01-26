@@ -22,6 +22,7 @@ func NewChannel(gen func(float64, float64) float64, start float64) *Channel {
 	}
 }
 
+// A sound channel
 type Channel struct {
 	Freq      float64
 	Amp       float64
