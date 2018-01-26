@@ -36,7 +36,7 @@ func start() {
 		defer pprof.StopCPUProfile()
 	}
 
-	// Initalise the GameBoy.
+	// Initialise the GameBoy.
 	gameboy := gb.Gameboy{
 		EnableSound: *sound,
 	}
@@ -60,7 +60,6 @@ func start() {
 	ticker := time.NewTicker(perframe)
 	start := time.Now()
 
-	cycles := 0
 	frames := 0
 	for range ticker.C {
 		if !monitor.IsRunning() {
@@ -71,7 +70,7 @@ func start() {
 		monitor.ProcessInput()
 
 		if gameboy.IsGameLoaded() {
-			cycles += gameboy.Update()
+			_ = gameboy.Update()
 		}
 		monitor.RenderScreen()
 
