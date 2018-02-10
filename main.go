@@ -7,9 +7,23 @@ import (
 	"runtime/pprof"
 	"time"
 
+	"fmt"
+
 	"github.com/Humpheh/goboy/gb"
 	"github.com/faiface/pixel/pixelgl"
 )
+
+// The version of GoBoy
+const version = "v0.1"
+
+const logo = `
+    ______      ____
+   / ____/___  / __ )____  __  __
+  / / __/ __ \/ __  / __ \/ / / /
+ / /_/ / /_/ / /_/ / /_/ / /_/ /
+ \____/\____/_____/\____/\__, /
+                 %6s /____/
+`
 
 var (
 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
@@ -35,6 +49,11 @@ func start() {
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	}
+
+	fmt.Println(fmt.Sprintf(logo, version))
+	fmt.Printf(" %-5v: %v\n", "ROM", *rom)
+	fmt.Printf(" %-5v: %v\n", "Sound", *sound)
+	fmt.Printf(" %-5v: %v\n\n", "CGB", *cgbMode)
 
 	// Initialise the GameBoy.
 	gameboy := gb.Gameboy{

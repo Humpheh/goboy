@@ -123,7 +123,6 @@ func (mon *PixelsIOBinding) SetTitle(fps int) {
 			title += fmt.Sprintf(" (FPS: %2v)", fps)
 		}
 	}
-	log.Println(title)
 	mon.Window.SetTitle(title)
 }
 
