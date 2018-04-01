@@ -22,8 +22,7 @@ go get github.com/Humpheh/goboy
 The program has been tested on MacOS and Windows 10, and is likely to work on Linux. Building on Windows 10
 requires MinGW (I recommend [msys2](http://www.msys2.org/)).
 
-GoBoy uses pixel for control binding and graphics rendering. This requires the installation of OpenGL. Instructions on
-installing them can be found on the [pixels readme](https://github.com/faiface/pixel#requirements).
+GoBoy uses the go library [pixel](https://github.com/faiface/pixel) for control binding and graphics rendering. This requires the installation of OpenGL. Instructions on installing them can be found on the [pixels readme](https://github.com/faiface/pixel#requirements).
 
 ## Usage 
 ```sh
