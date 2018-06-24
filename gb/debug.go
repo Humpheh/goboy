@@ -89,11 +89,11 @@ func getDebugNum(scanner *bufio.Scanner) (CPU, uint16) {
 
 	return CPU{
 		PC: uint16(val1),
-		AF: Register{val: uint16(val3)},
-		BC: Register{val: uint16(val4)},
-		DE: Register{val: uint16(val5)},
-		HL: Register{val: uint16(val6)},
-		SP: Register{val: uint16(val7)},
+		AF: register{Val: uint16(val3)},
+		BC: register{Val: uint16(val4)},
+		DE: register{Val: uint16(val5)},
+		HL: register{Val: uint16(val6)},
+		SP: register{Val: uint16(val7)},
 	}, uint16(val2)
 }
 

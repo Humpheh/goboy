@@ -12,16 +12,15 @@ import (
 // Test that the CPU passes all of the test instructions
 // in the cpu_instrs rom.
 func TestInstructions(t *testing.T) {
-	gb, err := NewGameboy("./../roms/cpu_instrs.gb")
+	output := ""
+	transferOption := WithTransferFunction(func(val byte) {
+		output += string(val)
+	})
+	gb, err := NewGameboy("./../roms/cpu_instrs.gb", transferOption)
 	require.NoError(t, err, "error in init gb %v", err)
 
 	// Expect the output to be 68 characters long
 	expected := 106
-
-	output := ""
-	gb.TransferFunction = func(val byte) {
-		output += string(val)
-	}
 
 	// Run the CPU until the output has matched the expected
 	// or until 4000 iterations have passed.

@@ -48,57 +48,57 @@ func GetPaletteColour(index byte) (uint8, uint8, uint8) {
 }
 
 // NewPalette makes a new CGB colour palette.
-func NewPalette() *CGBPalette {
+func NewPalette() *cgbPalette {
 	pal := make([]byte, 0x40)
 	for i := range pal {
 		pal[i] = 0xFF
 	}
 
-	return &CGBPalette{
-		palette: pal,
+	return &cgbPalette{
+		Palette: pal,
 	}
 }
 
-// CGBPalette contains information tracking the palette colour info.
-type CGBPalette struct {
+// Palette for cgb containing information tracking the palette colour info.
+type cgbPalette struct {
 	// Palette colour information.
-	palette []byte
+	Palette []byte
 	// Current index the palette is referencing.
-	index byte
+	Index byte
 	// If to auto increment on write.
-	inc bool
+	Inc bool
 }
 
 // Update the index the palette is indexing and set
 // auto increment if bit 7 is set.
-func (pal *CGBPalette) updateIndex(value byte) {
-	pal.index = value & 0x3F
-	pal.inc = bits.Test(value, 7)
+func (pal *cgbPalette) updateIndex(value byte) {
+	pal.Index = value & 0x3F
+	pal.Inc = bits.Test(value, 7)
 }
 
 // Read the palette information stored at the current
 // index.
-func (pal *CGBPalette) read() byte {
-	return pal.palette[pal.index]
+func (pal *cgbPalette) read() byte {
+	return pal.Palette[pal.Index]
 }
 
 // Read the current index.
-func (pal *CGBPalette) readIndex() byte {
-	return pal.index
+func (pal *cgbPalette) readIndex() byte {
+	return pal.Index
 }
 
 // Write a value to the palette at the current index.
-func (pal *CGBPalette) write(value byte) {
-	pal.palette[pal.index] = value
-	if pal.inc {
-		pal.index = (pal.index + 1) & 0x3F
+func (pal *cgbPalette) write(value byte) {
+	pal.Palette[pal.Index] = value
+	if pal.Inc {
+		pal.Index = (pal.Index + 1) & 0x3F
 	}
 }
 
 // Get the rgb colour for a palette at a colour number.
-func (pal *CGBPalette) get(palette byte, num byte) (uint8, uint8, uint8) {
+func (pal *cgbPalette) get(palette byte, num byte) (uint8, uint8, uint8) {
 	idx := (palette * 8) + (num * 2)
-	colour := uint16(pal.palette[idx]) | uint16(pal.palette[idx+1])<<8
+	colour := uint16(pal.Palette[idx]) | uint16(pal.Palette[idx+1])<<8
 	r := uint8(colour & 0x1F)
 	g := uint8((colour >> 5) & 0x1F)
 	b := uint8((colour >> 10) & 0x1F)
@@ -106,10 +106,10 @@ func (pal *CGBPalette) get(palette byte, num byte) (uint8, uint8, uint8) {
 }
 
 // String output of the palette values.
-func (pal *CGBPalette) String() string {
+func (pal *cgbPalette) String() string {
 	out := ""
-	for i := 0; i < len(pal.palette); i += 2 {
-		out += fmt.Sprintf("%02x%02x ", pal.palette[i+1], pal.palette[i])
+	for i := 0; i < len(pal.Palette); i += 2 {
+		out += fmt.Sprintf("%02x%02x ", pal.Palette[i+1], pal.Palette[i])
 		if (i+2)%8 == 0 {
 			out += "\n"
 		}

@@ -184,6 +184,11 @@ var extraKeyMap = map[pixelgl.Button]func(*PixelsIOBinding){
 	pixelgl.KeyF: func(mon *PixelsIOBinding) {
 		mon.toggleFullscreen()
 	},
+	// Gob
+	pixelgl.KeyG: func(mon *PixelsIOBinding) {
+		err := mon.Gameboy.Gob()
+		log.Print(err)
+	},
 }
 
 // Toggle the fullscreen window on the main monitor.

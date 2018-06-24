@@ -131,7 +131,7 @@ type Sound struct {
 	channel4Env  *envelopeSound
 
 	waveformRam [32]int8
-	time        float64
+	Time        float64
 }
 
 // Initialise the sound emulation for a gameboy.
@@ -139,12 +139,12 @@ func (s *Sound) Init(gb *Gameboy) {
 	sampleRate := beep.SampleRate(41040)
 	speaker.Init(sampleRate, sampleRate.N(time.Second/30))
 
-	s.time = 0
+	s.Time = 0
 	// Create the channels with their sounds
-	s.channel1 = NewChannel(Square, s.time)
-	s.channel2 = NewChannel(Square, s.time)
-	s.channel3 = NewChannel(MakeWaveform(&s.waveformRam), s.time)
-	s.channel4 = NewChannel(Noise, s.time)
+	s.channel1 = NewChannel(Square, s.Time)
+	s.channel2 = NewChannel(Square, s.Time)
+	s.channel3 = NewChannel(MakeWaveform(&s.waveformRam), s.Time)
+	s.channel4 = NewChannel(Noise, s.Time)
 
 	mix := beep.Mix(
 		s.channel1.Stream(float64(sampleRate)),
@@ -386,7 +386,7 @@ func (s *Sound) Write(address uint16, value byte) {
 // Update the sound emulation by a number of clock cycles.
 func (s *Sound) Tick(clocks int) {
 	secs := float64(clocks) / ClockSpeed
-	s.time += secs
+	s.Time += secs
 
 	if s.channel1Time > 0 {
 		s.channel1Time -= secs
