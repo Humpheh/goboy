@@ -40,7 +40,6 @@ type PixelsIOBinding struct {
 	Window  *pixelgl.Window
 	picture *pixel.PictureData
 	Frames  int
-	menu    *Menu
 	cgbMode bool
 }
 
@@ -67,9 +66,6 @@ func (mon *PixelsIOBinding) Init(disableVsync bool) {
 		Stride: 160,
 		Rect:   pixel.R(0, 0, 160, 144),
 	}
-
-	mon.menu = &Menu{}
-	mon.menu.Init()
 }
 
 // Update the window camera to center the output.
@@ -107,10 +103,6 @@ func (mon *PixelsIOBinding) RenderScreen() {
 	spr := pixel.NewSprite(pixel.Picture(mon.picture), pixel.R(0, 0, 160, 144))
 	spr.Draw(mon.Window, pixel.IM.Scaled(pixel.ZV, PixelScale))
 
-	// Draw the menu
-	if !mon.Gameboy.IsGameLoaded() || mon.Gameboy.ExecutionPaused {
-		mon.menu.Render(mon.Window)
-	}
 	mon.Window.Update()
 }
 
@@ -221,12 +213,6 @@ func (mon *PixelsIOBinding) toggleFullscreen() {
 func (mon *PixelsIOBinding) ProcessInput() {
 	if mon.Gameboy.IsGameLoaded() && !mon.Gameboy.ExecutionPaused {
 		mon.processGBInput()
-	} else {
-		result := mon.menu.ProcessInput(mon.Window)
-		// If string returned we have a location to load
-		if result != "" {
-			mon.Gameboy.Init(result, mon.cgbMode)
-		}
 	}
 	// Extra keys not related to emulation
 	for key, f := range extraKeyMap {

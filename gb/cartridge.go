@@ -6,7 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"archive/zip"
+
 	"github.com/Humpheh/goboy/bits"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -53,15 +56,15 @@ func (cart *Cartridge) GetSaveFilename() string {
 // has a cgb mode.
 func (cart *Cartridge) Load(filename string, enableCGB bool) (bool, error) {
 	// Load the file into ROM
+	var err error
 	cart.filename = filename
-	data, err := ioutil.ReadFile(filename)
+	cart.ROM, err = cart.loadROMData(filename)
 	if err != nil {
 		return false, err
 	}
-	cart.ROM = data
 
 	// Get the cart name from the rom
-	cart.Name = GetRomName(data)
+	cart.Name = GetRomName(cart.ROM)
 
 	// RAM banking
 	cart.RAMBank = 0
@@ -133,8 +136,41 @@ func (cart *Cartridge) Load(filename string, enableCGB bool) (bool, error) {
 	case 0x3, 0x6, 0x9, 0xD, 0xF, 0x10, 0x13, 0x17, 0x1B, 0x1E:
 		cart.initGameSaves()
 	}
-
 	return hasCGB, nil
+}
+
+// Load the bytes from a ROM file. The file can also be a zip file containing a single
+// rom file.
+func (cart *Cartridge) loadROMData(filename string) ([]byte, error) {
+	var data []byte
+	if strings.HasSuffix(filename, ".zip") {
+		// Load the rom from a zip file
+		reader, err := zip.OpenReader(filename)
+		if err != nil {
+			return nil, err
+		}
+		if len(reader.File) != 1 {
+			return nil, errors.New("Zip must contain one file")
+		}
+		for _, f := range reader.File {
+			fo, err := f.Open()
+			if err != nil {
+				return nil, err
+			}
+			data, err = ioutil.ReadAll(fo)
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		// Load the file as a rom
+		var err error
+		data, err = ioutil.ReadFile(filename)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return data, nil
 }
 
 // Attempt to load a save game from the expected location.
