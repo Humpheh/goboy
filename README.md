@@ -76,7 +76,7 @@ Feel free to open pull requests to this project or play around if you're interes
 ## Known Bugs 
 - [ ] Sprite Z-drawing
 - [x] Top half of sprite disappearing off top of screen
-- [ ] Small sprites row glitch
+- [x] Small sprites row glitch
 - [ ] Many CGB bugs
 - [ ] BG tile window offset issue - visible on *Pokemon Red* splash screen - possibly mistimed interrupt?
 
