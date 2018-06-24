@@ -247,18 +247,20 @@ func (gb *Gameboy) updateGraphics(cycles int) {
 
 	if gb.ScanlineCounter <= 0 {
 		gb.Memory.Data[0xFF44]++
-		currentLine := gb.Memory.Read(0xFF44)
-		gb.ScanlineCounter += 456 * gb.getSpeed()
-
-		if currentLine == 144 {
-			gb.requestInterrupt(0)
-		} else if currentLine > 153 {
+		if gb.Memory.Data[0xFF44] > 153 {
 			gb.PreparedData = gb.ScreenData
 			gb.ScreenData = [160][144][3]uint8{}
 			gb.Memory.Data[0xFF44] = 0
-			gb.drawScanline(0)
-		} else if currentLine < 144 {
+		}
+
+		currentLine := gb.Memory.Read(0xFF44)
+		gb.ScanlineCounter += 456 * gb.getSpeed()
+
+		if currentLine < 144 {
 			gb.drawScanline(currentLine)
+		}
+		if currentLine == 144 {
+			gb.requestInterrupt(0)
 		}
 	}
 }
@@ -353,7 +355,7 @@ func (gb *Gameboy) drawScanline(scanline byte) {
 // Render a scanline of the tile map to the graphics output based
 // on the state of the lcdControl register.
 func (gb *Gameboy) renderTiles(lcdControl byte, scanline byte) {
-	unsig := false
+	unsigned := false
 	tileData := uint16(0x8800)
 
 	scrollY := gb.Memory.Read(0xFF42)
@@ -373,7 +375,7 @@ func (gb *Gameboy) renderTiles(lcdControl byte, scanline byte) {
 	// Test if we're using unsigned bytes
 	if bits.Test(lcdControl, 4) {
 		tileData = 0x8000
-		unsig = true
+		unsigned = true
 	}
 
 	var testBit byte = 3
@@ -415,7 +417,7 @@ func (gb *Gameboy) renderTiles(lcdControl byte, scanline byte) {
 
 		// Deduce where this tile id is in memory
 		tileLocation := tileData
-		if unsig {
+		if unsigned {
 			tileNum := int16(gb.Memory.VRAM[tileAddress-0x8000])
 			tileLocation = tileLocation + uint16(tileNum*16)
 		} else {
@@ -440,6 +442,7 @@ func (gb *Gameboy) renderTiles(lcdControl byte, scanline byte) {
 		// Get the tile data from in memory
 		var line = (yPos % 8) * 2
 		if gb.IsCGB() && bits.Test(tileAttr, 6) {
+			// Vertical flip
 			line = 16 - line
 		}
 		data1 := gb.Memory.VRAM[tileLocation+uint16(line)-bankOffset]
@@ -447,12 +450,11 @@ func (gb *Gameboy) renderTiles(lcdControl byte, scanline byte) {
 
 		// TODO: Fix this
 		if gb.IsCGB() && bits.Test(tileAttr, 5) {
+			// Horizontal flip
 			xPos = 7 - xPos
 		}
 		colourBit := byte(int8((xPos%8)-7) * -1)
 		colourNum := (bits.Val(data2, colourBit) << 1) | bits.Val(data1, colourBit)
-
-		// TODO:
 
 		// Set the pixel
 		if gb.IsCGB() {
