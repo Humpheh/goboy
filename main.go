@@ -32,6 +32,7 @@ var (
 	sound      = flag.Bool("sound", false, "set to enable sound emulation (experimental)")
 	vsyncOff   = flag.Bool("disableVsync", false, "set to disable vsync")
 	cgbMode    = flag.Bool("cgb", false, "set to enable cgb mode")
+	saveState  = flag.String("load", "", "location of save state to load (experimental)")
 )
 
 func main() {
@@ -56,7 +57,6 @@ func start() {
 	fmt.Printf(" %-5v: %v\n", "Sound", *sound)
 	fmt.Printf(" %-5v: %v\n\n", "CGB", *cgbMode)
 
-	// Initialise the GameBoy with the flag options
 	var opts []gb.GameboyOption
 	if *cgbMode {
 		opts = append(opts, gb.WithCGBEnabled())
@@ -64,9 +64,21 @@ func start() {
 	if *sound {
 		opts = append(opts, gb.WithSound())
 	}
-	gameboy, err := gb.NewGameboy(*rom, opts...)
-	if err != nil {
-		log.Fatal(err)
+
+	var gameboy *gb.Gameboy
+	var err error
+	if *rom != "" {
+		// Initialise the GameBoy with the flag options
+		gameboy, err = gb.NewGameboy(*rom, opts...)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		// Load the gameboy from a save state
+		gameboy, err = gb.NewGameboyFromGob(*saveState)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	monitor := iopixel.NewPixelsIOBinding(gameboy, *vsyncOff)

@@ -9,7 +9,7 @@ import (
 // Memory stores gameboy ROM, RAM and cartridge data. It manages the
 // banking of these data banks.
 type Memory struct {
-	GB   *Gameboy
+	gb   *Gameboy
 	Cart *Cartridge
 	Data [0x10000]byte
 	// VRAM bank 1-2 data
@@ -31,7 +31,7 @@ type Memory struct {
 
 // Init the gb memory to the post-boot values.
 func (mem *Memory) Init(gameboy *Gameboy) {
-	mem.GB = gameboy
+	mem.gb = gameboy
 
 	// Set the default values
 	mem.Data[0xFF05] = 0x00
@@ -93,29 +93,29 @@ func (mem *Memory) LoadCart(loc string) (bool, error) {
 func (mem *Memory) Write(address uint16, value byte) {
 	switch {
 	case address >= 0xFF10 && address <= 0xFF26:
-		mem.GB.Sound.Write(address, value)
+		mem.gb.Sound.Write(address, value)
 
 	case address >= 0xFF30 && address <= 0xFF3F:
 		// Writing to channel 3 waveform RAM.
 		mem.Data[address] = value
 		soundIndex := (address - 0xFF30) * 2
-		mem.GB.Sound.waveformRam[soundIndex] = int8((value >> 4) & 0xF)
-		mem.GB.Sound.waveformRam[soundIndex+1] = int8(value & 0xF)
+		mem.gb.Sound.waveformRam[soundIndex] = int8((value >> 4) & 0xF)
+		mem.gb.Sound.waveformRam[soundIndex+1] = int8(value & 0xF)
 
 	case address == TMC:
 		// Timer control
-		currentFreq := mem.GB.getClockFreq()
+		currentFreq := mem.gb.getClockFreq()
 		mem.Data[TMC] = value
-		newFreq := mem.GB.getClockFreq()
+		newFreq := mem.gb.getClockFreq()
 
 		if currentFreq != newFreq {
-			mem.GB.setClockFreq()
+			mem.gb.setClockFreq()
 		}
 
 	case address == 0xFF02:
 		// Serial transfer control
 		if value == 0x81 {
-			f := mem.GB.TransferFunction
+			f := mem.gb.options.transferFunction
 			if f != nil {
 				f(mem.Read(0xFF01))
 			}
@@ -123,12 +123,12 @@ func (mem *Memory) Write(address uint16, value byte) {
 
 	case address == 0xFF04:
 		// Trap divider register
-		mem.GB.setClockFreq()
-		mem.GB.CPU.Divider = 0
+		mem.gb.setClockFreq()
+		mem.gb.CPU.Divider = 0
 		mem.Data[0xFF04] = 0
 
 	case address == 0xFF05:
-		mem.GB.setClockFreq()
+		mem.gb.setClockFreq()
 		mem.Data[0xFF05] = value
 
 	case address == 0xFF44:
@@ -144,13 +144,13 @@ func (mem *Memory) Write(address uint16, value byte) {
 
 	case address == 0xFF4F:
 		// VRAM bank (CGB only)
-		if mem.GB.IsCGB() {
+		if mem.gb.IsCGB() {
 			mem.VRAMBank = value & 0x1
 		}
 
 	case address == 0xFF70:
 		// WRAM1 bank (CGB mode)
-		if mem.GB.IsCGB() {
+		if mem.gb.IsCGB() {
 			mem.WRAM1Bank = value & 0x7
 			if mem.WRAM1Bank == 0 {
 				mem.WRAM1Bank = 1
@@ -159,33 +159,33 @@ func (mem *Memory) Write(address uint16, value byte) {
 
 	case address == 0xFF68:
 		// BG palette index
-		if mem.GB.IsCGB() {
-			mem.GB.BGPalette.updateIndex(value)
+		if mem.gb.IsCGB() {
+			mem.gb.BGPalette.updateIndex(value)
 		}
 
 	case address == 0xFF69:
 		// BG Palette data
-		if mem.GB.IsCGB() {
-			mem.GB.BGPalette.write(value)
+		if mem.gb.IsCGB() {
+			mem.gb.BGPalette.write(value)
 		}
 
 	case address == 0xFF6A:
 		// Sprite palette index
-		if mem.GB.IsCGB() {
-			mem.GB.SpritePalette.updateIndex(value)
+		if mem.gb.IsCGB() {
+			mem.gb.SpritePalette.updateIndex(value)
 		}
 
 	case address == 0xFF6B:
 		// Sprite Palette data
-		if mem.GB.IsCGB() {
-			mem.GB.SpritePalette.write(value)
+		if mem.gb.IsCGB() {
+			mem.gb.SpritePalette.write(value)
 		}
 
 	case address == 0xFF4D:
 		// CGB speed change
-		if mem.GB.IsCGB() {
+		if mem.gb.IsCGB() {
 			log.Print("Change speed")
-			mem.GB.prepareSpeed = bits.Test(value, 0)
+			mem.gb.prepareSpeed = bits.Test(value, 0)
 		}
 
 	case address >= 0xFF72 && address <= 0xFF77:
@@ -229,7 +229,7 @@ func (mem *Memory) Read(address uint16) byte {
 	switch {
 	// Joypad address
 	case address == 0xFF00:
-		return mem.GB.joypadValue(mem.Data[0xFF00])
+		return mem.gb.joypadValue(mem.Data[0xFF00])
 
 	case address == 0xFF0F:
 		return mem.Data[0xFF0F] | 0xE0
@@ -240,35 +240,35 @@ func (mem *Memory) Read(address uint16) byte {
 
 	case address == 0xFF68:
 		// BG palette index
-		if mem.GB.IsCGB() {
-			return mem.GB.BGPalette.readIndex()
+		if mem.gb.IsCGB() {
+			return mem.gb.BGPalette.readIndex()
 		}
 		return 0
 
 	case address == 0xFF69:
 		// BG Palette data
-		if mem.GB.IsCGB() {
-			return mem.GB.BGPalette.read()
+		if mem.gb.IsCGB() {
+			return mem.gb.BGPalette.read()
 		}
 		return 0
 
 	case address == 0xFF6A:
 		// Sprite palette index
-		if mem.GB.IsCGB() {
-			return mem.GB.SpritePalette.readIndex()
+		if mem.gb.IsCGB() {
+			return mem.gb.SpritePalette.readIndex()
 		}
 		return 0
 
 	case address == 0xFF6B:
 		// Sprite Palette data
-		if mem.GB.IsCGB() {
-			return mem.GB.SpritePalette.read()
+		if mem.gb.IsCGB() {
+			return mem.gb.SpritePalette.read()
 		}
 		return 0
 
 	case address == 0xFF4D:
 		// Speed switch data
-		return mem.GB.currentSpeed<<7 | bits.B(mem.GB.prepareSpeed)
+		return mem.gb.currentSpeed<<7 | bits.B(mem.gb.prepareSpeed)
 
 	case address == 0xFF4F:
 		return mem.VRAMBank

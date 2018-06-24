@@ -1258,7 +1258,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	case 0xCB:
 		nextInst := gb.popPC()
 		gb.thisCpuTicks += CBOpcodeCycles[nextInst] * 4
-		gb.CBInst[nextInst]()
+		gb.cbInst[nextInst]()
 
 	default:
 		log.Printf("Unimplemented opcode: %#2x", opcode)

@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 
+	"encoding/gob"
+	"os"
+
 	"github.com/Humpheh/goboy/bits"
 )
 
@@ -38,18 +41,17 @@ type Gameboy struct {
 	InterruptsOn       bool
 	Halted             bool
 
-	CBInst    map[byte]func()
+	cbInst    map[byte]func()
 	InputMask byte
-	// Callback when the serial port is written to
-	TransferFunction func(byte)
-	Debug            DebugFlags
-	ExecutionPaused  bool
+
+	Debug           DebugFlags
+	ExecutionPaused bool
 
 	// Flag if the game is running in cgb mode. For this to be true the game
 	// rom must support cgb mode and the option be true.
-	cgbMode       bool
-	BGPalette     *CGBPalette
-	SpritePalette *CGBPalette
+	CGBMode       bool
+	BGPalette     *cgbPalette
+	SpritePalette *cgbPalette
 
 	currentSpeed byte
 	prepareSpeed bool
@@ -606,7 +608,7 @@ func (gb *Gameboy) IsGameLoaded() bool {
 
 // IsCGB returns if we are using CGB features
 func (gb *Gameboy) IsCGB() bool {
-	return gb.cgbMode
+	return gb.CGBMode
 }
 
 // Initialise the Gameboy using a path to a rom.
@@ -629,18 +631,33 @@ func (gb *Gameboy) init(romFile string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open rom file: %s", err)
 	}
-	gb.cgbMode = gb.options.cgbMode && hasCGB
+	gb.CGBMode = gb.options.cgbMode && hasCGB
 
 	gb.Debug = DebugFlags{}
 	gb.ScanlineCounter = 456
 	gb.TimerCounter = 1024
 	gb.InputMask = 0xFF
 
-	gb.CBInst = gb.cbInstructions()
+	gb.cbInst = gb.cbInstructions()
 
 	gb.SpritePalette = NewPalette()
 	gb.BGPalette = NewPalette()
 
+	return nil
+}
+
+func (gb *Gameboy) Gob() error {
+	f, err := os.Create("test.gob")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	enc := gob.NewEncoder(f)
+	err = enc.Encode(gb)
+	if err != nil {
+		return err
+	}
+	log.Print("Gob'd")
 	return nil
 }
 
@@ -655,5 +672,26 @@ func NewGameboy(romFile string, opts ...GameboyOption) (*Gameboy, error) {
 	if err != nil {
 		return nil, err
 	}
+	return &gameboy, nil
+}
+
+func NewGameboyFromGob(gobFile string, opts ...GameboyOption) (*Gameboy, error) {
+	f, err := os.Open(gobFile)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	dec := gob.NewDecoder(f)
+	gameboy := Gameboy{}
+	for _, opt := range opts {
+		opt(&gameboy.options)
+	}
+	err = dec.Decode(&gameboy)
+	if err != nil {
+		return nil, err
+	}
+	gameboy.Memory.gb = &gameboy
+	gameboy.Sound.Init(&gameboy)
+	gameboy.cbInst = gameboy.cbInstructions()
 	return &gameboy, nil
 }
