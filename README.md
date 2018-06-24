@@ -83,6 +83,7 @@ Feel free to open pull requests to this project or play around if you're interes
 ## TODO List
 - [x] MBC3 banking support
 - [x] GameBoy Color support (partial)
+- [ ] Move APU into io bindings
 - [ ] MBC3 clock support
 - [ ] Complete Sound emulation
 - [ ] Complete CGB emulation

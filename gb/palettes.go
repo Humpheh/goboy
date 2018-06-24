@@ -15,8 +15,8 @@ const (
 	PaletteRGB
 )
 
-var currentPalette = PaletteRGB
-var palettes = map[byte][4][3]uint8{
+var CurrentPalette = PaletteRGB
+var Palettes = map[byte][4][3]uint8{
 	// Greyscale palette
 	PaletteGreyscale: {
 		{0xFF, 0xFF, 0xFF},
@@ -43,7 +43,7 @@ var palettes = map[byte][4][3]uint8{
 // GetPaletteColour returns the colour based on the colour index and the currently
 // selected palette.
 func GetPaletteColour(index byte) (uint8, uint8, uint8) {
-	col := palettes[currentPalette][index]
+	col := Palettes[CurrentPalette][index]
 	return col[0], col[1], col[2]
 }
 

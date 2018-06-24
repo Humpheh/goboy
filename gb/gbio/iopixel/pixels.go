@@ -1,4 +1,4 @@
-package gb
+package iopixel
 
 import (
 	"fmt"
@@ -6,44 +6,30 @@ import (
 	"log"
 
 	"github.com/Humpheh/goboy/bits"
+	"github.com/Humpheh/goboy/gb"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 )
 
+// PixelScale is the multiplier on the pixels on display
 var PixelScale float64 = 3
 
-// Interface the screen and input bindings.
-type IOBinding interface {
-	// Initialise the IOBinding
-	Init(disableVsync bool)
-	// Render a frame of the game
-	RenderScreen()
-	// Destroy the IOBinding instance
-	Destroy()
-	// Process input
-	ProcessInput()
-	// Set the title of the window
-	SetTitle(fps int)
-}
-
-// Get an Pixelsgl IOBinding
-func NewPixelsIOBinding(gameboy *Gameboy, disableVsync bool, cgbMode bool) PixelsIOBinding {
-	monitor := PixelsIOBinding{Gameboy: gameboy, cgbMode: cgbMode}
+// NewPixelsIOBinding returns a new Pixelsgl IOBinding
+func NewPixelsIOBinding(gameboy *gb.Gameboy, disableVsync bool) PixelsIOBinding {
+	monitor := PixelsIOBinding{Gameboy: gameboy}
 	monitor.Init(disableVsync)
 	return monitor
 }
 
 // PixelsIOBinding binds screen output and input using the pixels library.
 type PixelsIOBinding struct {
-	IOBinding
-	Gameboy *Gameboy
+	Gameboy *gb.Gameboy
 	Window  *pixelgl.Window
 	picture *pixel.PictureData
 	Frames  int
-	cgbMode bool
 }
 
-// Initialise the Pixels bindings.
+// Init initalises the Pixels bindings.
 func (mon *PixelsIOBinding) Init(disableVsync bool) {
 	cfg := pixelgl.WindowConfig{
 		Title: "GoBoy",
@@ -68,7 +54,7 @@ func (mon *PixelsIOBinding) Init(disableVsync bool) {
 	}
 }
 
-// Update the window camera to center the output.
+// UpdateCamera updates the window camera to center the output.
 func (mon *PixelsIOBinding) UpdateCamera() {
 	center := pixel.Vec{X: 80 * PixelScale, Y: 72 * PixelScale}
 	if mon.Window.Monitor() != nil {
@@ -79,13 +65,13 @@ func (mon *PixelsIOBinding) UpdateCamera() {
 	mon.Window.SetMatrix(cam)
 }
 
-// Returns a bool of if the game should still be running. When
+// IsRunning returns if the game should still be running. When
 // the window is closed this will be false so the game stops.
 func (mon *PixelsIOBinding) IsRunning() bool {
 	return !mon.Window.Closed()
 }
 
-// Render the pixels on the screen.
+// RenderScreen renders the pixels on the screen.
 func (mon *PixelsIOBinding) RenderScreen() {
 	mon.Frames++
 	for y := 0; y < 144; y++ {
@@ -96,7 +82,7 @@ func (mon *PixelsIOBinding) RenderScreen() {
 		}
 	}
 
-	r, g, b := GetPaletteColour(3)
+	r, g, b := gb.GetPaletteColour(3)
 	bg := color.RGBA{R: r, G: g, B: b, A: 0xFF}
 	mon.Window.Clear(bg)
 
@@ -106,7 +92,12 @@ func (mon *PixelsIOBinding) RenderScreen() {
 	mon.Window.Update()
 }
 
-// Set the title of the game window.
+// Destroy implements IOBinding.Destroy.
+func (mon *PixelsIOBinding) Destroy() {
+	mon.Window.Destroy()
+}
+
+// SetTitle sets the title of the game window.
 func (mon *PixelsIOBinding) SetTitle(fps int) {
 	title := "GoBoy"
 	if mon.Gameboy.IsGameLoaded() {
@@ -147,7 +138,7 @@ var extraKeyMap = map[pixelgl.Button]func(*PixelsIOBinding){
 
 	// Change GB colour palette
 	pixelgl.KeyEqual: func(mon *PixelsIOBinding) {
-		currentPalette = (currentPalette + 1) % byte(len(palettes))
+		gb.CurrentPalette = (gb.CurrentPalette + 1) % byte(len(gb.Palettes))
 	},
 
 	// GPU debugging
@@ -227,7 +218,7 @@ func (mon *PixelsIOBinding) processGBInput() {
 	for key, offset := range keyMap {
 		if mon.Window.JustPressed(key) {
 			mon.Gameboy.InputMask = bits.Reset(mon.Gameboy.InputMask, offset)
-			mon.Gameboy.requestInterrupt(4) // Joypad interrupt
+			mon.Gameboy.RequestJoypadInterrupt() // Joypad interrupt
 		}
 		if mon.Window.JustReleased(key) {
 			mon.Gameboy.InputMask = bits.Set(mon.Gameboy.InputMask, offset)
