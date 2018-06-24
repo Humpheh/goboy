@@ -450,16 +450,17 @@ func (gb *Gameboy) renderTiles(lcdControl byte, scanline byte) {
 			bankOffset = 0x6000
 		}
 
-		// Get the tile data from in memory
-		var line = (yPos % 8) * 2
+		var line byte
 		if gb.IsCGB() && bits.Test(tileAttr, 6) {
 			// Vertical flip
-			line = 16 - line
+			line = ((7 - yPos) % 8) * 2
+		} else {
+			line = (yPos % 8) * 2
 		}
+		// Get the tile data from memory
 		data1 := gb.Memory.VRAM[tileLocation+uint16(line)-bankOffset]
 		data2 := gb.Memory.VRAM[tileLocation+uint16(line)+1-bankOffset]
 
-		// TODO: Fix this
 		if gb.IsCGB() && bits.Test(tileAttr, 5) {
 			// Horizontal flip
 			xPos = 7 - xPos
@@ -537,7 +538,7 @@ func (gb *Gameboy) renderSprites(lcdControl byte, scanline int32) {
 		// Set the line to draw based on if the sprite is flipped on the y
 		line := scanline - yPos
 		if yFlip {
-			line = (line - ySize) * -1
+			line = ySize - line - 1
 		}
 
 		// Load the data containing the sprite data for this line
