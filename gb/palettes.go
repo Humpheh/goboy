@@ -17,7 +17,7 @@ const (
 
 var currentPalette = PaletteRGB
 var palettes = map[byte][4][3]uint8{
-	// Greyscale paletter
+	// Greyscale palette
 	PaletteGreyscale: {
 		{0xFF, 0xFF, 0xFF},
 		{0xCC, 0xCC, 0xCC},
