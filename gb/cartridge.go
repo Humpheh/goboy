@@ -334,7 +334,7 @@ func (cart *Cartridge) enableRAMBank(address uint16, value byte) {
 		}
 	}
 
-	var test byte = value & 0xF
+	var test = value & 0xF
 	if test == 0xA {
 		cart.enableRAM = true
 	} else if test == 0x0 {
