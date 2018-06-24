@@ -21,6 +21,8 @@ const (
 // Gameboy is the master struct which contains all of the sub components
 // for running the Gameboy emulator.
 type Gameboy struct {
+	options gameboyOptions
+
 	Memory          *Memory
 	CPU             *CPU
 	Sound           *Sound
@@ -41,18 +43,19 @@ type Gameboy struct {
 	// Callback when the serial port is written to
 	TransferFunction func(byte)
 	Debug            DebugFlags
-	EnableSound      bool
 	ExecutionPaused  bool
 
-	CGBMode       bool
+	// Flag if the game is running in cgb mode. For this to be true the game
+	// rom must support cgb mode and the option be true.
+	cgbMode       bool
 	BGPalette     *CGBPalette
 	SpritePalette *CGBPalette
 
-	CurrentSpeed byte
-	PrepareSpeed bool
+	currentSpeed byte
+	prepareSpeed bool
 
 	thisCpuTicks int
-	DebugScanner *bufio.Scanner
+	debugScanner *bufio.Scanner
 }
 
 // Update should be called 60 times/second. This will update the state
@@ -90,21 +93,21 @@ func (gb *Gameboy) Update() int {
 
 // Get the current CPU speed multiplier (either 1 or 2).
 func (gb *Gameboy) getSpeed() int {
-	return int(gb.CurrentSpeed + 1)
+	return int(gb.currentSpeed + 1)
 }
 
 // Check if the speed needs to be switched for CGB mode.
 func (gb *Gameboy) checkSpeedSwitch() {
 	// TODO: This should actually happen after a STOP after asking to switch
-	if gb.PrepareSpeed {
+	if gb.prepareSpeed {
 		// Switch speed
-		gb.PrepareSpeed = false
-		if gb.CurrentSpeed == 0 {
-			gb.CurrentSpeed = 1
+		gb.prepareSpeed = false
+		if gb.currentSpeed == 0 {
+			gb.currentSpeed = 1
 		} else {
-			gb.CurrentSpeed = 0
+			gb.currentSpeed = 0
 		}
-		log.Print("new speed", gb.CurrentSpeed)
+		log.Print("new speed", gb.currentSpeed)
 		gb.Halted = false
 	}
 }
@@ -159,6 +162,12 @@ func (gb *Gameboy) dividerRegister(cycles int) {
 		gb.CPU.Divider -= 255
 		gb.Memory.Data[0xFF04]++
 	}
+}
+
+// RequestJoypadInterrupt triggers a joypad interrupt. To be called by the io
+// binding implementation.
+func (gb *Gameboy) RequestJoypadInterrupt() {
+	gb.requestInterrupt(4) // Joypad interrupt
 }
 
 // Request the Gameboy to perform an interrupt.
@@ -597,16 +606,16 @@ func (gb *Gameboy) IsGameLoaded() bool {
 
 // IsCGB returns if we are using CGB features
 func (gb *Gameboy) IsCGB() bool {
-	return gb.CGBMode
+	return gb.cgbMode
 }
 
-// Init initalises the gameboy using a
-func (gb *Gameboy) Init(romFile string, enableCGB bool) error {
+// Initialise the Gameboy using a path to a rom.
+func (gb *Gameboy) init(romFile string) error {
 	gb.ExecutionPaused = false
 
 	// Initialise the CPU
 	gb.CPU = &CPU{}
-	gb.CPU.Init(enableCGB)
+	gb.CPU.Init(gb.options.cgbMode)
 
 	// Initialise the memory
 	gb.Memory = &Memory{}
@@ -616,12 +625,11 @@ func (gb *Gameboy) Init(romFile string, enableCGB bool) error {
 	gb.Sound.Init(gb)
 
 	// Load the ROM file
-	hasCGB, err := gb.Memory.LoadCart(romFile, enableCGB)
+	hasCGB, err := gb.Memory.LoadCart(romFile)
 	if err != nil {
-		return fmt.Errorf("could not open rom file: %s", err)
+		return fmt.Errorf("failed to open rom file: %s", err)
 	}
-
-	gb.CGBMode = enableCGB && hasCGB
+	gb.cgbMode = gb.options.cgbMode && hasCGB
 
 	gb.Debug = DebugFlags{}
 	gb.ScanlineCounter = 456
@@ -634,4 +642,18 @@ func (gb *Gameboy) Init(romFile string, enableCGB bool) error {
 	gb.BGPalette = NewPalette()
 
 	return nil
+}
+
+// NewGameboy returns a new Gameboy instance.
+func NewGameboy(romFile string, opts ...GameboyOption) (*Gameboy, error) {
+	// Build the gameboy
+	gameboy := Gameboy{}
+	for _, opt := range opts {
+		opt(&gameboy.options)
+	}
+	err := gameboy.init(romFile)
+	if err != nil {
+		return nil, err
+	}
+	return &gameboy, nil
 }

@@ -48,8 +48,8 @@ var CBOpcodeCycles = []int{
 // ExecuteNextOpcode gets the value at the current PC address, increments the PC,
 // updates the CPU ticks and executes the opcode.
 func (gb *Gameboy) ExecuteNextOpcode() int {
-	if gb.DebugScanner != nil {
-		expectedCPU, ff0f := getDebugNum(gb.DebugScanner)
+	if gb.debugScanner != nil {
+		expectedCPU, ff0f := getDebugNum(gb.debugScanner)
 		myff0f := uint16(gb.Memory.Read(0xFF05))
 		logOpcode(gb)
 		fmt.Println(cpuStateString(gb.CPU, "GoBoy"), fmt.Sprintf("%b", myff0f))

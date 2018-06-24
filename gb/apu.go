@@ -152,7 +152,7 @@ func (s *Sound) Init(gb *Gameboy) {
 		s.channel3.Stream(float64(sampleRate)),
 		s.channel4.Stream(float64(sampleRate)),
 	)
-	if gb.EnableSound {
+	if gb.options.sound {
 		speaker.Play(mix)
 	}
 	s.gb = gb

@@ -82,9 +82,9 @@ func (mem *Memory) Init(gameboy *Gameboy) {
 }
 
 // LoadCart load a cart rom into memory.
-func (mem *Memory) LoadCart(loc string, enableCGB bool) (bool, error) {
+func (mem *Memory) LoadCart(loc string) (bool, error) {
 	mem.Cart = &Cartridge{}
-	return mem.Cart.Load(loc, enableCGB)
+	return mem.Cart.Load(loc)
 }
 
 // Write a value at an address to the relevant location based on the
@@ -185,7 +185,7 @@ func (mem *Memory) Write(address uint16, value byte) {
 		// CGB speed change
 		if mem.GB.IsCGB() {
 			log.Print("Change speed")
-			mem.GB.PrepareSpeed = bits.Test(value, 0)
+			mem.GB.prepareSpeed = bits.Test(value, 0)
 		}
 
 	case address >= 0xFF72 && address <= 0xFF77:
@@ -268,7 +268,7 @@ func (mem *Memory) Read(address uint16) byte {
 
 	case address == 0xFF4D:
 		// Speed switch data
-		return mem.GB.CurrentSpeed<<7 | bits.B(mem.GB.PrepareSpeed)
+		return mem.GB.currentSpeed<<7 | bits.B(mem.GB.prepareSpeed)
 
 	case address == 0xFF4F:
 		return mem.VRAMBank

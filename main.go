@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/Humpheh/goboy/gb"
+	"github.com/Humpheh/goboy/gb/gbio/iopixel"
 	"github.com/faiface/pixel/pixelgl"
 )
 
@@ -55,25 +56,20 @@ func start() {
 	fmt.Printf(" %-5v: %v\n", "Sound", *sound)
 	fmt.Printf(" %-5v: %v\n\n", "CGB", *cgbMode)
 
-	// Initialise the GameBoy.
-	gameboy := gb.Gameboy{
-		EnableSound: *sound,
+	// Initialise the GameBoy with the flag options
+	var opts []gb.GameboyOption
+	if *cgbMode {
+		opts = append(opts, gb.WithCGBEnabled())
+	}
+	if *sound {
+		opts = append(opts, gb.WithSound())
+	}
+	gameboy, err := gb.NewGameboy(*rom, opts...)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	// Get the name of the ROM cartridge.
-	romFile := *rom
-	if romFile == "" {
-		// If no rom, use menu
-		gameboy.EnableSound = true
-	} else {
-		err := gameboy.Init(romFile, *cgbMode)
-		if err != nil {
-			flag.PrintDefaults()
-			log.Fatal(err)
-		}
-	}
-
-	monitor := gb.NewPixelsIOBinding(&gameboy, *vsyncOff, *cgbMode)
+	monitor := iopixel.NewPixelsIOBinding(gameboy, *vsyncOff)
 
 	perframe := time.Second / gb.FramesSecond
 	ticker := time.NewTicker(perframe)

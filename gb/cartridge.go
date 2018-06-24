@@ -54,7 +54,7 @@ func (cart *Cartridge) GetSaveFilename() string {
 
 // Load a bin file as a cartridge. Returns a boolean if the cart
 // has a cgb mode.
-func (cart *Cartridge) Load(filename string, enableCGB bool) (bool, error) {
+func (cart *Cartridge) Load(filename string) (bool, error) {
 	// Load the file into ROM
 	var err error
 	cart.filename = filename
