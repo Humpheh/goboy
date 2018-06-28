@@ -18,7 +18,7 @@ const (
 
 	TIMA = 0xFF05
 	TMA  = 0xFF06
-	TMC  = 0xFF07
+	TAC  = 0xFF07
 )
 
 // Gameboy is the master struct which contains all of the sub components
@@ -122,23 +122,23 @@ func (gb *Gameboy) updateTimers(cycles int) {
 
 		if gb.TimerCounter <= 0 {
 			gb.TimerCounter += gb.getClockFreqCount()
-
-			if gb.Memory.Read(TIMA) == 255 {
+			tima := gb.Memory.Read(TIMA)
+			if tima == 255 {
 				gb.Memory.Write(TIMA, gb.Memory.Read(TMA))
 				gb.requestInterrupt(2)
 			} else {
-				gb.Memory.Write(TIMA, gb.Memory.Read(TIMA)+1)
+				gb.Memory.Write(TIMA, tima+1)
 			}
 		}
 	}
 }
 
 func (gb *Gameboy) isClockEnabled() bool {
-	return bits.Test(gb.Memory.Read(TMC), 2)
+	return bits.Test(gb.Memory.Read(TAC), 2)
 }
 
 func (gb *Gameboy) getClockFreq() byte {
-	return gb.Memory.Read(TMC) & 0x3
+	return gb.Memory.Read(TAC) & 0x3
 }
 
 func (gb *Gameboy) getClockFreqCount() int {

@@ -102,15 +102,21 @@ func (mem *Memory) Write(address uint16, value byte) {
 		mem.gb.Sound.waveformRam[soundIndex] = int8((value >> 4) & 0xF)
 		mem.gb.Sound.waveformRam[soundIndex+1] = int8(value & 0xF)
 
-	case address == TMC:
+	case address == TAC:
+		log.Printf("TAC: %0#2v", value)
 		// Timer control
 		currentFreq := mem.gb.getClockFreq()
-		mem.Data[TMC] = value
+		mem.Data[TAC] = value
 		newFreq := mem.gb.getClockFreq()
 
 		if currentFreq != newFreq {
 			mem.gb.setClockFreq()
 		}
+
+	case address == TIMA:
+		log.Printf("TIMA WRITE %0#2v", value)
+		//mem.gb.setClockFreq()
+		mem.Data[TIMA] = value
 
 	case address == 0xFF02:
 		// Serial transfer control
@@ -126,10 +132,6 @@ func (mem *Memory) Write(address uint16, value byte) {
 		mem.gb.setClockFreq()
 		mem.gb.CPU.Divider = 0
 		mem.Data[0xFF04] = 0
-
-	case address == 0xFF05:
-		mem.gb.setClockFreq()
-		mem.Data[0xFF05] = value
 
 	case address == 0xFF44:
 		// Trap scanline register
