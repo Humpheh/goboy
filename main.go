@@ -15,7 +15,7 @@ import (
 )
 
 // The version of GoBoy
-const version = "v0.1"
+const version = "v0.1.1"
 
 const logo = `
     ______      ____
@@ -83,7 +83,7 @@ func start() {
 
 	monitor := iopixel.NewPixelsIOBinding(gameboy, *vsyncOff)
 
-	perframe := time.Second / gb.FramesSecond
+	perframe := time.Duration(float64(time.Second)*gb.SpeedDivider) / gb.FramesSecond
 	ticker := time.NewTicker(perframe)
 	start := time.Now()
 

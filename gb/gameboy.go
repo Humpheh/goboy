@@ -11,6 +11,8 @@ import (
 	"github.com/Humpheh/goboy/bits"
 )
 
+var SpeedDivider float64 = 1
+
 const (
 	ClockSpeed   = 4194304
 	FramesSecond = 60
@@ -174,6 +176,7 @@ func (gb *Gameboy) RequestJoypadInterrupt() {
 
 // Request the Gameboy to perform an interrupt.
 func (gb *Gameboy) requestInterrupt(interrupt byte) {
+	//log.Print("REQ interrupt ", interrupt)
 	req := gb.Memory.Read(0xFF0F)
 	req = bits.Set(req, interrupt)
 	gb.Memory.Write(0xFF0F, req)
@@ -214,6 +217,7 @@ var interruptAddresses = map[byte]uint16{
 // Called if an interrupt has been raised. Will check if interrupts are
 // enabled and will jump to the interrupt address.
 func (gb *Gameboy) serviceInterrupt(interrupt byte) {
+	//log.Print("SER interrupt ", interrupt)
 	// If was halted without interrupts, do not jump or reset IF
 	if !gb.InterruptsOn && gb.Halted {
 		gb.Halted = false

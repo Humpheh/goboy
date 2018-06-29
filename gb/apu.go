@@ -2,11 +2,9 @@ package gb
 
 import (
 	"math"
-	"time"
 
 	"github.com/Humpheh/goboy/bits"
-	"github.com/faiface/beep"
-	"github.com/faiface/beep/speaker"
+	"github.com/Humpheh/goboy/gb/sound"
 )
 
 var squarelimits = map[byte]float64{
@@ -24,7 +22,7 @@ type envelopeSound struct {
 	Increasing bool
 }
 
-func (env *envelopeSound) Update(secs float64, channel *Channel) {
+func (env *envelopeSound) Update(secs float64, channel *sound.Channel) {
 	if env.Steps > 0 {
 		env.Time += secs
 		if env.Time > env.StepLen {
@@ -65,7 +63,7 @@ var sweeptime = map[byte]float64{
 	7: 54.7 / 1000,
 }
 
-func (swp *sweepSound) Update(secs float64, channel *Channel) {
+func (swp *sweepSound) Update(secs float64, channel *sound.Channel) {
 	/*
 		FF10 - NR10 - Channel 1 Sweep register (R/W)
 		  Bit 6-4 - Sweep Time
@@ -108,53 +106,53 @@ type Sound struct {
 	gb *Gameboy
 
 	// Channel 1 variables
-	channel1        *Channel
+	channel1        *sound.Channel
 	channel1TimeVal float64
 	channel1Time    float64
 	channel1Env     *envelopeSound
 	channel1Sweep   *sweepSound
 
 	// Channel 2 variables
-	channel2        *Channel
+	channel2        *sound.Channel
 	channel2Time    float64
 	channel2TimeVal float64
 	channel2Env     *envelopeSound
 	channel2Sweep   *sweepSound
 
 	// Channel 3 variables
-	channel3     *Channel
+	channel3     *sound.Channel
 	channel3Time float64
 
 	// Channel 4 variables
-	channel4     *Channel
+	channel4     *sound.Channel
 	channel4Time float64
 	channel4Env  *envelopeSound
 
 	waveformRam [32]int8
 	Time        float64
+
+	mixer *sound.Mixer
 }
 
 // Initialise the sound emulation for a gameboy.
 func (s *Sound) Init(gb *Gameboy) {
-	sampleRate := beep.SampleRate(41040)
-	speaker.Init(sampleRate, sampleRate.N(time.Second/30))
+	//sampleRate := beep.SampleRate(41040)
+	//speaker.Init(sampleRate, sampleRate.N(time.Second/30))
 
 	s.Time = 0
-	// Create the channels with their sounds
-	s.channel1 = NewChannel(Square, s.Time)
-	s.channel2 = NewChannel(Square, s.Time)
-	s.channel3 = NewChannel(MakeWaveform(&s.waveformRam), s.Time)
-	s.channel4 = NewChannel(Noise, s.Time)
 
-	mix := beep.Mix(
-		s.channel1.Stream(float64(sampleRate)),
-		s.channel2.Stream(float64(sampleRate)),
-		s.channel3.Stream(float64(sampleRate)),
-		s.channel4.Stream(float64(sampleRate)),
-	)
-	if gb.options.sound {
-		speaker.Play(mix)
-	}
+	mixer := sound.NewMixer()
+
+	// Create the channels with their sounds
+	s.channel1 = mixer.NewChannel(sound.Square)
+	s.channel2 = mixer.NewChannel(sound.Square)
+	s.channel3 = mixer.NewChannel(sound.MakeWaveform(&s.waveformRam))
+	s.channel4 = mixer.NewChannel(sound.Noise)
+
+	s.mixer = mixer
+	//if gb.options.sound {
+	//	speaker.Play(mix)
+	//}
 	s.gb = gb
 }
 
@@ -200,7 +198,7 @@ func (s *Sound) Write(address uint16, value byte) {
 		}
 		s.channel1TimeVal = s.channel1Time
 		pattern := (value >> 6) & 0x3
-		s.channel1.FuncMod = squarelimits[pattern]
+		s.channel1.Mod = squarelimits[pattern]
 
 	case 0xFF12:
 		// Envelope
@@ -253,7 +251,7 @@ func (s *Sound) Write(address uint16, value byte) {
 		}
 		s.channel2TimeVal = s.channel2Time
 		pattern := (value >> 6) & 0x3
-		s.channel2.FuncMod = squarelimits[pattern]
+		s.channel2.Mod = squarelimits[pattern]
 
 	case 0xFF17:
 		// Envelope
@@ -429,10 +427,7 @@ func (s *Sound) Tick(clocks int) {
 	s.channel3.DebugMute = s.gb.Debug.MuteChannel3
 	s.channel4.DebugMute = s.gb.Debug.MuteChannel4
 
-	s.channel1.Buffer(684)
-	s.channel2.Buffer(684)
-	s.channel3.Buffer(684)
-	s.channel4.Buffer(684)
+	go s.mixer.Buffer(int(735 * SpeedDivider))
 }
 
 // Update the on/off status of the output channels.
@@ -486,7 +481,7 @@ func (s *Sound) UpdateChan3Freq(NR33 byte, NR34 byte) {
 
 // Toggle a channel on or off.
 func (s *Sound) Toggle(channel byte, on bool) {
-	var c *Channel
+	var c *sound.Channel
 	switch channel {
 	case 1:
 		c = s.channel1

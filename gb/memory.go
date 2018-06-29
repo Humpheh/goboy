@@ -103,7 +103,7 @@ func (mem *Memory) Write(address uint16, value byte) {
 		mem.gb.Sound.waveformRam[soundIndex+1] = int8(value & 0xF)
 
 	case address == TAC:
-		log.Printf("TAC: %0#2v", value)
+		//log.Printf("TAC: %0#2v", value)
 		// Timer control
 		currentFreq := mem.gb.getClockFreq()
 		mem.Data[TAC] = value
@@ -114,7 +114,7 @@ func (mem *Memory) Write(address uint16, value byte) {
 		}
 
 	case address == TIMA:
-		log.Printf("TIMA WRITE %0#2v", value)
+		//log.Printf("TIMA WRITE %0#2v", value)
 		//mem.gb.setClockFreq()
 		mem.Data[TIMA] = value
 
