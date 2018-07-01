@@ -34,9 +34,10 @@ func (mem *Memory) Init(gameboy *Gameboy) {
 	mem.gb = gameboy
 
 	// Set the default values
+	mem.Data[0xFF04] = 0x1E
 	mem.Data[0xFF05] = 0x00
 	mem.Data[0xFF06] = 0x00
-	mem.Data[0xFF07] = 0x00
+	mem.Data[0xFF07] = 0xF8
 	mem.Data[0xFF0F] = 0xE1
 	mem.Data[0xFF10] = 0x80
 	mem.Data[0xFF11] = 0xBF
@@ -102,10 +103,23 @@ func (mem *Memory) Write(address uint16, value byte) {
 		mem.gb.Sound.waveformRam[soundIndex] = int8((value >> 4) & 0xF)
 		mem.gb.Sound.waveformRam[soundIndex+1] = int8(value & 0xF)
 
-	case address == TMC:
+	case address == DIV:
+		// Trap divider register
+		mem.gb.setClockFreq()
+		mem.gb.CPU.Divider = 0
+		mem.Data[DIV] = 0
+
+	case address == TIMA:
+		mem.gb.setClockFreq()
+		mem.Data[TIMA] = value
+
+	case address == TMA:
+		mem.Data[TMA] = value
+
+	case address == TAC:
 		// Timer control
 		currentFreq := mem.gb.getClockFreq()
-		mem.Data[TMC] = value
+		mem.Data[TAC] = value | 0xF8
 		newFreq := mem.gb.getClockFreq()
 
 		if currentFreq != newFreq {
@@ -120,17 +134,6 @@ func (mem *Memory) Write(address uint16, value byte) {
 				f(mem.Read(0xFF01))
 			}
 		}
-
-	case address == 0xFF04:
-		// Trap divider register
-		mem.gb.setClockFreq()
-		mem.gb.CPU.Divider = 0
-		mem.Data[0xFF04] = 0
-
-	case address == 0xFF05:
-		mem.gb.setClockFreq()
-		mem.Data[0xFF05] = value
-
 	case address == 0xFF44:
 		// Trap scanline register
 		mem.Data[0xFF44] = 0

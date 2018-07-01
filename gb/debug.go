@@ -74,6 +74,14 @@ func logOpcode(gb *Gameboy) {
 	fmt.Print(" ]]\n")
 }
 
+func logMemory(gb *Gameboy, start uint16, len uint16) {
+	fmt.Printf(" [[")
+	for i := start; i < start+len; i++ {
+		fmt.Printf(" %02x", gb.Memory.Read(i))
+	}
+	fmt.Print(" ]]\n")
+}
+
 func getDebugNum(scanner *bufio.Scanner) (CPU, uint16) {
 	scanner.Scan()
 	line := scanner.Text()

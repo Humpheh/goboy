@@ -27,12 +27,13 @@ const logo = `
 `
 
 var (
-	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
-	rom        = flag.String("rom", "", "location of rom file (required)")
-	sound      = flag.Bool("sound", false, "set to enable sound emulation (experimental)")
-	vsyncOff   = flag.Bool("disableVsync", false, "set to disable vsync")
-	cgbMode    = flag.Bool("cgb", false, "set to enable cgb mode")
-	saveState  = flag.String("load", "", "location of save state to load (experimental)")
+	cpuprofile  = flag.String("cpuprofile", "", "write cpu profile to file")
+	rom         = flag.String("rom", "", "location of rom file (required)")
+	sound       = flag.Bool("sound", false, "set to enable sound emulation (experimental)")
+	vsyncOff    = flag.Bool("disableVsync", false, "set to disable vsync")
+	cgbMode     = flag.Bool("cgb", false, "set to enable cgb mode")
+	saveState   = flag.String("load", "", "location of save state to load (experimental)")
+	stepThrough = flag.Bool("stepthrough", false, "step through opcodes (debugging)")
 )
 
 func main() {
@@ -79,6 +80,10 @@ func start() {
 		if err != nil {
 			log.Fatal(err)
 		}
+	}
+
+	if *stepThrough {
+		gameboy.Debug.OutputOpcodes = true
 	}
 
 	monitor := iopixel.NewPixelsIOBinding(gameboy, *vsyncOff)
