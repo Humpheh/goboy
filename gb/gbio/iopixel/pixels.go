@@ -5,6 +5,8 @@ import (
 	"image/color"
 	"log"
 
+	"math"
+
 	"github.com/Humpheh/goboy/bits"
 	"github.com/Humpheh/goboy/gb"
 	"github.com/faiface/pixel"
@@ -29,7 +31,7 @@ type PixelsIOBinding struct {
 	Frames  int
 }
 
-// Init initalises the Pixels bindings.
+// Init initialises the Pixels bindings.
 func (mon *PixelsIOBinding) Init(disableVsync bool) {
 	cfg := pixelgl.WindowConfig{
 		Title: "GoBoy",
@@ -56,12 +58,12 @@ func (mon *PixelsIOBinding) Init(disableVsync bool) {
 
 // UpdateCamera updates the window camera to center the output.
 func (mon *PixelsIOBinding) UpdateCamera() {
-	center := pixel.Vec{X: 80 * PixelScale, Y: 72 * PixelScale}
-	if mon.Window.Monitor() != nil {
-		width, _ := mon.Window.Monitor().Size()
-		center.X += width/2 - center.X
-	}
-	cam := pixel.IM.Scaled(pixel.ZV, 1).Moved(center.Sub(pixel.ZV))
+	xScale := mon.Window.Bounds().W() / 160
+	yScale := mon.Window.Bounds().H() / 144
+	scale := math.Min(yScale, xScale)
+
+	shift := mon.Window.Bounds().Size().Scaled(0.5).Sub(pixel.ZV)
+	cam := pixel.IM.Scaled(pixel.ZV, scale).Moved(shift)
 	mon.Window.SetMatrix(cam)
 }
 
@@ -87,8 +89,9 @@ func (mon *PixelsIOBinding) RenderScreen() {
 	mon.Window.Clear(bg)
 
 	spr := pixel.NewSprite(pixel.Picture(mon.picture), pixel.R(0, 0, 160, 144))
-	spr.Draw(mon.Window, pixel.IM.Scaled(pixel.ZV, PixelScale))
+	spr.Draw(mon.Window, pixel.IM)
 
+	mon.UpdateCamera()
 	mon.Window.Update()
 }
 
@@ -202,10 +205,9 @@ func (mon *PixelsIOBinding) toggleFullscreen() {
 		mon.Window.SetMonitor(nil)
 		PixelScale = 3
 	}
-	mon.UpdateCamera()
 }
 
-// Check the input and process it.
+// ProcessInput checks the input and process it.
 func (mon *PixelsIOBinding) ProcessInput() {
 	if mon.Gameboy.IsGameLoaded() && !mon.Gameboy.ExecutionPaused {
 		mon.processGBInput()
