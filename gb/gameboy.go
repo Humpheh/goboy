@@ -16,9 +16,10 @@ const (
 	FramesSecond = 60
 	CyclesFrame  = ClockSpeed / FramesSecond
 
+	DIV  = 0xFF04
 	TIMA = 0xFF05
 	TMA  = 0xFF06
-	TMC  = 0xFF07
+	TAC  = 0xFF07
 )
 
 // Gameboy is the master struct which contains all of the sub components
@@ -74,6 +75,8 @@ func (gb *Gameboy) Update() int {
 			if gb.Debug.OutputOpcodes {
 				logOpcode(gb)
 				fmt.Println(cpuStateString(gb.CPU, ""))
+				logMemory(gb, 0xFF00, 8)
+				waitForInput()
 			}
 			cyclesOp = gb.ExecuteNextOpcode()
 			cycles += cyclesOp
@@ -116,29 +119,28 @@ func (gb *Gameboy) checkSpeedSwitch() {
 
 func (gb *Gameboy) updateTimers(cycles int) {
 	gb.dividerRegister(cycles)
-
 	if gb.isClockEnabled() {
 		gb.TimerCounter -= cycles
 
 		if gb.TimerCounter <= 0 {
 			gb.TimerCounter += gb.getClockFreqCount()
-
-			if gb.Memory.Read(TIMA) == 255 {
+			tima := gb.Memory.Read(TIMA)
+			if tima == 255 {
 				gb.Memory.Write(TIMA, gb.Memory.Read(TMA))
 				gb.requestInterrupt(2)
 			} else {
-				gb.Memory.Write(TIMA, gb.Memory.Read(TIMA)+1)
+				gb.Memory.Write(TIMA, tima+1)
 			}
 		}
 	}
 }
 
 func (gb *Gameboy) isClockEnabled() bool {
-	return bits.Test(gb.Memory.Read(TMC), 2)
+	return bits.Test(gb.Memory.Read(TAC), 2)
 }
 
 func (gb *Gameboy) getClockFreq() byte {
-	return gb.Memory.Read(TMC) & 0x3
+	return gb.Memory.Read(TAC) & 0x3
 }
 
 func (gb *Gameboy) getClockFreqCount() int {
@@ -162,7 +164,7 @@ func (gb *Gameboy) dividerRegister(cycles int) {
 	gb.CPU.Divider += cycles
 	if gb.CPU.Divider >= 255 {
 		gb.CPU.Divider -= 255
-		gb.Memory.Data[0xFF04]++
+		gb.Memory.Data[DIV]++
 	}
 }
 
