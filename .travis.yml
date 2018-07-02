@@ -10,6 +10,12 @@ before_install:
   - sudo apt-get install libasound2-dev alsa-utils alsa-oss
   - sudo apt-get install libgl1-mesa-dev xorg-dev
 
+script:
+  - go test -race -coverprofile=coverage.txt -covermode=atomic
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
+
 # Cross build the binaries before deploy
 before_deploy:
   - mkdir build
