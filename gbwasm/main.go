@@ -1,11 +1,15 @@
 package main
 
+//+build js,wasm
+
 import (
 	"flag"
 	"log"
 	"time"
 
 	"fmt"
+
+	"syscall/js"
 
 	"github.com/Humpheh/goboy/gb"
 	"github.com/Humpheh/goboy/gb/gbio/ionet"
@@ -30,30 +34,30 @@ var (
 )
 
 func main() {
+	c := make(chan struct{}, 0)
+
+	cb := js.NewCallback(func(args []js.Value) {
+		data := args[0].Get("detail").String()
+		bytes := []byte(data)
+		log.Print(bytes)
+		startGB(bytes)
+		//move := js.Global().Get("document").Call("getElementById", "myText").Get("value").String()
+		//fmt.Println(move)
+	})
+	js.Global().Get("document").Call("addEventListener", "load-file", cb)
+
+	js.Global().Get("document").Call("testMe", "wat")
+
 	flag.Parse()
 	fmt.Println(fmt.Sprintf(logo, version))
-	fmt.Printf(" %-5v: %v\n", "ROM", *rom)
-	fmt.Printf(" %-5v: %v\n", "Sound", *sound)
-	fmt.Printf(" %-5v: %v\n\n", "CGB", *cgbMode)
+	<-c
+}
 
-	var opts []gb.GameboyOption
-	if *cgbMode {
-		opts = append(opts, gb.WithCGBEnabled())
-	}
-	if *sound {
-		opts = append(opts, gb.WithSound())
-	}
-
-	var gameboy *gb.Gameboy
-	var err error
-	if *rom != "" {
-		// Initialise the GameBoy with the flag options
-		gameboy, err = gb.NewGameboy(*rom, opts...)
-		if err != nil {
-			log.Fatal(err)
-		}
-	} else {
-		log.Fatal("No rom supplied")
+func startGB(data []byte) {
+	opts := []gb.GameboyOption{gb.WithCGBEnabled()}
+	gameboy, err := gb.NewGameboyFromBytes(data, opts...)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	monitor := ionet.WASMIOBinding{}
