@@ -82,9 +82,8 @@ func (mem *Memory) Init(gameboy *Gameboy) {
 }
 
 // LoadCart load a cart rom into memory.
-func (mem *Memory) LoadCart(loc string) (bool, error) {
-	mem.Cart = &Cartridge{}
-	return mem.Cart.Load(loc)
+func (mem *Memory) LoadCart(cart *Cartridge) {
+	mem.Cart = cart
 }
 
 // Write a value at an address to the relevant location based on the
@@ -93,14 +92,14 @@ func (mem *Memory) LoadCart(loc string) (bool, error) {
 func (mem *Memory) Write(address uint16, value byte) {
 	switch {
 	case address >= 0xFF10 && address <= 0xFF26:
-		mem.gb.Sound.Write(address, value)
+		//mem.gb.Sound.Write(address, value)
 
 	case address >= 0xFF30 && address <= 0xFF3F:
 		// Writing to channel 3 waveform RAM.
 		mem.Data[address] = value
-		soundIndex := (address - 0xFF30) * 2
-		mem.gb.Sound.waveformRam[soundIndex] = int8((value >> 4) & 0xF)
-		mem.gb.Sound.waveformRam[soundIndex+1] = int8(value & 0xF)
+		//soundIndex := (address - 0xFF30) * 2
+		//mem.gb.Sound.waveformRam[soundIndex] = int8((value >> 4) & 0xF)
+		//mem.gb.Sound.waveformRam[soundIndex+1] = int8(value & 0xF)
 
 	case address == TAC:
 		log.Printf("TAC: %0#2v", value)

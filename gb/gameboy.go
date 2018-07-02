@@ -88,7 +88,7 @@ func (gb *Gameboy) Update() int {
 		gb.updateGraphics(cyclesOp)
 		gb.doInterrupts()
 	}
-	gb.Sound.Tick(cycles)
+	//gb.Sound.Tick(cycles)
 
 	return cycles
 }
@@ -613,7 +613,7 @@ func (gb *Gameboy) IsCGB() bool {
 }
 
 // Initialise the Gameboy using a path to a rom.
-func (gb *Gameboy) init(romFile string) error {
+func (gb *Gameboy) init(cart *Cartridge) {
 	gb.ExecutionPaused = false
 
 	// Initialise the CPU
@@ -624,15 +624,12 @@ func (gb *Gameboy) init(romFile string) error {
 	gb.Memory = &Memory{}
 	gb.Memory.Init(gb)
 
-	gb.Sound = &Sound{}
-	gb.Sound.Init(gb)
+	//gb.Sound = &Sound{}
+	//gb.Sound.Init(gb)
 
 	// Load the ROM file
-	hasCGB, err := gb.Memory.LoadCart(romFile)
-	if err != nil {
-		return fmt.Errorf("failed to open rom file: %s", err)
-	}
-	gb.CGBMode = gb.options.cgbMode && hasCGB
+	gb.Memory.LoadCart(cart)
+	gb.CGBMode = gb.options.cgbMode && cart.hasCGB
 
 	gb.Debug = DebugFlags{}
 	gb.ScanlineCounter = 456
@@ -643,8 +640,6 @@ func (gb *Gameboy) init(romFile string) error {
 
 	gb.SpritePalette = NewPalette()
 	gb.BGPalette = NewPalette()
-
-	return nil
 }
 
 func (gb *Gameboy) Gob() error {
@@ -669,7 +664,27 @@ func NewGameboy(romFile string, opts ...GameboyOption) (*Gameboy, error) {
 	for _, opt := range opts {
 		opt(&gameboy.options)
 	}
-	err := gameboy.init(romFile)
+	cart := &Cartridge{}
+	err := cart.LoadFromFile(romFile)
+	if err != nil {
+		return nil, err
+	}
+	gameboy.init(cart)
+	return &gameboy, nil
+}
+
+func NewGameboyFromBytes(bytes []byte, opts ...GameboyOption) (*Gameboy, error) {
+	// Build the gameboy
+	gameboy := Gameboy{}
+	for _, opt := range opts {
+		opt(&gameboy.options)
+	}
+	cart := &Cartridge{}
+	err := cart.Load("test", bytes)
+	if err != nil {
+		return nil, err
+	}
+	gameboy.init(cart)
 	if err != nil {
 		return nil, err
 	}
@@ -692,7 +707,7 @@ func NewGameboyFromGob(gobFile string, opts ...GameboyOption) (*Gameboy, error) 
 		return nil, err
 	}
 	gameboy.Memory.gb = &gameboy
-	gameboy.Sound.Init(&gameboy)
+	//gameboy.Sound.Init(&gameboy)
 	gameboy.cbInst = gameboy.cbInstructions()
 	return &gameboy, nil
 }

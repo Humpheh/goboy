@@ -45,6 +45,8 @@ type Cartridge struct {
 	enableRAM        bool
 	enableROMBanking bool
 	writtenRAM       bool
+
+	hasCGB bool
 }
 
 // Returns the name of the file which should contain the save data.
@@ -52,16 +54,20 @@ func (cart *Cartridge) GetSaveFilename() string {
 	return cart.filename + ".sav"
 }
 
+func (cart *Cartridge) LoadFromFile(filename string) error {
+	// Load the file
+	data, err := cart.loadROMData(filename)
+	if err != nil {
+		return err
+	}
+	return cart.Load(filename, data)
+}
+
 // Load a bin file as a cartridge. Returns a boolean if the cart
 // has a cgb mode.
-func (cart *Cartridge) Load(filename string) (bool, error) {
-	// Load the file into ROM
-	var err error
+func (cart *Cartridge) Load(filename string, data []byte) error {
 	cart.filename = filename
-	cart.ROM, err = cart.loadROMData(filename)
-	if err != nil {
-		return false, err
-	}
+	cart.ROM = data
 
 	// Get the cart name from the rom
 	cart.Name = GetRomName(cart.ROM)
@@ -136,7 +142,8 @@ func (cart *Cartridge) Load(filename string) (bool, error) {
 	case 0x3, 0x6, 0x9, 0xD, 0xF, 0x10, 0x13, 0x17, 0x1B, 0x1E:
 		cart.initGameSaves()
 	}
-	return hasCGB, nil
+	cart.hasCGB = hasCGB
+	return nil
 }
 
 // Load the bytes from a ROM file. The file can also be a zip file containing a single
