@@ -269,8 +269,10 @@ func (gb *Gameboy) updateGraphics(cycles int) {
 		currentLine := gb.Memory.Read(0xFF44)
 		gb.ScanlineCounter += 456 * gb.getSpeed()
 
-		if currentLine < 144 {
-			gb.drawScanline(currentLine)
+		// Draw the "last" scanline, as we have updated the LC to say we
+		// were drawing it previously.
+		if line := currentLine - 1; line < 144 {
+			gb.drawScanline(line)
 		}
 		if currentLine == 144 {
 			gb.requestInterrupt(0)
