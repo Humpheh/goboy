@@ -16,7 +16,7 @@ func TestInstructions(t *testing.T) {
 	transferOption := WithTransferFunction(func(val byte) {
 		output += string(val)
 	})
-	gb, err := NewGameboy("./../roms/cpu_instrs.gb", transferOption)
+	gb, err := NewGameboy("./../roms/cpu_instrs.gb", transferOption, WithCGBEnabled())
 	require.NoError(t, err, "error in init gb %v", err)
 
 	// Expect the output to be 68 characters long
