@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const maxIterations = 5000
+const maxIterations = 3500
 
 func cpuInstTest(t *testing.T, options ...GameboyOption) {
 	output := ""
@@ -21,16 +21,9 @@ func cpuInstTest(t *testing.T, options ...GameboyOption) {
 	gb, err := NewGameboy("./../roms/cpu_instrs.gb", options...)
 	require.NoError(t, err, "error in init gb %v", err)
 
-	// Expect the output to be 75 characters long
-	expected := 106
-
-	// Run the CPU until the output has matched the expected
-	// or until maxIterations iterations have passed.
+	// Run the CPU until maxIterations iterations have passed.
 	for i := 0; i < maxIterations; i++ {
 		gb.Update()
-		if len(output) >= expected {
-			break
-		}
 	}
 
 	// Trim off the title and any whitespace
