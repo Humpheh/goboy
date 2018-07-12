@@ -57,6 +57,8 @@ type Gameboy struct {
 	currentSpeed byte
 	prepareSpeed bool
 
+	lastDrawnScanline byte
+
 	thisCpuTicks int
 	debugScanner *bufio.Scanner
 }
@@ -87,8 +89,8 @@ func (gb *Gameboy) Update() int {
 		if gb.IsCGB() {
 			gb.checkSpeedSwitch()
 		}
-		gb.updateTimers(cyclesOp)
 		gb.updateGraphics(cyclesOp)
+		gb.updateTimers(cyclesOp)
 		gb.doInterrupts()
 	}
 	gb.Sound.Tick(cycles)
@@ -269,11 +271,6 @@ func (gb *Gameboy) updateGraphics(cycles int) {
 		currentLine := gb.Memory.Read(0xFF44)
 		gb.ScanlineCounter += 456 * gb.getSpeed()
 
-		// Draw the "last" scanline, as we have updated the LC to say we
-		// were drawing it previously.
-		if line := currentLine - 1; line < 144 {
-			gb.drawScanline(line)
-		}
 		if currentLine == 144 {
 			gb.requestInterrupt(0)
 		}
@@ -313,6 +310,11 @@ func (gb *Gameboy) setLCDStatus() {
 		mode3Bounds := mode2Bounds - 172
 
 		if gb.ScanlineCounter >= mode2Bounds {
+			if currentLine != gb.lastDrawnScanline {
+				// Draw the scanline at the start of the h-blank period
+				gb.lastDrawnScanline = currentLine
+				gb.drawScanline(currentLine)
+			}
 			mode = 2
 			status = bits.Reset(status, 0)
 			status = bits.Set(status, 1)
