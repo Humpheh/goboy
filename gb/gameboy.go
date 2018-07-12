@@ -311,7 +311,7 @@ func (gb *Gameboy) setLCDStatus() {
 
 		if gb.ScanlineCounter >= mode2Bounds {
 			if currentLine != gb.lastDrawnScanline {
-				// Draw the scanline at the start of the h-blank period
+				// Draw the scanline at the start of the v-blank period
 				gb.lastDrawnScanline = currentLine
 				gb.drawScanline(currentLine)
 			}
