@@ -104,7 +104,7 @@ func (mon *PixelsIOBinding) Destroy() {
 func (mon *PixelsIOBinding) SetTitle(fps int) {
 	title := "GoBoy"
 	if mon.Gameboy.IsGameLoaded() {
-		title += fmt.Sprintf(" - %s", mon.Gameboy.Memory.Cart.Name)
+		//title += fmt.Sprintf(" - %s", mon.Gameboy.Memory.Cart.Get)
 		if fps != 0 {
 			title += fmt.Sprintf(" (FPS: %2v)", fps)
 		}

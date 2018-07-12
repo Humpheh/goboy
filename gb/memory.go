@@ -10,7 +10,7 @@ import (
 // banking of these data banks.
 type Memory struct {
 	gb   *Gameboy
-	Cart *Cartridge
+	Cart *Cart
 	Data [0x10000]byte
 	// VRAM bank 1-2 data
 	VRAM [0x4000]byte
@@ -84,8 +84,9 @@ func (mem *Memory) Init(gameboy *Gameboy) {
 
 // LoadCart load a cart rom into memory.
 func (mem *Memory) LoadCart(loc string) (bool, error) {
-	mem.Cart = &Cartridge{}
-	return mem.Cart.Load(loc)
+	var err error
+	mem.Cart, err = GetCart(loc)
+	return mem.Cart.mode != DMG, err
 }
 
 // Write a value at an address to the relevant location based on the
@@ -196,7 +197,7 @@ func (mem *Memory) Write(address uint16, value byte) {
 
 	case address < 0x8000:
 		// Write to the cartridge ROM (banking)
-		mem.Cart.Write(address, value)
+		mem.Cart.WriteROM(address, value)
 
 	case address >= 0xA000 && address < 0xC000:
 		// Write to the cartridge ram

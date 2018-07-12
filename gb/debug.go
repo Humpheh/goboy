@@ -3,6 +3,7 @@ package gb
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"strconv"
@@ -105,8 +106,23 @@ func getDebugNum(scanner *bufio.Scanner) (CPU, uint16) {
 	}, uint16(val2)
 }
 
-func waitForInput() {
+func waitForInput() uint16 {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter text: ")
-	reader.ReadString('\n')
+	str, err := reader.ReadString('\n')
+	if err != nil {
+		fmt.Printf("Error: %v", err)
+		return waitForInput()
+	}
+	trimmed := strings.TrimSpace(str)
+	if trimmed == "" {
+		return 0
+	}
+	d, err := strconv.ParseInt("0x"+trimmed, 0, 64)
+	if err != nil {
+		fmt.Printf("Error: %v", err)
+		return waitForInput()
+	}
+	log.Printf("Entered: %04x", d)
+	return uint16(d)
 }

@@ -75,11 +75,11 @@ func (cpu *CPU) Init(cgb bool) {
 	if cgb {
 		cpu.AF.Set(0x11B0)
 	} else {
-		cpu.AF.Set(0x01B0)
+		cpu.AF.Set(0x1180)
 	}
-	cpu.BC.Set(0x0013)
-	cpu.DE.Set(0x00D8)
-	cpu.HL.Set(0x014D)
+	cpu.BC.Set(0x0000)
+	cpu.DE.Set(0xFF56)
+	cpu.HL.Set(0x000D)
 	cpu.SP.Set(0xFFFE)
 
 	cpu.AF.Mask = 0xFFF0

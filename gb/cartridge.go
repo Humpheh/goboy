@@ -9,6 +9,7 @@ import (
 	"archive/zip"
 
 	"github.com/Humpheh/goboy/bits"
+	"github.com/Humpheh/goboy/gb/cart"
 	"github.com/pkg/errors"
 )
 
@@ -18,6 +19,124 @@ const (
 	MBC3
 	MBC5
 )
+
+type CGBMode int
+
+const (
+	DMG CGBMode = iota + 1
+	CGB
+	DUAL
+)
+
+type Cart struct {
+	cart.BankingController
+	title string
+	mode  CGBMode
+}
+
+func loadROMData(filename string) ([]byte, error) {
+	var data []byte
+	if strings.HasSuffix(filename, ".zip") {
+		// Load the rom from a zip file
+		reader, err := zip.OpenReader(filename)
+		if err != nil {
+			return nil, err
+		}
+		if len(reader.File) != 1 {
+			return nil, errors.New("Zip must contain one file")
+		}
+		for _, f := range reader.File {
+			fo, err := f.Open()
+			if err != nil {
+				return nil, err
+			}
+			data, err = ioutil.ReadAll(fo)
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		// Load the file as a rom
+		var err error
+		data, err = ioutil.ReadFile(filename)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return data, nil
+}
+
+/*
+	00h  ROM ONLY                 13h  MBC3+RAM+BATTERY
+	01h  MBC1                     15h  MBC4
+	02h  MBC1+RAM                 16h  MBC4+RAM
+	03h  MBC1+RAM+BATTERY         17h  MBC4+RAM+BATTERY
+	05h  MBC2                     19h  MBC5
+	06h  MBC2+BATTERY             1Ah  MBC5+RAM
+	08h  ROM+RAM                  1Bh  MBC5+RAM+BATTERY
+	09h  ROM+RAM+BATTERY          1Ch  MBC5+RUMBLE
+	0Bh  MMM01                    1Dh  MBC5+RUMBLE+RAM
+	0Ch  MMM01+RAM                1Eh  MBC5+RUMBLE+RAM+BATTERY
+	0Dh  MMM01+RAM+BATTERY        FCh  POCKET CAMERA
+	0Fh  MBC3+TIMER+BATTERY       FDh  BANDAI TAMA5
+	10h  MBC3+TIMER+RAM+BATTERY   FEh  HuC3
+	11h  MBC3                     FFh  HuC1+RAM+BATTERY
+	12h  MBC3+RAM
+*/
+func GetCart(filename string) (*Cart, error) {
+	rom, err := loadROMData(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	cartridge := Cart{
+		title: GetRomName(rom),
+	}
+
+	// Check for GB mode
+	switch rom[0x0143] {
+	case 0x80:
+		cartridge.mode = DUAL
+	case 0xC0:
+		cartridge.mode = CGB
+	default:
+		cartridge.mode = DMG
+	}
+
+	// Determine cartridge type
+	mbcFlag := rom[0x147]
+	log.Printf("Cart type: %#02x", mbcFlag)
+	switch mbcFlag {
+	case 0x00, 0x08, 0x09, 0x0B, 0x0C, 0x0D:
+		log.Println("ROM/MMM01")
+		cartridge.BankingController = cart.NewROM(rom)
+	default:
+		switch {
+		case mbcFlag <= 0x03:
+			cartridge.BankingController = cart.NewMBC1(rom)
+			log.Println("MBC1")
+		case mbcFlag <= 0x06:
+			cartridge.BankingController = cart.NewMBC2(rom)
+			log.Println("MBC2")
+		case mbcFlag <= 0x13:
+			cartridge.BankingController = cart.NewMBC3(rom)
+			log.Println("MBC3")
+		//case mbcFlag < 0x17:
+		//	log.Println("Warning: MBC4 carts are not supported.")
+		//case mbcFlag < 0x1F:
+		//	cart.Type = MBC5
+		//	log.Println("MBC5")
+		default:
+			log.Printf("Warning: This cart may not be supported: %02x", mbcFlag)
+		}
+	}
+
+	//switch mbcFlag {
+	//case 0x3, 0x6, 0x9, 0xD, 0xF, 0x10, 0x13, 0x17, 0x1B, 0x1E:
+	//	cart.initGameSaves()
+	//}
+	return &cartridge, nil
+}
 
 // Get the name of the game from the rom file.
 // The name is stored as a series of bytes between [0x134,0x142).
