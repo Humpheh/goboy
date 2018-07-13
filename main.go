@@ -15,7 +15,7 @@ import (
 )
 
 // The version of GoBoy
-const version = "v0.1"
+const version = "v0.2"
 
 const logo = `
     ______      ____
