@@ -5,8 +5,8 @@ func NewMBC3(data []byte) BankingController {
 		rom:        data,
 		romBank:    1,
 		ram:        make([]byte, 0x8000),
-		rtc:        make([]byte, 0xD),
-		latchedRtc: make([]byte, 0xD),
+		rtc:        make([]byte, 0x10),
+		latchedRtc: make([]byte, 0x10),
 	}
 }
 
@@ -19,10 +19,9 @@ type MBC3 struct {
 	ramBank    uint32
 	ramEnabled bool
 
-	rtc         []byte
-	latchedRtc  []byte
-	rtcRegister byte
-	latched     bool
+	rtc        []byte
+	latchedRtc []byte
+	latched    bool
 }
 
 // Read returns a value at a memory address in the ROM.
@@ -33,42 +32,36 @@ func (r *MBC3) Read(address uint16) byte {
 	case address < 0x8000:
 		return r.rom[uint32(address-0x4000)+(r.romBank*0x4000)] // Use selected rom bank
 	default:
-		if r.rtcRegister == 0 {
-			return r.ram[(0x2000*r.ramBank)+uint32(address-0xA000)] // Use selected ram bank
+		if r.ramBank >= 0x4 {
+			if r.latched {
+				return r.latchedRtc[r.ramBank]
+			}
+			return r.rtc[r.ramBank]
 		}
-		if r.latched {
-			return r.latchedRtc[r.rtcRegister]
-		}
-		return r.rtc[r.rtcRegister]
+		return r.ram[(0x2000*r.ramBank)+uint32(address-0xA000)] // Use selected ram bank
 	}
 }
+
+//var donebanks = map[uint32]bool{}
 
 // Write is not supported on a ROM cart.
 func (r *MBC3) WriteROM(address uint16, value byte) {
 	switch {
 	case address < 0x2000:
 		// RAM enable
-		if value&0xF == 0xA {
-			r.ramEnabled = true
-		} else if value&0xF == 0x0 {
-			r.ramEnabled = false
-		}
+		r.ramEnabled = (value & 0xA) != 0
 	case address < 0x4000:
 		// ROM bank number (lower 5)
 		r.romBank = uint32(value & 0x7F)
 		if r.romBank == 0x00 {
 			r.romBank++
 		}
+		//if !donebanks[r.romBank] {
+		//	donebanks[r.romBank] = true
+		//log.Printf("New ROM Bank: %2x (%4x: %2x)", r.romBank, address, value)
+		//}
 	case address < 0x6000:
-		// ROM/RAM banking
-		switch {
-		case value < 0x4:
-			r.ramBank = uint32(value & 0x3)
-			r.rtcRegister = 0
-		case value < 0xD:
-			r.rtcRegister = (value & 0xC) >> 2
-			r.ramBank = 0
-		}
+		r.ramBank = uint32(value)
 	case address < 0x8000:
 		if value == 0x1 {
 			r.latched = false
@@ -81,10 +74,10 @@ func (r *MBC3) WriteROM(address uint16, value byte) {
 
 func (r *MBC3) WriteRAM(address uint16, value byte) {
 	if r.ramEnabled {
-		if r.rtcRegister == 0 {
-			r.ram[(0x2000*r.ramBank)+uint32(address-0xA000)] = value
+		if r.ramBank >= 0x4 {
+			r.rtc[r.ramBank] = value
 		} else {
-			r.rtc[r.rtcRegister] = value
+			r.ram[(0x2000*r.ramBank)+uint32(address-0xA000)] = value
 		}
 	}
 	// TODO: what do if disabled

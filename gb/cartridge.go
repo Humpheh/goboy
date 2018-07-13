@@ -121,13 +121,15 @@ func GetCart(filename string) (*Cart, error) {
 		case mbcFlag <= 0x13:
 			cartridge.BankingController = cart.NewMBC3(rom)
 			log.Println("MBC3")
-		//case mbcFlag < 0x17:
-		//	log.Println("Warning: MBC4 carts are not supported.")
-		//case mbcFlag < 0x1F:
-		//	cart.Type = MBC5
-		//	log.Println("MBC5")
+		case mbcFlag < 0x17:
+			log.Println("Warning: MBC4 carts are not supported.")
+			cartridge.BankingController = cart.NewMBC1(rom)
+		case mbcFlag < 0x1F:
+			cartridge.BankingController = cart.NewMBC5(rom)
+			log.Println("MBC5")
 		default:
 			log.Printf("Warning: This cart may not be supported: %02x", mbcFlag)
+			cartridge.BankingController = cart.NewMBC1(rom)
 		}
 	}
 
