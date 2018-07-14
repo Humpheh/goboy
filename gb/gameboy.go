@@ -166,7 +166,7 @@ func (gb *Gameboy) dividerRegister(cycles int) {
 	gb.CPU.Divider += cycles
 	if gb.CPU.Divider >= 255 {
 		gb.CPU.Divider -= 255
-		gb.Memory.Data[DIV]++
+		gb.Memory.HighRAM[DIV-0xFF00]++
 	}
 }
 
@@ -261,11 +261,11 @@ func (gb *Gameboy) updateGraphics(cycles int) {
 	gb.ScanlineCounter -= cycles
 
 	if gb.ScanlineCounter <= 0 {
-		gb.Memory.Data[0xFF44]++
-		if gb.Memory.Data[0xFF44] > 153 {
+		gb.Memory.HighRAM[0x44]++
+		if gb.Memory.HighRAM[0x44] > 153 {
 			gb.PreparedData = gb.ScreenData
 			gb.ScreenData = [160][144][3]uint8{}
-			gb.Memory.Data[0xFF44] = 0
+			gb.Memory.HighRAM[0x44] = 0
 		}
 
 		currentLine := gb.Memory.Read(0xFF44)
@@ -284,7 +284,7 @@ func (gb *Gameboy) setLCDStatus() {
 	if !gb.isLCDEnabled() {
 		// TODO: Set screen to white in this instance
 		gb.ScanlineCounter = 456
-		gb.Memory.Data[0xFF44] = 0
+		gb.Memory.HighRAM[0x44] = 0
 		status &= 252
 		// TODO: Check this is correct
 		// We aren't in a mode so reset the values

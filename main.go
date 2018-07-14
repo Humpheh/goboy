@@ -88,7 +88,7 @@ func start() {
 
 	monitor := iopixel.NewPixelsIOBinding(gameboy, *vsyncOff)
 
-	perframe := time.Second / gb.FramesSecond
+	perframe := time.Second / gb.FramesSecond / 10
 	ticker := time.NewTicker(perframe)
 	start := time.Now()
 
