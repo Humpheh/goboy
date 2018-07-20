@@ -104,7 +104,7 @@ func (mon *PixelsIOBinding) Destroy() {
 func (mon *PixelsIOBinding) SetTitle(fps int) {
 	title := "GoBoy"
 	if mon.Gameboy.IsGameLoaded() {
-		//title += fmt.Sprintf(" - %s", mon.Gameboy.Memory.Cart.Get)
+		title += fmt.Sprintf(" - %s", mon.Gameboy.Memory.Cart.GetName())
 		if fps != 0 {
 			title += fmt.Sprintf(" (FPS: %2v)", fps)
 		}
@@ -158,6 +158,10 @@ var extraKeyMap = map[pixelgl.Button]func(*PixelsIOBinding){
 	pixelgl.KeyS: func(mon *PixelsIOBinding) {
 		fmt.Println("Sprite Palette:")
 		fmt.Println(mon.Gameboy.SpritePalette.String())
+	},
+	pixelgl.KeyD: func(mon *PixelsIOBinding) {
+		fmt.Println("BG Map:")
+		fmt.Println(mon.Gameboy.BGMapString())
 	},
 
 	// CPU debugging

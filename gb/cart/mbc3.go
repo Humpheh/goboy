@@ -1,5 +1,6 @@
 package cart
 
+// NewMBC3 returns a new MBC3 memory controller.
 func NewMBC3(data []byte) BankingController {
 	return &MBC3{
 		rom:        data,
@@ -10,7 +11,8 @@ func NewMBC3(data []byte) BankingController {
 	}
 }
 
-// ROM is a basic Gameboy cartridge.
+// MBC3 is a GameBoy cartridge that supports rom and ram banking and possibly
+// a real time clock (RTC).
 type MBC3 struct {
 	rom     []byte
 	romBank uint32
@@ -42,9 +44,7 @@ func (r *MBC3) Read(address uint16) byte {
 	}
 }
 
-//var donebanks = map[uint32]bool{}
-
-// Write is not supported on a ROM cart.
+// WriteROM attempts to switch the ROM or RAM bank.
 func (r *MBC3) WriteROM(address uint16, value byte) {
 	switch {
 	case address < 0x2000:
@@ -56,10 +56,6 @@ func (r *MBC3) WriteROM(address uint16, value byte) {
 		if r.romBank == 0x00 {
 			r.romBank++
 		}
-		//if !donebanks[r.romBank] {
-		//	donebanks[r.romBank] = true
-		//log.Printf("New ROM Bank: %2x (%4x: %2x)", r.romBank, address, value)
-		//}
 	case address < 0x6000:
 		r.ramBank = uint32(value)
 	case address < 0x8000:
@@ -72,6 +68,7 @@ func (r *MBC3) WriteROM(address uint16, value byte) {
 	}
 }
 
+// WriteRAM writes data to the ram or RTC if it is enabled.
 func (r *MBC3) WriteRAM(address uint16, value byte) {
 	if r.ramEnabled {
 		if r.ramBank >= 0x4 {
@@ -80,5 +77,16 @@ func (r *MBC3) WriteRAM(address uint16, value byte) {
 			r.ram[(0x2000*r.ramBank)+uint32(address-0xA000)] = value
 		}
 	}
-	// TODO: what do if disabled
+}
+
+// GetSaveData returns the save data for this banking controller.
+func (r *MBC3) GetSaveData() []byte {
+	data := make([]byte, len(r.ram))
+	copy(data, r.ram)
+	return data
+}
+
+// LoadSaveData loads the save data into the cartridge.
+func (r *MBC3) LoadSaveData(data []byte) {
+	r.ram = data
 }

@@ -14,11 +14,18 @@ const romPath = "../roms/mooneye/acceptance"
 // TestAcceptance runs a number of mooneye test roms in the roms directory.
 // Currently these do not all pass, so the function is renamed as to not
 // run on CI.
-func _TestAcceptance(t *testing.T) {
+//
+// 16 passed
+func TestAcceptance(t *testing.T) {
 	err := filepath.Walk(romPath, func(path string, _ os.FileInfo, _ error) error {
 		if filepath.Ext(path) == ".gb" {
 			name := path[len(romPath)+1 : len(path)-3]
 			t.Run(name, func(t *testing.T) {
+				defer func() {
+					if r := recover(); r != nil {
+						t.Fatalf("Recovered: %v", r)
+					}
+				}()
 				runMooneyeTest(t, path)
 			})
 		}

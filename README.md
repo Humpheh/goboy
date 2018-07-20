@@ -21,9 +21,11 @@ go get github.com/Humpheh/goboy
 ```
 
 The program has been tested on MacOS and Windows 10, and is likely to work on Linux. Building on Windows 10
-requires MinGW (I recommend [msys2](http://www.msys2.org/)).
+requires MinGW.
 
-GoBoy uses the go library [pixel](https://github.com/faiface/pixel) for control binding and graphics rendering. This requires the installation of OpenGL. Instructions on installing them can be found on the [pixels readme](https://github.com/faiface/pixel#requirements).
+GoBoy uses the go library [pixel](https://github.com/faiface/pixel) for control binding and graphics rendering,
+which requires OpenGL. Instructions on installing them can be found on the
+[pixels readme](https://github.com/faiface/pixel#requirements).
 
 ## Usage 
 ```sh
@@ -31,21 +33,28 @@ goboy -sound -cgb -rom zelda.gb
 ```
 Controls: <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd> <kbd>Z</kbd> <kbd>X</kbd> <kbd>Enter</kbd> <kbd>Backspace</kbd>
 
-The colour palette can be cycled with <kbd>=</kbd> (in DMG mode).
+The colour palette can be cycled with <kbd>=</kbd> (in DMG mode), and the game can
+be made fullscreen with <kbd>F</kbd>.
 
 
 Other options:
 ```sh
   -cgb
-    	set to enable cgb mode
+        set to enable cgb mode
   -cpuprofile string
-    	write cpu profile to file
+        write cpu profile to file
   -disableVsync
-    	set to disable vsync
+        set to disable vsync
+  -load string
+        location of save state to load (experimental)
   -rom string
-    	location of rom file (required)
+        location of rom file (required)
   -sound
-    	set to enable sound emulation (experimental)
+        set to enable sound emulation (experimental)
+  -stepthrough
+        step through opcodes (debugging)
+  -unlocked
+        if to unlock the cpu speed (debugging)
 ```
 
 ### Debugging
@@ -55,6 +64,7 @@ There are a few keyboard shortcuts useful for debugging:
 <kbd>W</kbd> - force toggle sprites<br/>
 <kbd>A</kbd> - print gb background palette data (cgb)<br/>
 <kbd>S</kbd> - print sprite palette data (cgb)<br/>
+<kbd>D</kbd> - print background map to log<br/>
 <kbd>E</kbd> - toggle opcode printing to console (will slow down execution)<br/>
 <kbd>7,8,9,0</kbd> - toggle sound channels 1 through 4.
 
@@ -64,11 +74,12 @@ next to the loaded rom containing a dump of the RAM from the cartridge. A loop i
 update this save file every second while the game is running.
 
 ## Testing
-GoBoy currently passes all of the tests in Blargg's cpu_instrs test rom.
+GoBoy currently passes all of the tests in Blargg's `cpu_instrs` and `instr_timing` test roms.
 
 <img src="images/cpu-instrs.png" width="400">
 
-This rom is included in the source code along with a test to check the output is as expected (`instructions_test.go`).
+These roms are included in the source code along with a test to check the output is as expected
+(`instructions_test.go` and `timing_test.go`). These tests are also run on each commit.
 
 ## Contributing
 
@@ -76,6 +87,7 @@ Feel free to open pull requests to this project or play around if you're interes
 
 ## Known Bugs 
 - [ ] Sprite Z-drawing
+- [ ] Sprites near edge of screen not drawing
 - [x] Top half of sprite disappearing off top of screen
 - [x] Small sprites row glitch
 - [ ] Many CGB bugs
@@ -84,13 +96,15 @@ Feel free to open pull requests to this project or play around if you're interes
 ## TODO List
 - [x] MBC3 banking support
 - [x] GameBoy Color support (partial)
-- [ ] Move APU into io bindings
+- [ ] Rewrite APU emulation
 - [ ] MBC3 clock support
-- [ ] Complete Sound emulation
 - [ ] Complete CGB emulation
+- [ ] Icon
+- [ ] White screen when off
 - [ ] Speed up CPU
-- [ ] Resizable window
-- [ ] MBC4-7 support
+- [x] Resizable window
+- [ ] Some kind of nice UI
+- [ ] MBC4-7 support (?)
 - [ ] More colour palettes
 - [ ] STOP opcode behaviour
 - [ ] [Blargg's test ROMs](http://gbdev.gg8.se/wiki/articles/Test_ROMs)

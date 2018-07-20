@@ -1,5 +1,6 @@
 package cart
 
+// MBC2 returns a new MBC2 memory controller.
 func NewMBC2(data []byte) BankingController {
 	return &MBC2{
 		rom:     data,
@@ -8,7 +9,7 @@ func NewMBC2(data []byte) BankingController {
 	}
 }
 
-// ROM is a basic Gameboy cartridge.
+// MBC2 is a basic Gameboy cartridge.
 type MBC2 struct {
 	rom     []byte
 	romBank uint32
@@ -17,7 +18,7 @@ type MBC2 struct {
 	ramEnabled bool
 }
 
-// Read returns a value at a memory address in the ROM.
+// Read returns a value at a memory address in the ROM or RAM.
 func (r *MBC2) Read(address uint16) byte {
 	switch {
 	case address < 0x4000:
@@ -29,7 +30,7 @@ func (r *MBC2) Read(address uint16) byte {
 	}
 }
 
-// Write is not supported on a ROM cart.
+// WriteROM attempts to switch the ROM or RAM bank.
 func (r *MBC2) WriteROM(address uint16, value byte) {
 	switch {
 	case address < 0x2000:
@@ -54,9 +55,21 @@ func (r *MBC2) WriteROM(address uint16, value byte) {
 	}
 }
 
+// WriteRAM writes data to the ram if it is enabled.
 func (r *MBC2) WriteRAM(address uint16, value byte) {
 	if r.ramEnabled {
 		r.ram[address-0xA000] = value & 0xF
 	}
-	// TODO: what do if disabled
+}
+
+// GetSaveData returns the save data for this banking controller.
+func (r *MBC2) GetSaveData() []byte {
+	data := make([]byte, len(r.ram))
+	copy(data, r.ram)
+	return data
+}
+
+// LoadSaveData loads the save data into the cartridge.
+func (r *MBC2) LoadSaveData(data []byte) {
+	r.ram = data
 }

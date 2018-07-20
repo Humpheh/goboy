@@ -1,5 +1,6 @@
 package cart
 
+// NewMBC5 returns a new MBC5 memory controller.
 func NewMBC5(data []byte) BankingController {
 	return &MBC5{
 		rom:     data,
@@ -8,7 +9,7 @@ func NewMBC5(data []byte) BankingController {
 	}
 }
 
-// ROM is a basic Gameboy cartridge.
+// MBC5 is a GameBoy cartridge that supports rom and ram banking.
 type MBC5 struct {
 	rom     []byte
 	romBank uint32
@@ -30,7 +31,7 @@ func (r *MBC5) Read(address uint16) byte {
 	}
 }
 
-// Write is not supported on a ROM cart.
+// WriteROM attempts to switch the ROM or RAM bank.
 func (r *MBC5) WriteROM(address uint16, value byte) {
 	switch {
 	case address < 0x2000:
@@ -51,9 +52,21 @@ func (r *MBC5) WriteROM(address uint16, value byte) {
 	}
 }
 
+// WriteRAM writes data to the ram if it is enabled.
 func (r *MBC5) WriteRAM(address uint16, value byte) {
 	if r.ramEnabled {
 		r.ram[(0x2000*r.ramBank)+uint32(address-0xA000)] = value
 	}
-	// TODO: what do if disabled
+}
+
+// GetSaveData returns the save data for this banking controller.
+func (r *MBC5) GetSaveData() []byte {
+	data := make([]byte, len(r.ram))
+	copy(data, r.ram)
+	return data
+}
+
+// LoadSaveData loads the save data into the cartridge.
+func (r *MBC5) LoadSaveData(data []byte) {
+	r.ram = data
 }

@@ -73,9 +73,9 @@ type CPU struct {
 func (cpu *CPU) Init(cgb bool) {
 	cpu.PC = 0x100
 	if cgb {
-		cpu.AF.Set(0x11B0)
-	} else {
 		cpu.AF.Set(0x1180)
+	} else {
+		cpu.AF.Set(0x01B0)
 	}
 	cpu.BC.Set(0x0000)
 	cpu.DE.Set(0xFF56)

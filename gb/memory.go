@@ -4,13 +4,14 @@ import (
 	"log"
 
 	"github.com/Humpheh/goboy/bits"
+	"github.com/Humpheh/goboy/gb/cart"
 )
 
 // Memory stores gameboy ROM, RAM and cartridge data. It manages the
 // banking of these data banks.
 type Memory struct {
 	gb      *Gameboy
-	Cart    *Cart
+	Cart    *cart.Cart
 	HighRAM [0x100]byte
 	// VRAM bank 1-2 data
 	VRAM [0x4000]byte
@@ -18,7 +19,7 @@ type Memory struct {
 	VRAMBank byte
 
 	// WRAM bank 0-7 data
-	WRAM [0x8000]byte
+	WRAM [0x9000]byte
 	// Index of the current WRAM bank
 	WRAMBank byte
 
@@ -88,8 +89,8 @@ func (mem *Memory) Init(gameboy *Gameboy) {
 // LoadCart load a cart rom into memory.
 func (mem *Memory) LoadCart(loc string) (bool, error) {
 	var err error
-	mem.Cart, err = GetCart(loc)
-	return mem.Cart.mode != DMG, err
+	mem.Cart, err = cart.NewCart(loc)
+	return mem.Cart.GetMode()&cart.DMG == 0, err
 }
 
 func (mem *Memory) WriteHighRam(address uint16, value byte) {
@@ -99,6 +100,7 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 		return
 
 	case address >= 0xFF10 && address <= 0xFF26:
+		mem.HighRAM[address-0xFF00] = value // & soundMask[byte(address-0xFF10)]
 		mem.gb.Sound.Write(address, value)
 
 	case address >= 0xFF30 && address <= 0xFF3F:
@@ -115,7 +117,6 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 		mem.HighRAM[DIV-0xFF00] = 0
 
 	case address == TIMA:
-		mem.gb.setClockFreq()
 		mem.HighRAM[TIMA-0xFF00] = value
 
 	case address == TMA:
@@ -139,6 +140,10 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 				f(mem.Read(0xFF01))
 			}
 		}
+
+	case address == 0xFF41:
+		mem.HighRAM[0x41] = value | 0x80
+
 	case address == 0xFF44:
 		// Trap scanline register
 		mem.HighRAM[0x44] = 0
@@ -375,6 +380,7 @@ func (mem *Memory) doHDMATransfer(value byte) {
 
 	source := (uint16(mem.HighRAM[0x51])<<8 | uint16(mem.HighRAM[0x52])) & 0xFFF0
 	destination := (uint16(mem.HighRAM[0x53])<<8 | uint16(mem.HighRAM[0x54])) & 0x1FF0
+	destination += 0x8000
 
 	length := ((uint16(value) & 0x7F) + 1) * 0x10
 
@@ -383,7 +389,7 @@ func (mem *Memory) doHDMATransfer(value byte) {
 		// General purpose DMA
 		var i uint16
 		for i = 0; i < length; i++ {
-			mem.VRAM[destination+i] = mem.Read(source + i)
+			mem.Write(destination+i, mem.Read(source+i))
 		}
 		mem.HighRAM[0x55] = 0xFF
 	} else {
@@ -402,7 +408,7 @@ func (mem *Memory) hbHDMATransfer() {
 	}
 	var i uint16
 	for i = 0; i < 0x10; i++ {
-		mem.VRAM[mem.hbDMADestination] = mem.Read(mem.hbDMASource)
+		mem.Write(mem.hbDMADestination, mem.Read(mem.hbDMASource))
 		mem.hbDMADestination++
 		mem.hbDMASource++
 	}
