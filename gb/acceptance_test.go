@@ -16,7 +16,7 @@ const romPath = "../roms/mooneye/acceptance"
 // run on CI.
 //
 // 16 passed
-func TestAcceptance(t *testing.T) {
+func _TestAcceptance(t *testing.T) {
 	err := filepath.Walk(romPath, func(path string, _ os.FileInfo, _ error) error {
 		if filepath.Ext(path) == ".gb" {
 			name := path[len(romPath)+1 : len(path)-3]
