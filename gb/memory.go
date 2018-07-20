@@ -90,7 +90,7 @@ func (mem *Memory) Init(gameboy *Gameboy) {
 func (mem *Memory) LoadCart(loc string) (bool, error) {
 	var err error
 	mem.Cart, err = cart.NewCart(loc)
-	return mem.Cart.GetMode()&cart.DMG == 0, err
+	return mem.Cart.GetMode()&cart.CGB != 0, err
 }
 
 func (mem *Memory) WriteHighRam(address uint16, value byte) {
