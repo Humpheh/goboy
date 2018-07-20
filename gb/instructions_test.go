@@ -18,7 +18,7 @@ func cpuInstTest(t *testing.T, options ...GameboyOption) {
 		output += string(val)
 	})
 	options = append(options, transferOption)
-	gb, err := NewGameboy("./../roms/cpu_instrs.gb", options...)
+	gb, err := NewGameboy("./../roms/blargg/cpu_instrs.gb", options...)
 	require.NoError(t, err, "error in init gb %v", err)
 
 	// Run the CPU until maxIterations iterations have passed.
@@ -44,12 +44,6 @@ func cpuInstTest(t *testing.T, options ...GameboyOption) {
 		})
 	}
 }
-
-// TestInstructionsGB tests that the CPU passes all of the test instructions
-// in the cpu_instrs rom in GB mode.
-//func TestInstructionsGB(t *testing.T) {
-//	cpuInstTest(t)
-//}
 
 // TestInstructionsGB tests that the CPU passes all of the test instructions
 // in the cpu_instrs rom in CGB mode (includes speed switches).

@@ -183,8 +183,6 @@ func (s *Sound) makeSweep(value byte) *sweepSound {
 }
 
 func (s *Sound) Write(address uint16, value byte) {
-	s.gb.Memory.Data[address] = value
-
 	switch address {
 	case 0xFF10:
 		s.channel1Sweep = s.makeSweep(value)
@@ -454,8 +452,8 @@ func (s *Sound) updateOutput(value byte) {
 
 // Determine if a channel should be playing.
 func (s *Sound) ShouldPlay(channel byte) bool {
-	FF25 := s.gb.Memory.Data[0xFF25]
-	FF26 := s.gb.Memory.Data[0xFF26]
+	FF25 := s.gb.Memory.HighRAM[0x25]
+	FF26 := s.gb.Memory.HighRAM[0x26]
 
 	// Individual sound control
 	return bits.Test(FF25, channel-1) && bits.Test(FF25, channel+3) &&
@@ -499,10 +497,10 @@ func (s *Sound) Toggle(channel byte, on bool) {
 	}
 	if on && s.ShouldPlay(channel) {
 		c.On()
-		s.gb.Memory.Data[0xFF26] = bits.Set(s.gb.Memory.Data[0xFF26], channel-1)
+		s.gb.Memory.HighRAM[0x26] = bits.Set(s.gb.Memory.HighRAM[0x26], channel-1)
 	} else {
 		c.Off()
-		s.gb.Memory.Data[0xFF26] = bits.Reset(s.gb.Memory.Data[0xFF26], channel-1)
+		s.gb.Memory.HighRAM[0x26] = bits.Reset(s.gb.Memory.HighRAM[0x26], channel-1)
 	}
 }
 

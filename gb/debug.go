@@ -3,6 +3,7 @@ package gb
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"strconv"
@@ -62,7 +63,7 @@ func logOpcode(gb *Gameboy) {
 	opcode := gb.Memory.Read(pc)
 
 	next := gb.Memory.Read(pc + 1)
-	fmt.Printf("[%0#2x]: %3v %-20v %0#4x  [[", opcode, gb.ScanlineCounter, GetOpcodeName(opcode, next), pc)
+	fmt.Printf("[%0#2x]: %3v %-20v %0#4x  [[", opcode, gb.scanlineCounter, GetOpcodeName(opcode, next), pc)
 
 	for i := math.Max(0, float64(pc)-5); i < float64(pc); i++ {
 		fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
@@ -72,6 +73,14 @@ func logOpcode(gb *Gameboy) {
 		fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
 	}
 	fmt.Print(" ]]\n")
+}
+
+func logOpcodeShort(gb *Gameboy) {
+	pc := gb.CPU.PC
+	opcode := gb.Memory.Read(pc)
+
+	next := gb.Memory.Read(pc + 1)
+	fmt.Printf("[%0#2x]: %-20v %0#4x\n", opcode, GetOpcodeName(opcode, next), pc)
 }
 
 func logMemory(gb *Gameboy, start uint16, len uint16) {
@@ -105,8 +114,23 @@ func getDebugNum(scanner *bufio.Scanner) (CPU, uint16) {
 	}, uint16(val2)
 }
 
-func waitForInput() {
+func waitForInput() uint16 {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter text: ")
-	reader.ReadString('\n')
+	str, err := reader.ReadString('\n')
+	if err != nil {
+		fmt.Printf("Error: %v", err)
+		return waitForInput()
+	}
+	trimmed := strings.TrimSpace(str)
+	if trimmed == "" {
+		return 0
+	}
+	d, err := strconv.ParseInt("0x"+trimmed, 0, 64)
+	if err != nil {
+		fmt.Printf("Error: %v", err)
+		return waitForInput()
+	}
+	log.Printf("Entered: %04x", d)
+	return uint16(d)
 }
