@@ -34,6 +34,7 @@ var (
 	cgbMode     = flag.Bool("cgb", false, "set to enable cgb mode")
 	saveState   = flag.String("load", "", "location of save state to load (experimental)")
 	stepThrough = flag.Bool("stepthrough", false, "step through opcodes (debugging)")
+	unlocked    = flag.Bool("unlocked", false, "if to unlock the cpu speed (debugging)")
 )
 
 func main() {
@@ -64,6 +65,9 @@ func start() {
 	}
 	if *sound {
 		opts = append(opts, gb.WithSound())
+		if *unlocked {
+			log.Fatalf("Sound functionality is not supported with --unlocked")
+		}
 	}
 
 	var gameboy *gb.Gameboy
@@ -86,9 +90,14 @@ func start() {
 		gameboy.Debug.OutputOpcodes = true
 	}
 
-	monitor := iopixel.NewPixelsIOBinding(gameboy, *vsyncOff)
+	monitor := iopixel.NewPixelsIOBinding(gameboy, *vsyncOff || *unlocked)
 
-	perframe := time.Second / gb.FramesSecond
+	var div time.Duration = 1.0
+	if *unlocked {
+		div = 1000.0
+	}
+
+	perframe := time.Second / gb.FramesSecond / div
 	ticker := time.NewTicker(perframe)
 	start := time.Now()
 
