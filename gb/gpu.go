@@ -270,12 +270,10 @@ func (gb *Gameboy) renderSprites(lcdControl byte, scanline int32) {
 	}
 
 	for sprite := 0; sprite < 40; sprite++ {
-		// Load sprite data from memory. Note: for speed purposes
-		// we are accessing the Data array directly instead of using
-		// the read() method.
+		// Load sprite data from memory.
 		index := sprite * 4
 		yPos := int32(gb.Memory.Read(uint16(0xFE00+index))) - 16
-		xPos := gb.Memory.Read(uint16(0xFE00+index+1)) - 8
+		xPos := int32(gb.Memory.Read(uint16(0xFE00+index+1))) - 8
 		tileLocation := gb.Memory.Read(uint16(0xFE00 + index + 2))
 		attributes := gb.Memory.Read(uint16(0xFE00 + index + 3))
 
