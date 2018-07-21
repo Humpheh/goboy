@@ -87,11 +87,11 @@ Feel free to open pull requests to this project or play around if you're interes
 
 ## Known Bugs 
 - [ ] Sprite Z-drawing
-- [ ] Sprites near edge of screen not drawing
+- [x] Sprites near edge of screen not drawing
 - [x] Top half of sprite disappearing off top of screen
 - [x] Small sprites row glitch
 - [ ] Many CGB bugs
-- [ ] BG tile window offset issue - visible on *Pokemon Red* splash screen - possibly mistimed interrupt?
+- [x] BG tile window offset issue - visible on *Pokemon Red* splash screen - possibly mistimed interrupt?
 
 ## TODO List
 - [x] MBC3 banking support
