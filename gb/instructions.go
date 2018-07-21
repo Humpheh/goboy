@@ -1,7 +1,6 @@
 package gb
 
 import (
-	"fmt"
 	"log"
 )
 
@@ -48,19 +47,6 @@ var CBOpcodeCycles = []int{
 // ExecuteNextOpcode gets the value at the current PC address, increments the PC,
 // updates the CPU ticks and executes the opcode.
 func (gb *Gameboy) ExecuteNextOpcode() int {
-	if gb.debugScanner != nil {
-		expectedCPU, ff0f := getDebugNum(gb.debugScanner)
-		myff0f := uint16(gb.Memory.Read(0xFF05))
-		logOpcode(gb)
-		fmt.Println(cpuStateString(gb.CPU, "GoBoy"), fmt.Sprintf("%b", myff0f))
-		fmt.Println(cpuStateString(&expectedCPU, "Exp"), fmt.Sprintf("%b", ff0f))
-		fmt.Println(cpuCompareString(gb.CPU, &expectedCPU))
-
-		if !isEqual(gb.CPU, &expectedCPU) || myff0f != ff0f {
-			waitForInput()
-		}
-	}
-
 	opcode := gb.popPC()
 	gb.thisCpuTicks = OpcodeCycles[opcode] * 4
 	gb.ExecuteOpcode(opcode)

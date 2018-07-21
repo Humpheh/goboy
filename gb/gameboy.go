@@ -73,16 +73,6 @@ func (gb *Gameboy) Update() int {
 	for cycles < CyclesFrame*gb.getSpeed() {
 		cyclesOp := 4
 		if !gb.Halted {
-			if gb.Debug.OutputOpcodes {
-				logOpcodeShort(gb)
-				fmt.Println(cpuStateString(gb.CPU, ""))
-				//logMemory(gb, 0x73eb, 8)
-				//newbp := waitForInput()
-				//if newbp == 0 {
-				//	breakpoint = newbp
-				//	//gb.Debug.OutputOpcodes = false
-				//}
-			}
 			cyclesOp = gb.ExecuteNextOpcode()
 		} else {
 			// TODO: This is incorrect
