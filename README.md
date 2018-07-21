@@ -3,6 +3,7 @@
 [![Build Status](https://travis-ci.org/Humpheh/goboy.svg?branch=master)](https://travis-ci.org/Humpheh/goboy)
 [![codecov](https://codecov.io/gh/Humpheh/goboy/branch/master/graph/badge.svg)](https://codecov.io/gh/Humpheh/goboy)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Humpheh/goboy)](https://goreportcard.com/report/github.com/Humpheh/goboy)
+[![GoDoc](https://godoc.org/github.com/Humpheh/goboy?status.svg)](https://godoc.org/github.com/Humpheh/goboy)
 
 GoBoy is a multi-platform Nintendo GameBoy and GameBoy Color emulator written in go.
 This emulator was primarily built as a development exercise, and while still 
