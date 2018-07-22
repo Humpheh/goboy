@@ -24,6 +24,7 @@ type envelopeSound struct {
 	Increasing bool
 }
 
+// Update the envelope for a duration for a channel
 func (env *envelopeSound) Update(secs float64, channel *Channel) {
 	if env.Steps > 0 {
 		env.Time += secs
@@ -42,6 +43,7 @@ func (env *envelopeSound) Update(secs float64, channel *Channel) {
 	}
 }
 
+// Reset the envelope back to 0 time.
 func (env *envelopeSound) Reset() {
 	env.Steps = env.StepsInit
 	env.Time = 0
@@ -65,28 +67,29 @@ var sweeptime = map[byte]float64{
 	7: 54.7 / 1000,
 }
 
+// Update the sweep sound effect for a duration for a channel.
+//
+//	FF10 - NR10 - Channel 1 Sweep register (R/W)
+//	  Bit 6-4 - Sweep Time
+//	  Bit 3   - Sweep Increase/Decrease
+//				 0: Addition    (frequency increases)
+//				 1: Subtraction (frequency decreases)
+//	  Bit 2-0 - Number of sweep shift (n: 0-7)
+//	Sweep Time:
+//	  000: sweep off - no freq change
+//	  001: 7.8 ms  (1/128Hz)
+//	  010: 15.6 ms (2/128Hz)
+//	  011: 23.4 ms (3/128Hz)
+//	  100: 31.3 ms (4/128Hz)
+//	  101: 39.1 ms (5/128Hz)
+//	  110: 46.9 ms (6/128Hz)
+//	  111: 54.7 ms (7/128Hz)
+//
+//	The change of frequency (NR13,NR14) at each shift is calculated by the
+//	following formula where X(0) is initial freq & X(t-1) is last freq:
+//	  X(t) = X(t-1) +/- X(t-1)/2^n
+//
 func (swp *sweepSound) Update(secs float64, channel *Channel) {
-	/*
-		FF10 - NR10 - Channel 1 Sweep register (R/W)
-		  Bit 6-4 - Sweep Time
-		  Bit 3   - Sweep Increase/Decrease
-					 0: Addition    (frequency increases)
-					 1: Subtraction (frequency decreases)
-		  Bit 2-0 - Number of sweep shift (n: 0-7)
-		Sweep Time:
-		  000: sweep off - no freq change
-		  001: 7.8 ms  (1/128Hz)
-		  010: 15.6 ms (2/128Hz)
-		  011: 23.4 ms (3/128Hz)
-		  100: 31.3 ms (4/128Hz)
-		  101: 39.1 ms (5/128Hz)
-		  110: 46.9 ms (6/128Hz)
-		  111: 54.7 ms (7/128Hz)
-
-		The change of frequency (NR13,NR14) at each shift is calculated by the
-		following formula where X(0) is initial freq & X(t-1) is last freq:
-		  X(t) = X(t-1) +/- X(t-1)/2^n
-	*/
 	if swp.Step < swp.Steps {
 		t := sweeptime[swp.StepLen]
 		swp.Time += secs
@@ -103,7 +106,8 @@ func (swp *sweepSound) Update(secs float64, channel *Channel) {
 	}
 }
 
-// Struct containing sound data
+// Sound is a wrapper for the sound ram and the channels for playing the Gameboy
+// audio.
 type Sound struct {
 	gb *Gameboy
 
@@ -131,20 +135,20 @@ type Sound struct {
 	channel4Env  *envelopeSound
 
 	waveformRam [32]int8
-	Time        float64
+	time        float64
 }
 
-// Initialise the sound emulation for a gameboy.
+// Init the sound emulation for a gameboy.
 func (s *Sound) Init(gb *Gameboy) {
 	sampleRate := beep.SampleRate(41040)
 	speaker.Init(sampleRate, sampleRate.N(time.Second/30))
 
-	s.Time = 0
+	s.time = 0
 	// Create the channels with their sounds
-	s.channel1 = NewChannel(Square, s.Time)
-	s.channel2 = NewChannel(Square, s.Time)
-	s.channel3 = NewChannel(MakeWaveform(&s.waveformRam), s.Time)
-	s.channel4 = NewChannel(Noise, s.Time)
+	s.channel1 = NewChannel(Square, s.time)
+	s.channel2 = NewChannel(Square, s.time)
+	s.channel3 = NewChannel(MakeWaveform(&s.waveformRam), s.time)
+	s.channel4 = NewChannel(Noise, s.time)
 
 	mix := beep.Mix(
 		s.channel1.Stream(float64(sampleRate)),
@@ -182,6 +186,8 @@ func (s *Sound) makeSweep(value byte) *sweepSound {
 	}
 }
 
+// Write to sound memory. This will update the state of the sound registers
+// and the sound output.
 func (s *Sound) Write(address uint16, value byte) {
 	switch address {
 	case 0xFF10:
@@ -207,7 +213,7 @@ func (s *Sound) Write(address uint16, value byte) {
 		envSweep := value & 0x7
 
 		if envVolume == 0 {
-			s.Toggle(1, false)
+			s.toggle(1, false)
 		}
 
 		if envSweep == 0 {
@@ -223,13 +229,13 @@ func (s *Sound) Write(address uint16, value byte) {
 
 	case 0xFF13:
 		NR14 := s.gb.Memory.Read(0xFF14)
-		s.UpdateChan1Freq(value, NR14)
+		s.updateChan1Freq(value, NR14)
 
 	case 0xFF14:
 		NR13 := s.gb.Memory.Read(0xFF13)
-		s.UpdateChan1Freq(NR13, value)
+		s.updateChan1Freq(NR13, value)
 		if bits.Test(value, 7) {
-			s.Toggle(1, s.ShouldPlay(1))
+			s.toggle(1, s.shouldPlay(1))
 			s.channel1.Amp = 1
 			s.channel1Time = s.channel1TimeVal
 			if s.channel1Env != nil {
@@ -260,7 +266,7 @@ func (s *Sound) Write(address uint16, value byte) {
 		envSweep := value & 0x7
 
 		if envVolume == 0 {
-			s.Toggle(2, false)
+			s.toggle(2, false)
 		}
 
 		if envSweep == 0 {
@@ -276,13 +282,13 @@ func (s *Sound) Write(address uint16, value byte) {
 
 	case 0xFF18:
 		NR24 := s.gb.Memory.Read(0xFF19)
-		s.UpdateChan2Freq(value, NR24)
+		s.updateChan2Freq(value, NR24)
 
 	case 0xFF19:
 		NR23 := s.gb.Memory.Read(0xFF18)
-		s.UpdateChan2Freq(NR23, value)
+		s.updateChan2Freq(NR23, value)
 		if bits.Test(value, 7) {
-			s.Toggle(2, s.ShouldPlay(2))
+			s.toggle(2, s.shouldPlay(2))
 			s.channel2.Amp = 1
 			s.channel2Time = s.channel2TimeVal
 			if s.channel2Env != nil {
@@ -308,17 +314,17 @@ func (s *Sound) Write(address uint16, value byte) {
 		}
 
 	case 0xFF1C:
-		s.ToggleCh3Volume(value)
+		s.toggleCh3Volume(value)
 
 	case 0xFF1D:
 		NR34 := s.gb.Memory.Read(0xFF1E)
-		s.UpdateChan3Freq(value, NR34)
+		s.updateChan3Freq(value, NR34)
 
 	case 0xFF1E:
 		NR33 := s.gb.Memory.Read(0xFF1D)
-		s.UpdateChan3Freq(NR33, value)
+		s.updateChan3Freq(NR33, value)
 		if bits.Test(value, 7) {
-			s.Toggle(3, s.ShouldPlay(3))
+			s.toggle(3, s.shouldPlay(3))
 			s.channel3.Amp = 1
 		}
 
@@ -363,7 +369,7 @@ func (s *Sound) Write(address uint16, value byte) {
 	case 0xFF23:
 		if bits.Test(value, 7) {
 			envVolume := (s.gb.Memory.Read(0xFF21) >> 4) & 0xF
-			s.Toggle(4, envVolume != 0 && s.ShouldPlay(4))
+			s.toggle(4, envVolume != 0 && s.shouldPlay(4))
 		}
 
 	case 0xFF26:
@@ -372,7 +378,7 @@ func (s *Sound) Write(address uint16, value byte) {
 		// END TODO
 
 	case 0xFF24:
-		s.SetVolume(value)
+		s.setVolume(value)
 
 	case 0xFF25:
 		s.updateOutput(value)
@@ -381,10 +387,10 @@ func (s *Sound) Write(address uint16, value byte) {
 	//s.GB.Memory.Data[address] = value & soundMask[address-0xFF10]
 }
 
-// Update the sound emulation by a number of clock cycles.
-func (s *Sound) Tick(clocks int) {
+// Tick the sound emulation by a number of clock cycles.
+func (s *Sound) tick(clocks int) {
 	secs := float64(clocks) / ClockSpeed
-	s.Time += secs
+	s.time += secs
 
 	if s.channel1Time > 0 {
 		s.channel1Time -= secs
@@ -395,7 +401,7 @@ func (s *Sound) Tick(clocks int) {
 			s.channel1Sweep.Update(secs, s.channel1)
 		}
 	} else {
-		s.Toggle(1, false)
+		s.toggle(1, false)
 	}
 
 	if s.channel2Time > 0 {
@@ -404,13 +410,13 @@ func (s *Sound) Tick(clocks int) {
 			s.channel2Env.Update(secs, s.channel2)
 		}
 	} else {
-		s.Toggle(2, false)
+		s.toggle(2, false)
 	}
 
 	if s.channel3Time > 0 {
 		s.channel3Time -= secs
 	} else {
-		s.Toggle(3, false)
+		s.toggle(3, false)
 	}
 
 	if s.channel4Time > 0 {
@@ -419,7 +425,7 @@ func (s *Sound) Tick(clocks int) {
 			s.channel4Env.Update(secs, s.channel4)
 		}
 	} else {
-		s.Toggle(4, false)
+		s.toggle(4, false)
 	}
 
 	s.channel1.DebugMute = s.gb.Debug.MuteChannel1
@@ -436,22 +442,22 @@ func (s *Sound) Tick(clocks int) {
 // Update the on/off status of the output channels.
 // TODO: what is the meaning of value?
 func (s *Sound) updateOutput(value byte) {
-	if !s.ShouldPlay(1) {
+	if !s.shouldPlay(1) {
 		s.channel1.Off()
 	}
-	if !s.ShouldPlay(2) {
+	if !s.shouldPlay(2) {
 		s.channel2.Off()
 	}
-	if !s.ShouldPlay(3) {
+	if !s.shouldPlay(3) {
 		s.channel3.Off()
 	}
-	if !s.ShouldPlay(4) {
+	if !s.shouldPlay(4) {
 		s.channel4.Off()
 	}
 }
 
 // Determine if a channel should be playing.
-func (s *Sound) ShouldPlay(channel byte) bool {
+func (s *Sound) shouldPlay(channel byte) bool {
 	FF25 := s.gb.Memory.HighRAM[0x25]
 	FF26 := s.gb.Memory.HighRAM[0x26]
 
@@ -462,28 +468,28 @@ func (s *Sound) ShouldPlay(channel byte) bool {
 }
 
 // Update the frequency of channel 1
-func (s *Sound) UpdateChan1Freq(NR13 byte, NR14 byte) {
+func (s *Sound) updateChan1Freq(NR13 byte, NR14 byte) {
 	freqVal := uint16(NR13) | (uint16(NR14&0x7) << 8)
 	freq := 131072 / (2048 - float64(freqVal))
 	s.channel1.Freq = freq
 }
 
 // Update the frequency of channel 2
-func (s *Sound) UpdateChan2Freq(NR23 byte, NR24 byte) {
+func (s *Sound) updateChan2Freq(NR23 byte, NR24 byte) {
 	freqVal := uint16(NR23) | (uint16(NR24&0x7) << 8)
 	freq := 131072 / (2048 - float64(freqVal))
 	s.channel2.Freq = freq
 }
 
 // Update the frequency of channel 3
-func (s *Sound) UpdateChan3Freq(NR33 byte, NR34 byte) {
+func (s *Sound) updateChan3Freq(NR33 byte, NR34 byte) {
 	freqVal := uint16(NR33) | (uint16(NR34&0x7) << 8)
 	freq := 65536 / (2048 - float64(freqVal))
 	s.channel3.Freq = freq
 }
 
 // Toggle a channel on or off.
-func (s *Sound) Toggle(channel byte, on bool) {
+func (s *Sound) toggle(channel byte, on bool) {
 	var c *Channel
 	switch channel {
 	case 1:
@@ -495,7 +501,7 @@ func (s *Sound) Toggle(channel byte, on bool) {
 	case 4:
 		c = s.channel4
 	}
-	if on && s.ShouldPlay(channel) {
+	if on && s.shouldPlay(channel) {
 		c.On()
 		s.gb.Memory.HighRAM[0x26] = bits.Set(s.gb.Memory.HighRAM[0x26], channel-1)
 	} else {
@@ -505,7 +511,7 @@ func (s *Sound) Toggle(channel byte, on bool) {
 }
 
 // Set the volume of each channel.
-func (s *Sound) SetVolume(value byte) {
+func (s *Sound) setVolume(value byte) {
 	so1vol := float64(value&0x7) / 7
 	so2vol := float64((value>>4)&0x7) / 7
 
@@ -515,29 +521,16 @@ func (s *Sound) SetVolume(value byte) {
 	s.channel4.SetVolume(so1vol, so2vol)
 }
 
-// Toggle channel 3 on and off from a byte by looking at its
-// 8th bit.
-func (s *Sound) ToggleCh3(value byte) {
-	if bits.Test(value, 7) {
-		s.channel3.On()
-	} else {
-		s.channel3.Off()
-	}
-}
-
 var ch3vols = map[byte]float64{
 	0: 0, 1: 1, 2: 0.5, 3: 0.25,
 }
 
-// Toggle the volume of channel 3 - TODO?
-func (s *Sound) ToggleCh3Volume(value byte) {
-	/*
-		0: Mute (No sound)
-		1: 100% Volume (Produce Wave Pattern RAM Data as it is)
-		2:  50% Volume (Produce Wave Pattern RAM data shifted once to the right)
-		3:  25% Volume (Produce Wave Pattern RAM data shifted twice to the right)
-	*/
-	// TODO: What does that mean?
+// Toggle the volume of channel 3 - TODO: What does that mean?
+//     0: Mute (No sound)
+//     1: 100% Volume (Produce Wave Pattern RAM Data as it is)
+//     2:  50% Volume (Produce Wave Pattern RAM data shifted once to the right)
+//     3:  25% Volume (Produce Wave Pattern RAM data shifted twice to the right
+func (s *Sound) toggleCh3Volume(value byte) {
 	vol := value >> 5 & 0x3
 	s.channel3.Volume = ch3vols[vol]
 }

@@ -991,20 +991,20 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// HALT
 	case 0x76:
-		gb.Halted = true
+		gb.halted = true
 
 	// STOP
 	case 0x10:
-		//gb.Halted = true
+		//gb.halted = true
 		log.Print("0x10 (STOP) unimplemented (is 0x00 follows)")
 
 	// DI
 	case 0xF3:
-		gb.InterruptsOn = false
+		gb.interruptsOn = false
 
 	// EI
 	case 0xFB:
-		gb.InterruptsEnabling = true
+		gb.interruptsEnabling = true
 
 	// RLCA
 	case 0x07:
@@ -1238,7 +1238,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 	// RETI
 	case 0xD9:
 		gb.instRet()
-		gb.InterruptsEnabling = true
+		gb.interruptsEnabling = true
 
 	// CB
 	case 0xCB:

@@ -7,32 +7,34 @@ import (
 )
 
 const (
-	// The default greyscale gameboy colour palette.
+	// PaletteGreyscale is the default greyscale gameboy colour palette.
 	PaletteGreyscale = byte(iota)
-	// A more authentic looking green tinted gameboy colour palette.
+	// PaletteOriginal is more authentic looking green tinted gameboy
+	// colour palette  as it would have been on the GameBoy
 	PaletteOriginal
-	// Palette used by default in the BGB emulator.
-	PaletteRGB
+	// PaletteBGB used by default in the BGB emulator.
+	PaletteBGB
 )
 
-var CurrentPalette = PaletteRGB
+// CurrentPalette is the global current DMG palette.
+var CurrentPalette = PaletteBGB
+
+// Palettes is an mapping from colour palettes to their colour values
+// to be used by the emulator.
 var Palettes = map[byte][4][3]uint8{
-	// Greyscale palette
 	PaletteGreyscale: {
 		{0xFF, 0xFF, 0xFF},
 		{0xCC, 0xCC, 0xCC},
 		{0x77, 0x77, 0x77},
 		{0x00, 0x00, 0x00},
 	},
-	// Palette using the colours as it would have been on the GameBoy
 	PaletteOriginal: {
 		{0x9B, 0xBC, 0x0F},
 		{0x8B, 0xAC, 0x0F},
 		{0x30, 0x62, 0x30},
 		{0x0F, 0x38, 0x0F},
 	},
-	// Palette used by default in the BGB emulator
-	PaletteRGB: {
+	PaletteBGB: {
 		{0xE0, 0xF8, 0xD0},
 		{0x88, 0xC0, 0x70},
 		{0x34, 0x68, 0x56},

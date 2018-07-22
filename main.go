@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/Humpheh/goboy/gb"
+	"github.com/Humpheh/goboy/gb/gbio"
 	"github.com/Humpheh/goboy/gb/gbio/iopixel"
 	"github.com/faiface/pixel/pixelgl"
 )
@@ -91,7 +92,10 @@ func start() {
 	}
 
 	monitor := iopixel.NewPixelsIOBinding(gameboy, *vsyncOff || *unlocked)
+	startGB(gameboy, monitor)
+}
 
+func startGB(gameboy *gb.Gameboy, monitor gbio.IOBinding) {
 	var div time.Duration = 1.0
 	if *unlocked {
 		div = 1000.0
@@ -118,8 +122,8 @@ func start() {
 		since := time.Since(start)
 		if since > time.Second {
 			start = time.Now()
-			monitor.SetTitle(monitor.Frames)
-			monitor.Frames = 0
+			monitor.SetTitle(frames)
+			frames = 0
 		}
 	}
 }

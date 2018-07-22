@@ -1,7 +1,6 @@
 package gb
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 
@@ -12,9 +11,12 @@ import (
 )
 
 const (
-	ClockSpeed   = 4194304
+	// ClockSpeed is the number of cycles the GameBoy CPU performs each second.
+	ClockSpeed = 4194304
+	// FramesSecond is the target number of frames for each frame of GameBoy output.
 	FramesSecond = 60
-	CyclesFrame  = ClockSpeed / FramesSecond
+	// CyclesFrame is the number of CPU cycles in each frame.
+	CyclesFrame = ClockSpeed / FramesSecond
 
 	DIV  = 0xFF04
 	TIMA = 0xFF05
@@ -27,40 +29,44 @@ const (
 type Gameboy struct {
 	options gameboyOptions
 
-	Memory          *Memory
-	CPU             *CPU
-	Sound           *Sound
-	timerCounter    int
-	scanlineCounter int
-
-	ScreenData   [160][144][3]uint8
-	PreparedData [160][144][3]uint8
-	// Track colour of tiles in scanline
-	TileScanline [160]uint8
-
-	InterruptsEnabling bool
-	InterruptsOn       bool
-	Halted             bool
-
-	cbInst    map[byte]func()
-	InputMask byte
+	Memory *Memory
+	CPU    *CPU
+	Sound  *Sound
 
 	Debug           DebugFlags
 	ExecutionPaused bool
 
+	timerCounter int
+
+	// Matrix of pixel data which is used while the screen is rendering. When a
+	// frame has been completed, this data is copied into the PreparedData matrix.
+	screenData [160][144][3]uint8
+	// Track colour of tiles in scanline for priority management.
+	tileScanline      [160]uint8
+	scanlineCounter   int
+	lastDrawnScanline byte
+
+	// PreparedData is a matrix of screen pixel data for a single frame which has
+	// been fully rendered.
+	PreparedData [160][144][3]uint8
+
+	interruptsEnabling bool
+	interruptsOn       bool
+	halted             bool
+
+	cbInst    map[byte]func()
+	InputMask byte
+
 	// Flag if the game is running in cgb mode. For this to be true the game
 	// rom must support cgb mode and the option be true.
-	CGBMode       bool
+	cgbMode       bool
 	BGPalette     *cgbPalette
 	SpritePalette *cgbPalette
 
 	currentSpeed byte
 	prepareSpeed bool
 
-	lastDrawnScanline byte
-
 	thisCpuTicks int
-	debugScanner *bufio.Scanner
 }
 
 // Update update the state of the gameboy by a single frame.
@@ -72,7 +78,10 @@ func (gb *Gameboy) Update() int {
 	cycles := 0
 	for cycles < CyclesFrame*gb.getSpeed() {
 		cyclesOp := 4
-		if !gb.Halted {
+		if !gb.halted {
+			if gb.Debug.OutputOpcodes {
+				logOpcode(gb, false)
+			}
 			cyclesOp = gb.ExecuteNextOpcode()
 		} else {
 			// TODO: This is incorrect
@@ -85,7 +94,7 @@ func (gb *Gameboy) Update() int {
 		gb.updateTimers(cyclesOp)
 		cycles += gb.doInterrupts()
 	}
-	gb.Sound.Tick(cycles)
+	gb.Sound.tick(cycles)
 
 	return cycles
 }
@@ -120,7 +129,7 @@ func (gb *Gameboy) checkSpeedSwitch() {
 			gb.currentSpeed = 0
 		}
 		log.Print("new speed", gb.currentSpeed)
-		gb.Halted = false
+		gb.halted = false
 	}
 }
 
@@ -190,12 +199,12 @@ func (gb *Gameboy) requestInterrupt(interrupt byte) {
 }
 
 func (gb *Gameboy) doInterrupts() (cycles int) {
-	if gb.InterruptsEnabling {
-		gb.InterruptsOn = true
-		gb.InterruptsEnabling = false
+	if gb.interruptsEnabling {
+		gb.interruptsOn = true
+		gb.interruptsEnabling = false
 		return 0
 	}
-	if !gb.InterruptsOn && !gb.Halted {
+	if !gb.interruptsOn && !gb.halted {
 		return 0
 	}
 
@@ -227,12 +236,12 @@ var interruptAddresses = map[byte]uint16{
 // enabled and will jump to the interrupt address.
 func (gb *Gameboy) serviceInterrupt(interrupt byte) {
 	// If was halted without interrupts, do not jump or reset IF
-	if !gb.InterruptsOn && gb.Halted {
-		gb.Halted = false
+	if !gb.interruptsOn && gb.halted {
+		gb.halted = false
 		return
 	}
-	gb.InterruptsOn = false
-	gb.Halted = false
+	gb.interruptsOn = false
+	gb.halted = false
 
 	req := gb.Memory.Read(0xFF0F)
 	req = bits.Reset(req, interrupt)
@@ -276,7 +285,7 @@ func (gb *Gameboy) IsGameLoaded() bool {
 
 // IsCGB returns if we are using CGB features
 func (gb *Gameboy) IsCGB() bool {
-	return gb.CGBMode
+	return gb.cgbMode
 }
 
 // Initialise the Gameboy using a path to a rom.
@@ -299,7 +308,7 @@ func (gb *Gameboy) init(romFile string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open rom file: %s", err)
 	}
-	gb.CGBMode = gb.options.cgbMode && hasCGB
+	gb.cgbMode = gb.options.cgbMode && hasCGB
 
 	gb.Debug = DebugFlags{}
 	gb.scanlineCounter = 456
@@ -313,6 +322,7 @@ func (gb *Gameboy) init(romFile string) error {
 	return nil
 }
 
+// Gob writes a gob'd version of the Gameboy instance to a file (experimental).
 func (gb *Gameboy) Gob() error {
 	f, err := os.Create("test.gob")
 	if err != nil {
@@ -342,6 +352,8 @@ func NewGameboy(romFile string, opts ...GameboyOption) (*Gameboy, error) {
 	return &gameboy, nil
 }
 
+// NewGameboyFromGob returns a new Gameboy instance from an existing gob output
+// of a Gameboy (experimental).
 func NewGameboyFromGob(gobFile string, opts ...GameboyOption) (*Gameboy, error) {
 	f, err := os.Open(gobFile)
 	if err != nil {

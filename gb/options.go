@@ -11,14 +11,24 @@ type gameboyOptions struct {
 	transferFunction func(byte)
 }
 
+// DebugFlags are flags which can be set to alter the execution of the Gameboy.
 type DebugFlags struct {
-	HideSprites    bool
+	// HideSprites turns off rendering of sprites to the display.
+	HideSprites bool
+	// HideBackground turns off rendering of background tiles to the display.
 	HideBackground bool
-	OutputOpcodes  bool
+	// OutputOpcodes will log the current opcode to the console on each tick.
+	// This will slow down execution massively so is only used for debugging
+	// issues with the emulation.
+	OutputOpcodes bool
 
+	// MuteChannel1 turns off channel 1 of the sound output.
 	MuteChannel1 bool
+	// MuteChannel2 turns off channel 2 of the sound output.
 	MuteChannel2 bool
+	// MuteChannel3 turns off channel 3 of the sound output.
 	MuteChannel3 bool
+	// MuteChannel4 turns off channel 4 of the sound output.
 	MuteChannel4 bool
 }
 
