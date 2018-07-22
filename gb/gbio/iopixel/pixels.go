@@ -9,6 +9,7 @@ import (
 
 	"github.com/Humpheh/goboy/bits"
 	"github.com/Humpheh/goboy/gb"
+	"github.com/Humpheh/goboy/gb/gbio"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 )
@@ -17,10 +18,10 @@ import (
 var PixelScale float64 = 3
 
 // NewPixelsIOBinding returns a new Pixelsgl IOBinding
-func NewPixelsIOBinding(gameboy *gb.Gameboy, disableVsync bool) PixelsIOBinding {
+func NewPixelsIOBinding(gameboy *gb.Gameboy, disableVsync bool) gbio.IOBinding {
 	monitor := PixelsIOBinding{Gameboy: gameboy}
 	monitor.Init(disableVsync)
-	return monitor
+	return &monitor
 }
 
 // PixelsIOBinding binds screen output and input using the pixels library.
@@ -28,7 +29,6 @@ type PixelsIOBinding struct {
 	Gameboy *gb.Gameboy
 	Window  *pixelgl.Window
 	picture *pixel.PictureData
-	Frames  int
 }
 
 // Init initialises the Pixels bindings.
@@ -75,7 +75,6 @@ func (mon *PixelsIOBinding) IsRunning() bool {
 
 // RenderScreen renders the pixels on the screen.
 func (mon *PixelsIOBinding) RenderScreen() {
-	mon.Frames++
 	for y := 0; y < 144; y++ {
 		for x := 0; x < 160; x++ {
 			col := mon.Gameboy.PreparedData[x][y]

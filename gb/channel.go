@@ -11,8 +11,12 @@ import (
 const volume = 0.1
 const twoPi = 2 * math.Pi
 
-// Create a new sound channel using a sampling function.
-func NewChannel(gen func(float64, float64) float64, start float64) *Channel {
+// WaveGenerator is a function which can be used for generating waveform
+// samples for different channels.
+type WaveGenerator func(t float64, mod float64) float64
+
+// NewChannel returns a new sound channel using a sampling function.
+func NewChannel(gen WaveGenerator, start float64) *Channel {
 	return &Channel{
 		on:     false,
 		Func:   gen,
@@ -22,11 +26,11 @@ func NewChannel(gen func(float64, float64) float64, start float64) *Channel {
 	}
 }
 
-// A sound channel
+// Channel represents one of four gameboy sound channels.
 type Channel struct {
 	Freq      float64
 	Amp       float64
-	Func      func(t float64, mod float64) float64
+	Func      WaveGenerator
 	FuncMod   float64
 	DebugMute bool
 	Volume    float64
@@ -40,8 +44,8 @@ type Channel struct {
 	bufferlock sync.Mutex
 }
 
-// Get a StreamerFunc for streaming the sound output. Uses the
-// buffer in the sound channel which can be extended using the
+// Stream returns a StreamerFunc for streaming the sound output. Uses
+// the buffer in the sound channel which can be extended using the
 // Buffer function.
 func (chn *Channel) Stream(sr float64) beep.StreamerFunc {
 	chn.counter = 0
@@ -79,7 +83,7 @@ func (chn *Channel) Buffer(samples int) {
 	for i := 0; i < samples; i++ {
 		chn.t += step
 
-		var val float64 = 0
+		var val float64
 		if chn.on && !chn.DebugMute {
 			val = chn.Func(chn.t, chn.FuncMod) * chn.Amp * volume * chn.Volume
 		}
@@ -89,27 +93,28 @@ func (chn *Channel) Buffer(samples int) {
 	chn.bufferlock.Unlock()
 }
 
-// Set the amplitude of the sound channel.
+// SetAmp sets the amplitude of the sound channel.
 func (chn *Channel) SetAmp(amp float64) {
 	chn.Amp = amp
 }
 
-// Enable the sound channel.
+// On enables the sound channel.
 func (chn *Channel) On() {
 	chn.on = true
 }
 
-// Disable the sound channel.
+// Off disables the sound channel.
 func (chn *Channel) Off() {
 	chn.on = false
 }
 
-// Set the volume of the sound channel for the two output terminals.
+// SetVolume sets the volume of the sound channel for the two output terminals.
 func (chn *Channel) SetVolume(so1vol float64, so2vol float64) {
 	chn.so1vol = so1vol
 	chn.so2vol = so2vol
 }
 
+// Square returns a wave generator for a square wave.
 func Square(t float64, mod float64) float64 {
 	if math.Sin(t) <= mod {
 		return -1
@@ -117,11 +122,14 @@ func Square(t float64, mod float64) float64 {
 	return 1
 }
 
+// Noise returns a wave generator for a noise wave.
 func Noise(t float64, _ float64) float64 {
 	return float64(rand.Intn(3) - 1)
 }
 
-func MakeWaveform(data *[32]int8) func(float64, float64) float64 {
+// MakeWaveform returns a wave generator for a waveform set in the GameBoy
+// waveform ram. It will loop over the samples provided.
+func MakeWaveform(data *[32]int8) WaveGenerator {
 	return func(t float64, _ float64) float64 {
 		idx := int(math.Floor(t/twoPi*32)) % 32
 		data := int16(int8(data[idx]<<4) >> 4)

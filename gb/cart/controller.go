@@ -105,7 +105,7 @@ func (c *Cart) initGameSaves() {
 	}()
 }
 
-// Dump the carts RAM to the save location.
+// Save dumps the carts RAM to the save location.
 func (c *Cart) Save() {
 	data := c.BankingController.GetSaveData()
 	if len(data) > 0 {

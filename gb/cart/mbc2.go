@@ -1,6 +1,6 @@
 package cart
 
-// MBC2 returns a new MBC2 memory controller.
+// NewMBC2 returns a new MBC2 memory controller.
 func NewMBC2(data []byte) BankingController {
 	return &MBC2{
 		rom:     data,

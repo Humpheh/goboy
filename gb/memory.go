@@ -93,6 +93,8 @@ func (mem *Memory) LoadCart(loc string) (bool, error) {
 	return mem.Cart.GetMode()&cart.CGB != 0, err
 }
 
+// WriteHighRam writes to the range 0xFF00-0xFFFF in the memory address
+// space. The range includes both HRAM and the hardware registers.
 func (mem *Memory) WriteHighRam(address uint16, value byte) {
 	switch {
 	case address >= 0xFEA0 && address < 0xFEFF:
@@ -109,6 +111,15 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 		soundIndex := (address - 0xFF30) * 2
 		mem.gb.Sound.waveformRam[soundIndex] = int8((value >> 4) & 0xF)
 		mem.gb.Sound.waveformRam[soundIndex+1] = int8(value & 0xF)
+
+	case address == 0xFF02:
+		// Serial transfer control
+		if value == 0x81 {
+			f := mem.gb.options.transferFunction
+			if f != nil {
+				f(mem.Read(0xFF01))
+			}
+		}
 
 	case address == DIV:
 		// Trap divider register
@@ -132,15 +143,6 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 			mem.gb.setClockFreq()
 		}
 
-	case address == 0xFF02:
-		// Serial transfer control
-		if value == 0x81 {
-			f := mem.gb.options.transferFunction
-			if f != nil {
-				f(mem.Read(0xFF01))
-			}
-		}
-
 	case address == 0xFF41:
 		mem.HighRAM[0x41] = value | 0x80
 
@@ -152,8 +154,12 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 		// DMA transfer
 		mem.doDMATransfer(value)
 
-	case address == 0xFF55:
-		mem.doHDMATransfer(value)
+	case address == 0xFF4D:
+		// CGB speed change
+		if mem.gb.IsCGB() {
+			log.Print("Change speed")
+			mem.gb.prepareSpeed = bits.Test(value, 0)
+		}
 
 	case address == 0xFF4F:
 		// VRAM bank (CGB only)
@@ -161,14 +167,8 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 			mem.VRAMBank = value & 0x1
 		}
 
-	case address == 0xFF70:
-		// WRAM1 bank (CGB mode)
-		if mem.gb.IsCGB() {
-			mem.WRAMBank = value & 0x7
-			if mem.WRAMBank == 0 {
-				mem.WRAMBank = 1
-			}
-		}
+	case address == 0xFF55:
+		mem.doHDMATransfer(value)
 
 	case address == 0xFF68:
 		// BG palette index
@@ -194,11 +194,13 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 			mem.gb.SpritePalette.write(value)
 		}
 
-	case address == 0xFF4D:
-		// CGB speed change
+	case address == 0xFF70:
+		// WRAM1 bank (CGB mode)
 		if mem.gb.IsCGB() {
-			log.Print("Change speed")
-			mem.gb.prepareSpeed = bits.Test(value, 0)
+			mem.WRAMBank = value & 0x7
+			if mem.WRAMBank == 0 {
+				mem.WRAMBank = 1
+			}
 		}
 
 	case address >= 0xFF72 && address <= 0xFF77:
@@ -255,6 +257,54 @@ func (mem *Memory) Write(address uint16, value byte) {
 	}
 }
 
+// Read from memory. Will go and read from cartridge memory if the
+// requested address is mapped to that space.
+func (mem *Memory) Read(address uint16) byte {
+	switch {
+	case address < 0x8000:
+		// Cartridge ROM
+		return mem.Cart.Read(address)
+
+	case address < 0xA000:
+		// VRAM Banking
+		// TODO: check this is correct
+		bankOffset := uint16(mem.VRAMBank) * 0x2000
+		return mem.VRAM[address-0x8000+bankOffset]
+
+	case address < 0xC000:
+		// Cartridge RAM
+		return mem.Cart.Read(address)
+
+	case address < 0xD000:
+		// Internal RAM - Bank 0
+		return mem.WRAM[address-0xC000]
+
+	case address < 0xE000:
+		// Internal RAM Bank 1-7
+		return mem.WRAM[(address-0xC000)+(uint16(mem.WRAMBank)*0x1000)]
+
+	case address < 0xFE00:
+		// Echo RAM
+		// TODO: re-enable echo RAM?
+		//mem.Data[address] = value
+		//mem.Write(address-0x2000, value)
+		return 0xFF
+
+	case address < 0xFEA0:
+		// Object Attribute Memory
+		return mem.OAM[address-0xFE00]
+
+	case address < 0xFF00:
+		// Unusable memory
+		return 0xFF
+
+	default:
+		return mem.ReadHighRam(address)
+	}
+}
+
+// ReadHighRam reads from 0xFF00-0xFFFF in the memory address space. The range
+// includes both HRAM and the hardware registers.
 func (mem *Memory) ReadHighRam(address uint16) byte {
 	switch {
 	// Joypad address
@@ -308,52 +358,6 @@ func (mem *Memory) ReadHighRam(address uint16) byte {
 
 	default:
 		return mem.HighRAM[address-0xFF00]
-	}
-}
-
-// Read from memory. Will go and read from cartridge memory if the
-// requested address is mapped to that space.
-func (mem *Memory) Read(address uint16) byte {
-	switch {
-	case address < 0x8000:
-		// Cartridge ROM
-		return mem.Cart.Read(address)
-
-	case address < 0xA000:
-		// VRAM Banking
-		// TODO: check this is correct
-		bankOffset := uint16(mem.VRAMBank) * 0x2000
-		return mem.VRAM[address-0x8000+bankOffset]
-
-	case address < 0xC000:
-		// Cartridge RAM
-		return mem.Cart.Read(address)
-
-	case address < 0xD000:
-		// Internal RAM - Bank 0
-		return mem.WRAM[address-0xC000]
-
-	case address < 0xE000:
-		// Internal RAM Bank 1-7
-		return mem.WRAM[(address-0xC000)+(uint16(mem.WRAMBank)*0x1000)]
-
-	case address < 0xFE00:
-		// Echo RAM
-		// TODO: re-enable echo RAM?
-		//mem.Data[address] = value
-		//mem.Write(address-0x2000, value)
-		return 0xFF
-
-	case address < 0xFEA0:
-		// Object Attribute Memory
-		return mem.OAM[address-0xFE00]
-
-	case address < 0xFF00:
-		// Unusable memory
-		return 0xFF
-
-	default:
-		return mem.ReadHighRam(address)
 	}
 }
 
