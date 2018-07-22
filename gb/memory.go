@@ -8,12 +8,20 @@ import (
 )
 
 const (
-	// Memory addresses for some hardware registers.
-	// TODO: move more of them up here
-	DIV  = 0xFF04
+	// DIV is the divider register which is incremented periodically by
+	// the Gameboy.
+	DIV = 0xFF04
+	// TIMA is the timer counter register which is incremented by a clock
+	// frequency specified in the TAC register.
 	TIMA = 0xFF05
-	TMA  = 0xFF06
-	TAC  = 0xFF07
+	// TMA is the timer modulo register. When the TIMA overflows, this data
+	// will be loaded into the TIMA register.
+	TMA = 0xFF06
+	// TAC is the timer control register. Writing to this register will
+	// start and stop the timer, and select the clock speed for the timer.
+	TAC = 0xFF07
+
+	// TODO: move more hardware registers up here.
 )
 
 // Memory stores gameboy ROM, RAM and cartridge data. It manages the

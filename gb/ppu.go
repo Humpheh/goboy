@@ -122,21 +122,17 @@ func (gb *Gameboy) drawScanline(scanline byte) {
 	}
 }
 
-// Render a scanline of the tile map to the graphics output based
-// on the state of the lcdControl register.
-func (gb *Gameboy) renderTiles(lcdControl byte, scanline byte) {
-	unsigned := false
-	tileData := uint16(0x8800)
-
-	scrollY := gb.Memory.Read(0xFF42)
-	scrollX := gb.Memory.Read(0xFF43)
-	windowY := gb.Memory.Read(0xFF4A)
-	windowX := gb.Memory.Read(0xFF4B) - 7
-
-	usingWindow := false
+// Get settings to be used when rendering tiles.
+func (gb *Gameboy) getTileSettings(lcdControl byte, windowY byte) (
+	usingWindow bool,
+	unsigned bool,
+	tileData uint16,
+	backgroundMemory uint16,
+) {
+	tileData = uint16(0x8800)
 
 	if bits.Test(lcdControl, 5) {
-		// is current scanline we're drawing within windows Y position?
+		// Is current scanline we're drawing within windows Y position?
 		if windowY <= gb.Memory.Read(0xFF44) {
 			usingWindow = true
 		}
@@ -148,15 +144,27 @@ func (gb *Gameboy) renderTiles(lcdControl byte, scanline byte) {
 		unsigned = true
 	}
 
+	// Work out where to look in background memory.
 	var testBit byte = 3
 	if usingWindow {
 		testBit = 6
 	}
-
-	backgroundMemory := uint16(0x9800)
+	backgroundMemory = uint16(0x9800)
 	if bits.Test(lcdControl, testBit) {
 		backgroundMemory = 0x9C00
 	}
+	return
+}
+
+// Render a scanline of the tile map to the graphics output based
+// on the state of the lcdControl register.
+func (gb *Gameboy) renderTiles(lcdControl byte, scanline byte) {
+	scrollY := gb.Memory.Read(0xFF42)
+	scrollX := gb.Memory.Read(0xFF43)
+	windowY := gb.Memory.Read(0xFF4A)
+	windowX := gb.Memory.Read(0xFF4B) - 7
+
+	usingWindow, unsigned, tileData, backgroundMemory := gb.getTileSettings(lcdControl, windowY)
 
 	// yPos is used to calc which of 32 v-lines the current scanline is drawing
 	var yPos byte
