@@ -7,6 +7,15 @@ import (
 	"github.com/Humpheh/goboy/gb/cart"
 )
 
+const (
+	// Memory addresses for some hardware registers.
+	// TODO: move more of them up here
+	DIV  = 0xFF04
+	TIMA = 0xFF05
+	TMA  = 0xFF06
+	TAC  = 0xFF07
+)
+
 // Memory stores gameboy ROM, RAM and cartridge data. It manages the
 // banking of these data banks.
 type Memory struct {
