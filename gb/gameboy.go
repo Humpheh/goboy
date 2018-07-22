@@ -17,11 +17,6 @@ const (
 	FramesSecond = 60
 	// CyclesFrame is the number of CPU cycles in each frame.
 	CyclesFrame = ClockSpeed / FramesSecond
-
-	DIV  = 0xFF04
-	TIMA = 0xFF05
-	TMA  = 0xFF06
-	TAC  = 0xFF07
 )
 
 // Gameboy is the master struct which contains all of the sub components

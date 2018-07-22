@@ -46,16 +46,12 @@ func (r *MBC1) WriteROM(address uint16, value byte) {
 	case address < 0x4000:
 		// ROM bank number (lower 5)
 		r.romBank = (r.romBank & 0xe0) | uint32(value&0x1f)
-		if r.romBank == 0x00 || r.romBank == 0x20 || r.romBank == 0x40 || r.romBank == 0x60 {
-			r.romBank++
-		}
+		r.updateRomBankIfZero()
 	case address < 0x6000:
 		// ROM/RAM banking
 		if r.romBanking {
 			r.romBank = (r.romBank & 0x1F) | uint32(value&0xe0)
-			if r.romBank == 0x00 || r.romBank == 0x20 || r.romBank == 0x40 || r.romBank == 0x60 {
-				r.romBank++
-			}
+			r.updateRomBankIfZero()
 		} else {
 			r.ramBank = uint32(value & 0x3)
 		}
@@ -67,6 +63,13 @@ func (r *MBC1) WriteROM(address uint16, value byte) {
 		} else {
 			r.romBank = r.romBank & 0x1F
 		}
+	}
+}
+
+// Update the romBank if it is on a value which cannot be used.
+func (r *MBC1) updateRomBankIfZero() {
+	if r.romBank == 0x00 || r.romBank == 0x20 || r.romBank == 0x40 || r.romBank == 0x60 {
+		r.romBank++
 	}
 }
 
