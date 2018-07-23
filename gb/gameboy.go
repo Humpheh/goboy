@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/Humpheh/goboy/bits"
+	"github.com/Humpheh/goboy/gb/apu"
 )
 
 const (
@@ -26,7 +27,7 @@ type Gameboy struct {
 
 	Memory *Memory
 	CPU    *CPU
-	Sound  *Sound
+	Sound  *apu.APU
 
 	Debug           DebugFlags
 	ExecutionPaused bool
@@ -89,7 +90,7 @@ func (gb *Gameboy) Update() int {
 		gb.updateTimers(cyclesOp)
 		cycles += gb.doInterrupts()
 	}
-	gb.Sound.tick(cycles)
+	gb.Sound.Update(CyclesFrame)
 
 	return cycles
 }
@@ -295,8 +296,8 @@ func (gb *Gameboy) init(romFile string) error {
 	gb.Memory = &Memory{}
 	gb.Memory.Init(gb)
 
-	gb.Sound = &Sound{}
-	gb.Sound.Init(gb)
+	gb.Sound = &apu.APU{}
+	gb.Sound.Init()
 
 	// Load the ROM file
 	hasCGB, err := gb.Memory.LoadCart(romFile)
@@ -365,7 +366,7 @@ func NewGameboyFromGob(gobFile string, opts ...GameboyOption) (*Gameboy, error) 
 		return nil, err
 	}
 	gameboy.Memory.gb = &gameboy
-	gameboy.Sound.Init(&gameboy)
+	gameboy.Sound.Init()
 	gameboy.cbInst = gameboy.cbInstructions()
 	return &gameboy, nil
 }
