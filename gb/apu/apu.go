@@ -2,7 +2,6 @@ package apu
 
 import (
 	"math"
-	"sync"
 
 	"time"
 
@@ -16,6 +15,7 @@ const sampleRate = 41040
 const clock = 4194304
 const twoPi = 2 * math.Pi
 const cycleTime = float64(41040) / float64(4194304)
+const perSample = 1 / float64(sampleRate)
 
 type APU struct {
 	memory [52]byte
@@ -27,24 +27,30 @@ type APU struct {
 	buffer [][2]float64
 
 	chn1 *Channel
+	chn2 *Channel
 
 	// TODO: waveform RAM
 	WaveformRam []int8
+
+	lastTime time.Time
 }
 
 // Init the sound emulation for a gameboy.
 func (a *APU) Init() {
 	sampleRate := beep.SampleRate(41040)
-	speaker.Init(sampleRate, sampleRate.N(time.Second/30))
+	speaker.Init(sampleRate, 684*2)
 
 	a.WaveformRam = make([]int8, 0x10*2)
 
 	// Create the channels with their sounds
 	a.chn1 = NewChannel()
+	a.chn2 = NewChannel()
 	mix := beep.Mix(
-		a.chn1.Stream(float64(sampleRate)),
+		a.chn1.Stream(),
+		//a.chn2.Stream(float64(sampleRate)),
 	)
 	speaker.Play(mix)
+	a.lastTime = time.Now()
 }
 
 //var soundMask = []byte{
@@ -63,31 +69,37 @@ func (a *APU) Write(address uint16, value byte) {
 		if value&0x80 == 0x80 {
 			a.start1()
 		}
+	case 0xFF19:
+		if value&0x80 == 0x80 {
+			a.start2()
+		}
 	}
 	// TODO: if writing to FF26 bit 7 destroy all contents (also cannot access)
 }
 
-func (a *APU) Update(cycles int) {
+func (a *APU) Update() {
 	//lVolume := a.memory[0x24] & 0x70
 	//rVolume := a.memory[0x24] & 0x7
 	//
 	//// Right output for each channel
 	output1r := a.memory[0x25]&0x1 == 0x1
-	//output2r := a.memory[0x25]&0x2 == 0x2
+	output2r := a.memory[0x25]&0x2 == 0x2
 	//output3r := a.memory[0x25]&0x4 == 0x4
 	//output4r := a.memory[0x25]&0x8 == 0x8
 	//
 	//// Left output for each channel
 	output1l := a.memory[0x25]&0x10 == 0x10
-	//output2l := a.memory[0x25]&0x20 == 0x20
+	output2l := a.memory[0x25]&0x20 == 0x20
 	//output3l := a.memory[0x25]&0x40 == 0x40
 	//output4l := a.memory[0x25]&0x80 == 0x80
 
-	a.currentCycle += int64(cycles)
-	diff := a.currentCycle - a.lastCycle
-	samples := math.Floor(float64(diff) / clock * sampleRate)
+	now := time.Now()
+	samples := now.Sub(a.lastTime).Seconds() * sampleRate
+	a.lastTime = now
+
 	if samples > 0 {
-		a.chn1.Buffer(int(samples), !output1r && !output1l)
+		a.chn1.on = output1r || output1l
+		a.chn2.on = output2r || output2l
 		a.lastCycle = a.currentCycle
 	}
 }
@@ -100,9 +112,7 @@ func (a *APU) start1() {
 	length := a.memory[0x11] & 0x3F
 
 	// Envelope settings
-	envVolume := (a.memory[0x12] & 0xF0) >> 4
-	envDirection := (a.memory[0x12] & 0x8) >> 3 // 1 or 0
-	envSweep := a.memory[0x12] & 0x7
+	envVolume, envDirection, envSweep := a.extractEnvelope(a.memory[0x12])
 
 	// Sweep
 	sweepTime := (a.memory[0x10] & 0x70) >> 4
@@ -127,8 +137,39 @@ func (a *APU) start1() {
 	a.chn1.sweepStepLen = sweepTime
 	a.chn1.sweepSteps = sweepNumber
 	a.chn1.sweepIncrease = sweepDirection == 0
+}
 
-	log.Printf("Duration: %3v - Freq: %7v (%v)", duration, a.chn1.frequency, frequencyValue)
+func (a *APU) start2() {
+	selection := (a.memory[0x19] & 0x40) >> 6 // 1 = stop when length in NR24 expires
+	frequencyValue := uint16(a.memory[0x19]&0x7)<<8 | uint16(a.memory[0x18])
+
+	pattern := (a.memory[0x16] & 0xC0) >> 6
+	length := a.memory[0x16] & 0x3F
+
+	// Envelope settings
+	envVolume, envDirection, envSweep := a.extractEnvelope(a.memory[0x17])
+
+	duration := -1
+	if selection == 1 {
+		duration = int(float64(length)*(1/64)) * sampleRate
+	}
+
+	a.chn2.Reset()
+	a.chn2.frequency = 131062 / (2048 - float64(frequencyValue))
+	a.chn2.generator = Square(squareLimits[pattern])
+	a.chn2.duration = duration
+
+	a.chn2.envelopeSteps = int(envVolume)
+	a.chn2.envelopeStepsInit = int(envVolume)
+	a.chn2.envelopeStepLength = float64(envSweep) / 64
+	a.chn2.envelopeIncreasing = envDirection == 1
+}
+
+func (a *APU) extractEnvelope(val byte) (volume, direction, sweep byte) {
+	volume = (val & 0xF0) >> 4
+	direction = (val & 0x8) >> 3 // 1 or 0
+	sweep = val & 0x7
+	return
 }
 
 var squareLimits = map[byte]float64{
@@ -163,9 +204,7 @@ type WaveGenerator func(t float64) float64
 
 // NewChannel returns a new sound channel using a sampling function.
 func NewChannel() *Channel {
-	return &Channel{
-		buffer: [][2]float64{{0, 0}},
-	}
+	return &Channel{}
 }
 
 // Channel represents one of four gameboy sound channels.
@@ -178,10 +217,6 @@ type Channel struct {
 	// Duration in samples
 	duration int
 
-	buffer     [][2]float64
-	counter    int
-	bufferLock sync.Mutex
-
 	envelopeTime       float64
 	envelopeSteps      int
 	envelopeStepsInit  int
@@ -193,33 +228,35 @@ type Channel struct {
 	sweepSteps    byte
 	sweepStep     byte
 	sweepIncrease bool
+
+	on bool
 }
 
 // Stream returns a StreamerFunc for streaming the sound output. Uses
 // the buffer in the sound channel which can be extended using the
 // Buffer function.
-func (chn *Channel) Stream(sr float64) beep.StreamerFunc {
-	chn.counter = 0
-	return beep.StreamerFunc(func(samples [][2]float64) (n int, ok bool) {
-		chn.bufferLock.Lock()
-		bufferLen := len(chn.buffer) - 1
-		for i := range samples {
-			index := chn.counter
-			if chn.counter < bufferLen {
-				chn.counter++
-			} else {
-				chn.counter -= 684
-				if chn.counter < 0 {
-					chn.counter = 0
+func (chn *Channel) Stream() beep.StreamerFunc {
+	return beep.StreamerFunc(func(buffer [][2]float64) (n int, ok bool) {
+		b := time.Now()
+		step := chn.frequency * twoPi / float64(sampleRate)
+		length := len(buffer)
+		for i := 0; i < length; i++ {
+			chn.time += step
+			if chn.shouldPlay() && chn.on {
+				// Take the sample value from the generator
+				val := chn.generator(chn.time) * chn.amplitude
+				buffer[i][0] = val
+				buffer[i][1] = val
+				if chn.duration > 0 {
+					chn.duration--
 				}
 			}
-			if index >= 0 && index < len(chn.buffer) {
-				val := chn.buffer[index]
-				samples[i] = val
-			}
+
+			chn.updateEnvelope()
+			chn.updateSweep()
 		}
-		chn.bufferLock.Unlock()
-		return len(samples), true
+		log.Printf("%v samples -> %s", length, time.Since(b))
+		return length, true
 	})
 }
 
@@ -230,60 +267,42 @@ func (chn *Channel) Reset() {
 	chn.sweepStep = 0
 }
 
-// Buffer a number of samples for streaming.
-func (chn *Channel) Buffer(samples int, silent bool) {
-	chn.bufferLock.Lock()
-	// Remove end of buffer if its getting long
-	if len(chn.buffer) > samples*120 {
-		chn.buffer = chn.buffer[samples*60:]
-		chn.counter -= samples * 60
-		log.Printf("Snip buffer")
-	}
+func (chn *Channel) shouldPlay() bool {
+	return (chn.duration == -1 || chn.duration > 0) &&
+		chn.generator != nil && chn.envelopeStepsInit > 0
+}
 
-	step := chn.frequency * twoPi / float64(sampleRate)
-	perSample := 1 / float64(sampleRate)
-	for i := 0; i < samples; i++ {
-		chn.time += step
-		var val float64
-		if (chn.duration == -1 || chn.duration > 0) && chn.generator != nil && !silent && chn.envelopeStepsInit > 0 {
-			val = chn.generator(chn.time) * chn.amplitude
-			if chn.duration > 0 {
-				chn.duration--
-			}
-		}
-		chn.buffer = append(chn.buffer, [2]float64{val, val})
-
-		// Update the envelope
-		if chn.envelopeStepLength > 0 {
-			chn.envelopeTime += perSample
-			if chn.envelopeSteps > 0 && chn.envelopeTime > chn.envelopeStepLength {
-				//log.Print(chn.envelopeSteps, chn.envelopeStepLength)
-				chn.envelopeTime -= chn.envelopeStepLength
-				chn.envelopeSteps--
-				if chn.envelopeSteps == 0 {
-					chn.amplitude = 0
-				} else if chn.envelopeIncreasing {
-					chn.amplitude = 1 - float64(chn.envelopeSteps)/float64(chn.envelopeStepsInit)
-				} else {
-					chn.amplitude = float64(chn.envelopeSteps) / float64(chn.envelopeStepsInit)
-				}
-			}
-		}
-
-		if chn.sweepStep < chn.sweepSteps {
-			t := sweepTimes[chn.sweepStepLen]
-			chn.sweepTime += perSample
-			if chn.sweepTime > t {
-				chn.sweepTime -= t
-				chn.sweepStep += 1
-
-				if chn.sweepIncrease {
-					chn.frequency += chn.frequency / math.Pow(2, float64(chn.sweepStep))
-				} else {
-					chn.frequency -= chn.frequency / math.Pow(2, float64(chn.sweepStep))
-				}
+func (chn *Channel) updateEnvelope() {
+	if chn.envelopeStepLength > 0 {
+		chn.envelopeTime += perSample
+		if chn.envelopeSteps > 0 && chn.envelopeTime > chn.envelopeStepLength {
+			//log.Print(chn.envelopeSteps, chn.envelopeStepLength)
+			chn.envelopeTime -= chn.envelopeStepLength
+			chn.envelopeSteps--
+			if chn.envelopeSteps == 0 {
+				chn.amplitude = 0
+			} else if chn.envelopeIncreasing {
+				chn.amplitude = 1 - float64(chn.envelopeSteps)/float64(chn.envelopeStepsInit)
+			} else {
+				chn.amplitude = float64(chn.envelopeSteps) / float64(chn.envelopeStepsInit)
 			}
 		}
 	}
-	chn.bufferLock.Unlock()
+}
+
+func (chn *Channel) updateSweep() {
+	if chn.sweepStep < chn.sweepSteps {
+		t := sweepTimes[chn.sweepStepLen]
+		chn.sweepTime += perSample
+		if chn.sweepTime > t {
+			chn.sweepTime -= t
+			chn.sweepStep += 1
+
+			if chn.sweepIncrease {
+				chn.frequency += chn.frequency / math.Pow(2, float64(chn.sweepStep))
+			} else {
+				chn.frequency -= chn.frequency / math.Pow(2, float64(chn.sweepStep))
+			}
+		}
+	}
 }
