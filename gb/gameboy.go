@@ -90,7 +90,7 @@ func (gb *Gameboy) Update() int {
 		gb.updateTimers(cyclesOp)
 		cycles += gb.doInterrupts()
 	}
-	gb.Sound.Update(CyclesFrame)
+	gb.Sound.Update()
 
 	return cycles
 }
