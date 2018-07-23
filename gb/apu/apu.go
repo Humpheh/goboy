@@ -114,24 +114,21 @@ func (a *APU) start1() {
 		duration = int(float64(length)*(1/64)) * sampleRate
 	}
 
+	a.chn1.Reset()
 	a.chn1.frequency = 131062 / (2048 - float64(frequencyValue))
 	a.chn1.generator = Square(squareLimits[pattern])
 	a.chn1.duration = duration
-	a.chn1.amplitude = 1
 
-	a.chn1.envelopeTime = 0
 	a.chn1.envelopeSteps = int(envVolume)
 	a.chn1.envelopeStepsInit = int(envVolume)
 	a.chn1.envelopeStepLength = float64(envSweep) / 64
 	a.chn1.envelopeIncreasing = envDirection == 1
 
-	a.chn1.sweepTime = 0
 	a.chn1.sweepStepLen = sweepTime
 	a.chn1.sweepSteps = sweepNumber
-	a.chn1.sweepStep = 0
 	a.chn1.sweepIncrease = sweepDirection == 0
 
-	log.Print(duration)
+	log.Printf("Duration: %3v - Freq: %7v (%v)", duration, a.chn1.frequency, frequencyValue)
 }
 
 var squareLimits = map[byte]float64{
@@ -226,6 +223,13 @@ func (chn *Channel) Stream(sr float64) beep.StreamerFunc {
 	})
 }
 
+func (chn *Channel) Reset() {
+	chn.amplitude = 1
+	chn.envelopeTime = 0
+	chn.sweepTime = 0
+	chn.sweepStep = 0
+}
+
 // Buffer a number of samples for streaming.
 func (chn *Channel) Buffer(samples int, silent bool) {
 	chn.bufferLock.Lock()
@@ -233,6 +237,7 @@ func (chn *Channel) Buffer(samples int, silent bool) {
 	if len(chn.buffer) > samples*120 {
 		chn.buffer = chn.buffer[samples*60:]
 		chn.counter -= samples * 60
+		log.Printf("Snip buffer")
 	}
 
 	step := chn.frequency * twoPi / float64(sampleRate)
@@ -240,7 +245,7 @@ func (chn *Channel) Buffer(samples int, silent bool) {
 	for i := 0; i < samples; i++ {
 		chn.time += step
 		var val float64
-		if (chn.duration == -1 || chn.duration > 0) && chn.generator != nil && !silent {
+		if (chn.duration == -1 || chn.duration > 0) && chn.generator != nil && !silent && chn.envelopeStepsInit > 0 {
 			val = chn.generator(chn.time) * chn.amplitude
 			if chn.duration > 0 {
 				chn.duration--
@@ -252,7 +257,7 @@ func (chn *Channel) Buffer(samples int, silent bool) {
 		if chn.envelopeStepLength > 0 {
 			chn.envelopeTime += perSample
 			if chn.envelopeSteps > 0 && chn.envelopeTime > chn.envelopeStepLength {
-				log.Print(chn.envelopeSteps, chn.envelopeStepLength)
+				//log.Print(chn.envelopeSteps, chn.envelopeStepLength)
 				chn.envelopeTime -= chn.envelopeStepLength
 				chn.envelopeSteps--
 				if chn.envelopeSteps == 0 {
