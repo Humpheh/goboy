@@ -434,6 +434,7 @@ func (s *Sound) tick(clocks int) {
 	s.channel4.DebugMute = s.gb.Debug.MuteChannel4
 
 	s.channel1.Buffer(684)
+
 	s.channel2.Buffer(684)
 	s.channel3.Buffer(684)
 	s.channel4.Buffer(684)
