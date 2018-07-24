@@ -7,11 +7,10 @@ import (
 
 	"log"
 
-	"github.com/faiface/beep"
-	"github.com/faiface/beep/speaker"
+	"github.com/hajimehoshi/oto"
 )
 
-const sampleRate = 41040
+const sampleRate = 44100
 const clock = 4194304
 const twoPi = 2 * math.Pi
 const cycleTime = float64(41040) / float64(4194304)
@@ -20,37 +19,42 @@ const perSample = 1 / float64(sampleRate)
 type APU struct {
 	memory [52]byte
 
-	sampleTime   float64
-	currentCycle int64
-	lastCycle    int64
-
-	buffer [][2]float64
-
 	chn1 *Channel
 	chn2 *Channel
 
+	lVol, rVol float64
+
 	// TODO: waveform RAM
 	WaveformRam []int8
-
-	lastTime time.Time
 }
 
 // Init the sound emulation for a gameboy.
 func (a *APU) Init() {
-	sampleRate := beep.SampleRate(41040)
-	speaker.Init(sampleRate, 684*2)
-
 	a.WaveformRam = make([]int8, 0x10*2)
 
 	// Create the channels with their sounds
 	a.chn1 = NewChannel()
 	a.chn2 = NewChannel()
-	mix := beep.Mix(
-		a.chn1.Stream(),
-		//a.chn2.Stream(float64(sampleRate)),
-	)
-	speaker.Play(mix)
-	a.lastTime = time.Now()
+
+	player, err := oto.NewPlayer(sampleRate, 1, 1, sampleRate/30)
+	if err != nil {
+		log.Fatalf("Failed to start audio: %v", err)
+	}
+	go func() {
+		for range time.Tick(time.Second / 60) {
+			buffer := make([]byte, sampleRate/60)
+			buffer1 := a.chn1.Stream(len(buffer))
+			buffer2 := a.chn2.Stream(len(buffer))
+
+			vol := (a.lVol + a.rVol) / 2
+			for i := range buffer {
+				val := buffer1[i]/2 + buffer2[i]/2
+				buffer[i] = byte(float64(val) * vol)
+			}
+
+			player.Write(buffer)
+		}
+	}()
 }
 
 //var soundMask = []byte{
@@ -73,13 +77,12 @@ func (a *APU) Write(address uint16, value byte) {
 		if value&0x80 == 0x80 {
 			a.start2()
 		}
+
 	}
 	// TODO: if writing to FF26 bit 7 destroy all contents (also cannot access)
 }
 
 func (a *APU) Update() {
-	//lVolume := a.memory[0x24] & 0x70
-	//rVolume := a.memory[0x24] & 0x7
 	//
 	//// Right output for each channel
 	output1r := a.memory[0x25]&0x1 == 0x1
@@ -93,15 +96,11 @@ func (a *APU) Update() {
 	//output3l := a.memory[0x25]&0x40 == 0x40
 	//output4l := a.memory[0x25]&0x80 == 0x80
 
-	now := time.Now()
-	samples := now.Sub(a.lastTime).Seconds() * sampleRate
-	a.lastTime = now
+	a.lVol = float64((a.memory[0x24]&0x70)>>4) / 7
+	a.rVol = float64(a.memory[0x24]&0x7) / 7
 
-	if samples > 0 {
-		a.chn1.on = output1r || output1l
-		a.chn2.on = output2r || output2l
-		a.lastCycle = a.currentCycle
-	}
+	a.chn1.on = output1r || output1l
+	a.chn2.on = output2r || output2l
 }
 
 func (a *APU) start1() {
@@ -125,13 +124,13 @@ func (a *APU) start1() {
 	}
 
 	a.chn1.Reset()
-	a.chn1.frequency = 131062 / (2048 - float64(frequencyValue))
+	a.chn1.frequency = 131072 / (2048 - float64(frequencyValue))
 	a.chn1.generator = Square(squareLimits[pattern])
 	a.chn1.duration = duration
 
 	a.chn1.envelopeSteps = int(envVolume)
 	a.chn1.envelopeStepsInit = int(envVolume)
-	a.chn1.envelopeStepLength = float64(envSweep) / 64
+	a.chn1.envelopeSamples = int(envSweep) * sampleRate / 64
 	a.chn1.envelopeIncreasing = envDirection == 1
 
 	a.chn1.sweepStepLen = sweepTime
@@ -155,13 +154,13 @@ func (a *APU) start2() {
 	}
 
 	a.chn2.Reset()
-	a.chn2.frequency = 131062 / (2048 - float64(frequencyValue))
+	a.chn2.frequency = 131072 / (2048 - float64(frequencyValue))
 	a.chn2.generator = Square(squareLimits[pattern])
 	a.chn2.duration = duration
 
 	a.chn2.envelopeSteps = int(envVolume)
 	a.chn2.envelopeStepsInit = int(envVolume)
-	a.chn2.envelopeStepLength = float64(envSweep) / 64
+	a.chn2.envelopeSamples = int(envSweep) * sampleRate / 64
 	a.chn2.envelopeIncreasing = envDirection == 1
 }
 
@@ -190,17 +189,17 @@ var sweepTimes = map[byte]float64{
 }
 
 func Square(mod float64) WaveGenerator {
-	return func(t float64) float64 {
+	return func(t float64) byte {
 		if math.Sin(t) <= mod {
-			return -1
+			return 255
 		}
-		return 1
+		return 0
 	}
 }
 
 // WaveGenerator is a function which can be used for generating waveform
 // samples for different channels.
-type WaveGenerator func(t float64) float64
+type WaveGenerator func(t float64) byte
 
 // NewChannel returns a new sound channel using a sampling function.
 func NewChannel() *Channel {
@@ -217,10 +216,10 @@ type Channel struct {
 	// Duration in samples
 	duration int
 
-	envelopeTime       float64
+	envelopeTime       int
 	envelopeSteps      int
 	envelopeStepsInit  int
-	envelopeStepLength float64
+	envelopeSamples    int
 	envelopeIncreasing bool
 
 	sweepTime     float64
@@ -235,29 +234,24 @@ type Channel struct {
 // Stream returns a StreamerFunc for streaming the sound output. Uses
 // the buffer in the sound channel which can be extended using the
 // Buffer function.
-func (chn *Channel) Stream() beep.StreamerFunc {
-	return beep.StreamerFunc(func(buffer [][2]float64) (n int, ok bool) {
-		b := time.Now()
-		step := chn.frequency * twoPi / float64(sampleRate)
-		length := len(buffer)
-		for i := 0; i < length; i++ {
-			chn.time += step
-			if chn.shouldPlay() && chn.on {
-				// Take the sample value from the generator
-				val := chn.generator(chn.time) * chn.amplitude
-				buffer[i][0] = val
-				buffer[i][1] = val
-				if chn.duration > 0 {
-					chn.duration--
-				}
+func (chn *Channel) Stream(samples int) []byte {
+	buffer := make([]byte, samples)
+	step := chn.frequency * twoPi / float64(sampleRate)
+	for i := 0; i < samples; i++ {
+		chn.time += step
+		if chn.shouldPlay() && chn.on {
+			// Take the sample value from the generator
+			val := byte(float64(chn.generator(chn.time)) * chn.amplitude)
+			buffer[i] = val
+			if chn.duration > 0 {
+				chn.duration--
 			}
-
-			chn.updateEnvelope()
-			chn.updateSweep()
 		}
-		log.Printf("%v samples -> %s", length, time.Since(b))
-		return length, true
-	})
+
+		chn.updateEnvelope()
+		chn.updateSweep()
+	}
+	return buffer
 }
 
 func (chn *Channel) Reset() {
@@ -273,11 +267,11 @@ func (chn *Channel) shouldPlay() bool {
 }
 
 func (chn *Channel) updateEnvelope() {
-	if chn.envelopeStepLength > 0 {
-		chn.envelopeTime += perSample
-		if chn.envelopeSteps > 0 && chn.envelopeTime > chn.envelopeStepLength {
-			//log.Print(chn.envelopeSteps, chn.envelopeStepLength)
-			chn.envelopeTime -= chn.envelopeStepLength
+	if chn.envelopeSamples > 0 {
+		chn.envelopeTime += 1
+		if chn.envelopeSteps > 0 && chn.envelopeTime >= chn.envelopeSamples {
+			//log.Print(chn.envelopeSteps, chn.envelopeSamples)
+			chn.envelopeTime -= chn.envelopeSamples
 			chn.envelopeSteps--
 			if chn.envelopeSteps == 0 {
 				chn.amplitude = 0
