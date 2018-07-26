@@ -125,9 +125,7 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 	case address >= 0xFF30 && address <= 0xFF3F:
 		// Writing to channel 3 waveform RAM.
 		mem.HighRAM[address-0xFF00] = value
-		soundIndex := (address - 0xFF30) * 2
-		mem.gb.Sound.WaveformRam[soundIndex] = int8((value >> 4) & 0xF)
-		mem.gb.Sound.WaveformRam[soundIndex+1] = int8(value & 0xF)
+		mem.gb.Sound.WriteWaveform(address, value)
 
 	case address == 0xFF02:
 		// Serial transfer control
