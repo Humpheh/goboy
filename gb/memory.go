@@ -78,16 +78,6 @@ func (mem *Memory) Init(gameboy *Gameboy) {
 	mem.HighRAM[0x24] = 0x77
 	mem.HighRAM[0x25] = 0xF3
 	mem.HighRAM[0x26] = 0xF1
-
-	// Sets wave ram to
-	// 00 FF 00 FF  00 FF 00 FF  00 FF 00 FF  00 FF 00 FF
-	for x := 0x30; x < 0x3F; x++ {
-		if x&2 == 0 {
-			mem.HighRAM[x] = 0x00
-		} else {
-			mem.HighRAM[x] = 0xFF
-		}
-	}
 	mem.HighRAM[0x40] = 0x91
 	mem.HighRAM[0x41] = 0x85
 	mem.HighRAM[0x42] = 0x00
@@ -119,12 +109,10 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 		return
 
 	case address >= 0xFF10 && address <= 0xFF26:
-		mem.HighRAM[address-0xFF00] = value // & soundMask[byte(address-0xFF10)]
 		mem.gb.Sound.Write(address, value)
 
 	case address >= 0xFF30 && address <= 0xFF3F:
 		// Writing to channel 3 waveform RAM.
-		mem.HighRAM[address-0xFF00] = value
 		mem.gb.Sound.WriteWaveform(address, value)
 
 	case address == 0xFF02:
@@ -325,6 +313,13 @@ func (mem *Memory) ReadHighRam(address uint16) byte {
 	// Joypad address
 	case address == 0xFF00:
 		return mem.gb.joypadValue(mem.HighRAM[0x00])
+
+	case address >= 0xFF10 && address <= 0xFF26:
+		return mem.gb.Sound.Read(address)
+
+	case address >= 0xFF30 && address <= 0xFF3F:
+		// Writing to channel 3 waveform RAM.
+		return mem.gb.Sound.Read(address)
 
 	case address == 0xFF0F:
 		return mem.HighRAM[0x0F] | 0xE0

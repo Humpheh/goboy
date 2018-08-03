@@ -295,7 +295,7 @@ func (gb *Gameboy) init(romFile string) error {
 	gb.Memory.Init(gb)
 
 	gb.Sound = &apu.APU{}
-	gb.Sound.Init()
+	gb.Sound.Init(gb.options.sound)
 
 	// Load the ROM file
 	hasCGB, err := gb.Memory.LoadCart(romFile)
@@ -364,7 +364,7 @@ func NewGameboyFromGob(gobFile string, opts ...GameboyOption) (*Gameboy, error) 
 		return nil, err
 	}
 	gameboy.Memory.gb = &gameboy
-	gameboy.Sound.Init()
+	gameboy.Sound.Init(gameboy.options.sound)
 	gameboy.cbInst = gameboy.cbInstructions()
 	return &gameboy, nil
 }
