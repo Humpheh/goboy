@@ -30,7 +30,7 @@ which requires OpenGL. Instructions on installing them can be found on the
 
 ## Usage 
 ```sh
-goboy -sound -cgb -rom zelda.gb
+goboy zelda.gb
 ```
 Controls: <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd> <kbd>Z</kbd> <kbd>X</kbd> <kbd>Enter</kbd> <kbd>Backspace</kbd>
 
@@ -40,22 +40,24 @@ be made fullscreen with <kbd>F</kbd>.
 
 Other options:
 ```sh
-  -cgb
-        set to enable cgb mode
+  -dmg
+    	set to force dmg mode
+  -mute
+    	mute sound output
+```
+
+Debug or experimental options:
+```sh
   -cpuprofile string
-        write cpu profile to file
+    	write cpu profile to file (debugging)
   -disableVsync
-        set to disable vsync
+    	set to disable vsync (debugging)
   -load string
-        location of save state to load (experimental)
-  -rom string
-        location of rom file (required)
-  -sound
-        set to enable sound emulation (experimental)
+    	location of save state to load (experimental)
   -stepthrough
-        step through opcodes (debugging)
+    	step through opcodes (debugging)
   -unlocked
-        if to unlock the cpu speed (debugging)
+    	if to unlock the cpu speed (debugging)
 ```
 
 ### Debugging

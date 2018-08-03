@@ -28,11 +28,11 @@ const logo = `
 `
 
 var (
-	cpuprofile  = flag.String("cpuprofile", "", "write cpu profile to file")
-	rom         = flag.String("rom", "", "location of rom file (required)")
-	sound       = flag.Bool("sound", false, "set to enable sound emulation (experimental)")
-	vsyncOff    = flag.Bool("disableVsync", false, "set to disable vsync")
-	cgbMode     = flag.Bool("cgb", false, "set to enable cgb mode")
+	mute    = flag.Bool("mute", false, "mute sound output")
+	dmgMode = flag.Bool("dmg", false, "set to force dmg mode")
+
+	cpuprofile  = flag.String("cpuprofile", "", "write cpu profile to file (debugging)")
+	vsyncOff    = flag.Bool("disableVsync", false, "set to disable vsync (debugging)")
 	saveState   = flag.String("load", "", "location of save state to load (experimental)")
 	stepThrough = flag.Bool("stepthrough", false, "step through opcodes (debugging)")
 	unlocked    = flag.Bool("unlocked", false, "if to unlock the cpu speed (debugging)")
@@ -44,6 +44,8 @@ func main() {
 
 func start() {
 	flag.Parse()
+	rom := flag.Arg(0)
+
 	// Check if to run the CPU profile
 	if *cpuprofile != "" {
 		log.Print("start profile")
@@ -56,26 +58,23 @@ func start() {
 	}
 
 	fmt.Println(fmt.Sprintf(logo, version))
-	fmt.Printf(" %-5v: %v\n", "ROM", *rom)
-	fmt.Printf(" %-5v: %v\n", "Sound", *sound)
-	fmt.Printf(" %-5v: %v\n\n", "CGB", *cgbMode)
+	fmt.Printf(" %-5v: %v\n", "ROM", rom)
+	fmt.Printf(" %-5v: %v\n", "Sound", !*mute)
+	fmt.Printf(" %-5v: %v\n\n", "CGB", !*dmgMode)
 
 	var opts []gb.GameboyOption
-	if *cgbMode {
+	if !*dmgMode {
 		opts = append(opts, gb.WithCGBEnabled())
 	}
-	if *sound {
+	if !*mute {
 		opts = append(opts, gb.WithSound())
-		if *unlocked {
-			log.Fatalf("Sound functionality is not supported with --unlocked")
-		}
 	}
 
 	var gameboy *gb.Gameboy
 	var err error
-	if *rom != "" {
+	if rom != "" {
 		// Initialise the GameBoy with the flag options
-		gameboy, err = gb.NewGameboy(*rom, opts...)
+		gameboy, err = gb.NewGameboy(rom, opts...)
 		if err != nil {
 			log.Fatal(err)
 		}
