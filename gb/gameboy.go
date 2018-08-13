@@ -7,8 +7,8 @@ import (
 	"encoding/gob"
 	"os"
 
-	"github.com/Humpheh/goboy/bits"
-	"github.com/Humpheh/goboy/gb/apu"
+	"github.com/Humpheh/goboy/pkg/apu"
+	"github.com/Humpheh/goboy/pkg/bits"
 )
 
 const (
@@ -76,7 +76,7 @@ func (gb *Gameboy) Update() int {
 		cyclesOp := 4
 		if !gb.halted {
 			if gb.Debug.OutputOpcodes {
-				logOpcode(gb, false)
+				LogOpcode(gb, false)
 			}
 			cyclesOp = gb.ExecuteNextOpcode()
 		} else {

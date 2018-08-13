@@ -3,8 +3,8 @@ package gb
 import (
 	"log"
 
-	"github.com/Humpheh/goboy/bits"
-	"github.com/Humpheh/goboy/gb/cart"
+	"github.com/Humpheh/goboy/pkg/bits"
+	"github.com/Humpheh/goboy/pkg/cart"
 )
 
 const (
