@@ -10,13 +10,13 @@ import (
 	"fmt"
 
 	"github.com/Humpheh/goboy/gb"
-	"github.com/Humpheh/goboy/gb/gbio"
-	"github.com/Humpheh/goboy/gb/gbio/iopixel"
+	"github.com/Humpheh/goboy/pkg/gbio"
+	"github.com/Humpheh/goboy/pkg/gbio/iopixel"
 	"github.com/faiface/pixel/pixelgl"
 )
 
 // The version of GoBoy
-const version = "v0.2"
+var version = "develop"
 
 const logo = `
     ______      ____
@@ -24,7 +24,7 @@ const logo = `
   / / __/ __ \/ __  / __ \/ / / /
  / /_/ / /_/ / /_/ / /_/ / /_/ /
  \____/\____/_____/\____/\__, /
-                 %6s /____/
+%23s /____/
 `
 
 var (

@@ -1,7 +1,7 @@
 package gb
 
 import (
-	"github.com/Humpheh/goboy/bits"
+	"github.com/Humpheh/goboy/pkg/bits"
 )
 
 // Update the state of the graphics.
@@ -358,4 +358,9 @@ func (gb *Gameboy) setPixel(x byte, y byte, r uint8, g uint8, b uint8, priority 
 		gb.screenData[x][y][1] = g
 		gb.screenData[x][y][2] = b
 	}
+}
+
+// GetScanlineCounter returns the current value of the scanline counter.
+func (gb *Gameboy) GetScanlineCounter() int {
+	return gb.scanlineCounter
 }

@@ -1,7 +1,7 @@
 package gb
 
 import (
-	"github.com/Humpheh/goboy/bits"
+	"github.com/Humpheh/goboy/pkg/bits"
 )
 
 // Register represents a GB CPU 16bit register which provides functions

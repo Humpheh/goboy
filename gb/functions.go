@@ -1,7 +1,7 @@
 package gb
 
 import (
-	"github.com/Humpheh/goboy/bits"
+	"github.com/Humpheh/goboy/pkg/bits"
 )
 
 // Perform a ADD instruction on the values and store the value using the set
