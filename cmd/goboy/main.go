@@ -9,7 +9,7 @@ import (
 
 	"fmt"
 
-	"github.com/Humpheh/goboy/gb"
+	"github.com/Humpheh/goboy/pkg/gb"
 	"github.com/Humpheh/goboy/pkg/gbio"
 	"github.com/Humpheh/goboy/pkg/gbio/iopixel"
 	"github.com/faiface/pixel/pixelgl"
