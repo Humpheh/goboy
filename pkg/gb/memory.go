@@ -97,7 +97,10 @@ func (mem *Memory) Init(gameboy *Gameboy) {
 func (mem *Memory) LoadCart(loc string) (bool, error) {
 	var err error
 	mem.Cart, err = cart.NewCart(loc)
-	return mem.Cart.GetMode()&cart.CGB != 0, err
+	if err != nil {
+		return false, err
+	}
+	return mem.Cart.GetMode()&cart.CGB != 0, nil
 }
 
 // WriteHighRam writes to the range 0xFF00-0xFFFF in the memory address
