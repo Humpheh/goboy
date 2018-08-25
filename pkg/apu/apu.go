@@ -49,11 +49,11 @@ func (a *APU) Init(sound bool) {
 	a.chn3 = NewChannel()
 	a.chn4 = NewChannel()
 
-	player, err := oto.NewPlayer(sampleRate, 1, 1, sampleRate/30)
-	if err != nil {
-		log.Fatalf("Failed to start audio: %v", err)
-	}
 	if sound {
+		player, err := oto.NewPlayer(sampleRate, 1, 1, sampleRate/30)
+		if err != nil {
+			log.Fatalf("Failed to start audio: %v", err)
+		}
 		go a.play(player)
 	}
 }
