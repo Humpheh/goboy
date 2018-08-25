@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const romPath = "../roms/mooneye/acceptance"
+const romPath = "../../roms/mooneye/acceptance"
 
 // TestAcceptance runs a number of mooneye test roms in the roms directory.
 // Currently these do not all pass, so the function is renamed as to not
