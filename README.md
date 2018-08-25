@@ -10,7 +10,7 @@ This emulator was primarily built as a development exercise, and while still
 work in progress it should run the majority of GB games, and some CGB games. There is also experimental
 sound and colour support implemented.
 
-<img src="images/links-awakening-dx.png" width="400"><img src="images/pkmn-gold-game.png" width="400">
+<img src="docs/images/links-awakening-dx.png" width="400"><img src="docs/images/pkmn-gold-game.png" width="400">
 
 The program includes debugging functions which make it useful for understanding how the emulator is working or
 for building one yourself, such as a method for printing out opcodes and register values to the console at each
@@ -79,7 +79,7 @@ update this save file every second while the game is running.
 ## Testing
 GoBoy currently passes all of the tests in Blargg's `cpu_instrs` and `instr_timing` test roms.
 
-<img src="images/cpu-instrs.png" width="400"><img src="images/instr-timing.png" width="400">
+<img src="docs/images/cpu-instrs.png" width="400"><img src="docs/images/instr-timing.png" width="400">
 
 These roms are included in the source code along with a test to check the output is as expected
 (`instructions_test.go` and `timing_test.go`). These tests are also run on each commit.
@@ -112,9 +112,9 @@ Feel free to open pull requests to this project or play around if you're interes
 - [ ] STOP opcode behaviour
 - [ ] [Blargg's test ROMs](http://gbdev.gg8.se/wiki/articles/Test_ROMs)
 
-<img src="images/links-awakening.png" width="400"><img src="images/pkmn-tcg.png" width="400">
+<img src="docs/images/links-awakening.png" width="400"><img src="docs/images/pkmn-tcg.png" width="400">
 
-<img src="images/pkmn-gold.png" width="400"><img src="images/pkmn-red.png" width="400">
+<img src="docs/images/pkmn-gold.png" width="400"><img src="docs/images/pkmn-red.png" width="400">
 
 ## Resources
 A large variety of resources were used to understand and test the GameBoy hardware. Some of these include:
