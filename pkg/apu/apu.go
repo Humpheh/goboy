@@ -18,6 +18,11 @@ const (
 	perSample  = 1 / float64(sampleRate)
 )
 
+// APU is the GameBoy's audio processing unit. Audio is comprised of four
+// channels, each one controlled by a set of registers.
+//
+// Channels 1 and 2 are both Square channels, channel 3 is a arbitrary
+// waveform channel which can be set in RAM, and channel 4 outputs noise.
 type APU struct {
 	memory [52]byte
 
@@ -367,7 +372,7 @@ type Channel struct {
 	debugOff bool
 }
 
-// Stream returns a single sample for streaming the sound output. Each sample
+// Sample returns a single sample for streaming the sound output. Each sample
 // will increase the internal timer based on the global sample rate.
 func (chn *Channel) Sample() (output uint16) {
 	step := chn.frequency * twoPi / float64(sampleRate)
