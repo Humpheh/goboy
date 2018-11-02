@@ -7,7 +7,8 @@ import (
 	"encoding/gob"
 	"os"
 
-	"github.com/Humpheh/goboy/bits"
+	"github.com/Humpheh/goboy/pkg/apu"
+	"github.com/Humpheh/goboy/pkg/bits"
 )
 
 const (
@@ -26,7 +27,7 @@ type Gameboy struct {
 
 	Memory *Memory
 	CPU    *CPU
-	Sound  *Sound
+	Sound  *apu.APU
 
 	Debug           DebugFlags
 	ExecutionPaused bool
@@ -75,7 +76,7 @@ func (gb *Gameboy) Update() int {
 		cyclesOp := 4
 		if !gb.halted {
 			if gb.Debug.OutputOpcodes {
-				logOpcode(gb, false)
+				LogOpcode(gb, false)
 			}
 			cyclesOp = gb.ExecuteNextOpcode()
 		} else {
@@ -89,9 +90,12 @@ func (gb *Gameboy) Update() int {
 		gb.updateTimers(cyclesOp)
 		cycles += gb.doInterrupts()
 	}
-	gb.Sound.tick(cycles)
-
 	return cycles
+}
+
+// ToggleSoundChannel toggles a sound channel for debugging.
+func (gb *Gameboy) ToggleSoundChannel(channel int) {
+	gb.Sound.ToggleSoundChannel(channel)
 }
 
 // BGMapString returns a string of the values in the background map.
@@ -295,8 +299,8 @@ func (gb *Gameboy) init(romFile string) error {
 	gb.Memory = &Memory{}
 	gb.Memory.Init(gb)
 
-	gb.Sound = &Sound{}
-	gb.Sound.Init(gb)
+	gb.Sound = &apu.APU{}
+	gb.Sound.Init(gb.options.sound)
 
 	// Load the ROM file
 	hasCGB, err := gb.Memory.LoadCart(romFile)
@@ -365,7 +369,7 @@ func NewGameboyFromGob(gobFile string, opts ...GameboyOption) (*Gameboy, error) 
 		return nil, err
 	}
 	gameboy.Memory.gb = &gameboy
-	gameboy.Sound.Init(&gameboy)
+	gameboy.Sound.Init(gameboy.options.sound)
 	gameboy.cbInst = gameboy.cbInstructions()
 	return &gameboy, nil
 }

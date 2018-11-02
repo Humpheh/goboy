@@ -11,7 +11,7 @@ before_install:
   - sudo apt-get install libgl1-mesa-dev xorg-dev
 
 script:
-  - go test ./... -v -race -coverprofile=coverage.txt -covermode=atomic
+  - go test ./... -v -race -coverprofile=coverage.txt -covermode=atomic -coverpkg=github.com/Humpheh/goboy/...
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
@@ -21,7 +21,7 @@ before_deploy:
   - mkdir build
   - cd build
   - go get github.com/karalabe/xgo
-  - xgo --targets=windows/*,darwin/* -out goboy-$TRAVIS_TAG github.com/Humpheh/goboy
+  - xgo --targets=windows/*,darwin/* -out goboy -ldflags "-X main.version=$TRAVIS_TAG" github.com/Humpheh/goboy/cmd/goboy
   - ls -l
   - cd ../
 
