@@ -21,15 +21,6 @@ type DebugFlags struct {
 	// This will slow down execution massively so is only used for debugging
 	// issues with the emulation.
 	OutputOpcodes bool
-
-	// MuteChannel1 turns off channel 1 of the sound output.
-	MuteChannel1 bool
-	// MuteChannel2 turns off channel 2 of the sound output.
-	MuteChannel2 bool
-	// MuteChannel3 turns off channel 3 of the sound output.
-	MuteChannel3 bool
-	// MuteChannel4 turns off channel 4 of the sound output.
-	MuteChannel4 bool
 }
 
 // WithCGBEnabled runs the Gameboy with cgb mode enabled.

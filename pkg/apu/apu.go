@@ -185,6 +185,21 @@ func (a *APU) WriteWaveform(address uint16, value byte) {
 	a.waveformRam[soundIndex+1] = byte(value&0xF) * 0x11
 }
 
+// ToggleSoundChannel toggles a sound channel for debugging.
+func (a *APU) ToggleSoundChannel(channel int) {
+	switch channel {
+	case 1:
+		a.chn1.debugOff = !a.chn1.debugOff
+	case 2:
+		a.chn2.debugOff = !a.chn2.debugOff
+	case 3:
+		a.chn3.debugOff = !a.chn3.debugOff
+	case 4:
+		a.chn4.debugOff = !a.chn4.debugOff
+	}
+	log.Printf("Toggle Channel %v mute", channel)
+}
+
 // Start the 1st sound channel.
 func (a *APU) start1() {
 	selection := (a.memory[0x14] & 0x40) >> 6 // 1 = stop when length in NR11 expires
@@ -348,6 +363,8 @@ type Channel struct {
 	sweepIncrease bool
 
 	on bool
+	// Debug flag to turn off sound output
+	debugOff bool
 }
 
 // Stream returns a single sample for streaming the sound output. Each sample
@@ -357,7 +374,9 @@ func (chn *Channel) Sample() (output uint16) {
 	chn.time += step
 	if chn.shouldPlay() && chn.on {
 		// Take the sample value from the generator
-		output = uint16(float64(chn.generator(chn.time)) * chn.amplitude)
+		if !chn.debugOff {
+			output = uint16(float64(chn.generator(chn.time)) * chn.amplitude)
+		}
 		if chn.duration > 0 {
 			chn.duration--
 		}
