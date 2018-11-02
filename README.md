@@ -6,26 +6,27 @@
 [![GoDoc](https://godoc.org/github.com/Humpheh/goboy?status.svg)](https://godoc.org/github.com/Humpheh/goboy)
 
 GoBoy is a multi-platform Nintendo GameBoy and GameBoy Color emulator written in go.
-This emulator was primarily built as a development exercise, and while still 
-work in progress it should run the majority of GB games, and some CGB games. There is also experimental
-sound and colour support implemented.
+The emulator can run the majority of GB games and some CGB games. There is also
+colour and sound support.
+This emulator was primarily built as a development exercise and is still work in progress.
+Please feel free to contribute if you're interested in GameBoy emulator development.
 
 <img src="docs/images/links-awakening-dx.png" width="400"><img src="docs/images/pkmn-gold-game.png" width="400">
 
-The program includes debugging functions which make it useful for understanding how the emulator is working or
-for building one yourself, such as a method for printing out opcodes and register values to the console at each
-step. Turning these on will slow down the emulation.
+The program includes debugging functions making it useful for understanding the emulator operation for
+building one yourself. These functions include printing of opcodes and register values to the console at each
+step (although will greatly slow down the emulation) and toggling of individual sound channels.
 
 ## Installation
 ```sh
-go get github.com/Humpheh/goboy
+go get github.com/Humpheh/goboy/cmd/goboy
 ```
 
 The program has been tested on MacOS and Windows 10, and is likely to work on Linux. Building on Windows 10
 requires MinGW.
 
 GoBoy uses the go library [pixel](https://github.com/faiface/pixel) for control binding and graphics rendering,
-which requires OpenGL. Instructions on installing them can be found on the
+which requires OpenGL. You may need to install some requirements which can be found on the
 [pixels readme](https://github.com/faiface/pixel#requirements).
 
 ## Usage 
@@ -86,7 +87,9 @@ These roms are included in the source code along with a test to check the output
 
 ## Contributing
 
-Feel free to open pull requests to this project or play around if you're interested!
+Please feel free to open pull requests to this project or play around if you're interested! There are
+still plenty of small bugs that can easily be found through playing games on the emulator, or take a
+task from the TODO list below!
 
 ## Known Bugs 
 - [ ] Sprite Z-drawing
@@ -95,6 +98,8 @@ Feel free to open pull requests to this project or play around if you're interes
 - [x] Small sprites row glitch
 - [ ] Many CGB bugs
 - [x] BG tile window offset issue - visible on *Pokemon Red* splash screen - possibly mistimed interrupt?
+- [ ] Harry Potter and The Chamber of Secrets has odd sprite issues
+- [ ] Request to set screen to white does not do so
 
 ## TODO List
 - [x] MBC3 banking support
