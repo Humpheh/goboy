@@ -1248,6 +1248,6 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	default:
 		log.Printf("Unimplemented opcode: %#2x", opcode)
-		waitForInput()
+		WaitForInput()
 	}
 }

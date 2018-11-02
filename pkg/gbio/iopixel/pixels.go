@@ -7,9 +7,9 @@ import (
 
 	"math"
 
-	"github.com/Humpheh/goboy/bits"
-	"github.com/Humpheh/goboy/gb"
-	"github.com/Humpheh/goboy/gb/gbio"
+	"github.com/Humpheh/goboy/pkg/bits"
+	"github.com/Humpheh/goboy/pkg/gb"
+	"github.com/Humpheh/goboy/pkg/gbio"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 )
@@ -170,20 +170,16 @@ var extraKeyMap = map[pixelgl.Button]func(*PixelsIOBinding){
 
 	// Audio channel debugging
 	pixelgl.Key7: func(mon *PixelsIOBinding) {
-		mon.Gameboy.Debug.MuteChannel1 = !mon.Gameboy.Debug.MuteChannel1
-		log.Print("Channel 1 mute =", mon.Gameboy.Debug.MuteChannel1)
+		mon.Gameboy.ToggleSoundChannel(1)
 	},
 	pixelgl.Key8: func(mon *PixelsIOBinding) {
-		mon.Gameboy.Debug.MuteChannel2 = !mon.Gameboy.Debug.MuteChannel2
-		log.Print("Channel 2 mute =", mon.Gameboy.Debug.MuteChannel2)
+		mon.Gameboy.ToggleSoundChannel(2)
 	},
 	pixelgl.Key9: func(mon *PixelsIOBinding) {
-		mon.Gameboy.Debug.MuteChannel3 = !mon.Gameboy.Debug.MuteChannel3
-		log.Print("Channel 3 mute =", mon.Gameboy.Debug.MuteChannel3)
+		mon.Gameboy.ToggleSoundChannel(3)
 	},
 	pixelgl.Key0: func(mon *PixelsIOBinding) {
-		mon.Gameboy.Debug.MuteChannel4 = !mon.Gameboy.Debug.MuteChannel4
-		log.Print("Channel 4 mute =", mon.Gameboy.Debug.MuteChannel4)
+		mon.Gameboy.ToggleSoundChannel(4)
 	},
 
 	// Fullscreen toggle

@@ -6,31 +6,32 @@
 [![GoDoc](https://godoc.org/github.com/Humpheh/goboy?status.svg)](https://godoc.org/github.com/Humpheh/goboy)
 
 GoBoy is a multi-platform Nintendo GameBoy and GameBoy Color emulator written in go.
-This emulator was primarily built as a development exercise, and while still 
-work in progress it should run the majority of GB games, and some CGB games. There is also experimental
-sound and colour support implemented.
+The emulator can run the majority of GB games and some CGB games. There is also
+colour and sound support.
+This emulator was primarily built as a development exercise and is still work in progress.
+Please feel free to contribute if you're interested in GameBoy emulator development.
 
-<img src="images/links-awakening-dx.png" width="400"><img src="images/pkmn-gold-game.png" width="400">
+<img src="docs/images/links-awakening-dx.png" width="400"><img src="docs/images/pkmn-gold-game.png" width="400">
 
-The program includes debugging functions which make it useful for understanding how the emulator is working or
-for building one yourself, such as a method for printing out opcodes and register values to the console at each
-step. Turning these on will slow down the emulation.
+The program includes debugging functions making it useful for understanding the emulator operation for
+building one yourself. These functions include printing of opcodes and register values to the console at each
+step (although will greatly slow down the emulation) and toggling of individual sound channels.
 
 ## Installation
 ```sh
-go get github.com/Humpheh/goboy
+go get github.com/Humpheh/goboy/cmd/goboy
 ```
 
 The program has been tested on MacOS and Windows 10, and is likely to work on Linux. Building on Windows 10
 requires MinGW.
 
 GoBoy uses the go library [pixel](https://github.com/faiface/pixel) for control binding and graphics rendering,
-which requires OpenGL. Instructions on installing them can be found on the
+which requires OpenGL. You may need to install some requirements which can be found on the
 [pixels readme](https://github.com/faiface/pixel#requirements).
 
 ## Usage 
 ```sh
-goboy -sound -cgb -rom zelda.gb
+goboy zelda.gb
 ```
 Controls: <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd> <kbd>Z</kbd> <kbd>X</kbd> <kbd>Enter</kbd> <kbd>Backspace</kbd>
 
@@ -40,22 +41,24 @@ be made fullscreen with <kbd>F</kbd>.
 
 Other options:
 ```sh
-  -cgb
-        set to enable cgb mode
+  -dmg
+    	set to force dmg mode
+  -mute
+    	mute sound output
+```
+
+Debug or experimental options:
+```sh
   -cpuprofile string
-        write cpu profile to file
+    	write cpu profile to file (debugging)
   -disableVsync
-        set to disable vsync
+    	set to disable vsync (debugging)
   -load string
-        location of save state to load (experimental)
-  -rom string
-        location of rom file (required)
-  -sound
-        set to enable sound emulation (experimental)
+    	location of save state to load (experimental)
   -stepthrough
-        step through opcodes (debugging)
+    	step through opcodes (debugging)
   -unlocked
-        if to unlock the cpu speed (debugging)
+    	if to unlock the cpu speed (debugging)
 ```
 
 ### Debugging
@@ -77,14 +80,16 @@ update this save file every second while the game is running.
 ## Testing
 GoBoy currently passes all of the tests in Blargg's `cpu_instrs` and `instr_timing` test roms.
 
-<img src="images/cpu-instrs.png" width="400"><img src="images/instr-timing.png" width="400">
+<img src="docs/images/cpu-instrs.png" width="400"><img src="docs/images/instr-timing.png" width="400">
 
 These roms are included in the source code along with a test to check the output is as expected
 (`instructions_test.go` and `timing_test.go`). These tests are also run on each commit.
 
 ## Contributing
 
-Feel free to open pull requests to this project or play around if you're interested!
+Please feel free to open pull requests to this project or play around if you're interested! There are
+still plenty of small bugs that can easily be found through playing games on the emulator, or take a
+task from the TODO list below!
 
 ## Known Bugs 
 - [ ] Sprite Z-drawing
@@ -93,6 +98,8 @@ Feel free to open pull requests to this project or play around if you're interes
 - [x] Small sprites row glitch
 - [ ] Many CGB bugs
 - [x] BG tile window offset issue - visible on *Pokemon Red* splash screen - possibly mistimed interrupt?
+- [ ] Harry Potter and The Chamber of Secrets has odd sprite issues
+- [ ] Request to set screen to white does not do so
 
 ## TODO List
 - [x] MBC3 banking support
@@ -110,9 +117,9 @@ Feel free to open pull requests to this project or play around if you're interes
 - [ ] STOP opcode behaviour
 - [ ] [Blargg's test ROMs](http://gbdev.gg8.se/wiki/articles/Test_ROMs)
 
-<img src="images/links-awakening.png" width="400"><img src="images/pkmn-tcg.png" width="400">
+<img src="docs/images/links-awakening.png" width="400"><img src="docs/images/pkmn-tcg.png" width="400">
 
-<img src="images/pkmn-gold.png" width="400"><img src="images/pkmn-red.png" width="400">
+<img src="docs/images/pkmn-gold.png" width="400"><img src="docs/images/pkmn-red.png" width="400">
 
 ## Resources
 A large variety of resources were used to understand and test the GameBoy hardware. Some of these include:
