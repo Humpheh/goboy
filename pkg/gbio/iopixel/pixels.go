@@ -44,8 +44,12 @@ func (mon *PixelsIOBinding) Init(disableVsync bool) {
 	}
 	win, err := pixelgl.NewWindow(cfg)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Failed to create window: %v", err)
 	}
+
+	// Hack so that pixelgl renders on Darwin
+	win.SetPos(win.GetPos().Add(pixel.V(0, 1)))
+
 	mon.Window = win
 	mon.UpdateCamera()
 
