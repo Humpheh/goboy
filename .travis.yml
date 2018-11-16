@@ -10,8 +10,11 @@ before_install:
   - sudo apt-get install libasound2-dev alsa-utils alsa-oss
   - sudo apt-get install libgl1-mesa-dev xorg-dev
 
+install:
+  - go get -t -v ./pkg/...
+
 script:
-  - go test ./... -v -race -coverprofile=coverage.txt -covermode=atomic -coverpkg=github.com/Humpheh/goboy/...
+  - go test ./pkg/... -v -race -coverprofile=coverage.txt -covermode=atomic -coverpkg=github.com/Humpheh/goboy/pkg/...
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
@@ -19,17 +22,24 @@ after_success:
 # Cross build the binaries before deploy
 before_deploy:
   - mkdir build
+  - mkdir package/build
   - cd build
   - go get github.com/karalabe/xgo
-  - xgo --targets=windows/*,darwin/* -out goboy -ldflags "-X main.version=$TRAVIS_TAG" github.com/Humpheh/goboy/cmd/goboy
-  - ls -l
-  - cd ../
+  - xgo -go 1.11.1 --targets=windows/amd64,darwin/amd64 -out goboy -ldflags "-X main.version=$TRAVIS_TAG" --pkg cmd/goboy github.com/Humpheh/goboy
+
+  # Build the darwin bundle
+  - cd ../package/darwin
+  - ./build_darwin.sh goboy-darwin-10.6-amd64
+
+  # Build (rename) the windows bundle
+  - cd ../windows
+  - ./build_windows.sh goboy-windows-4.0-amd64.exe
 
 deploy:
   provider: releases
   api_key:
     secure: qOCgUt/HVRcCNispRwJm9Rw+iEQcHJKWRdPApVFon21b6NhDso2UhZgOy+z3HivL+SVE8aeYMyfNGnumOlERGsoALSh3ULNj9vShSKfMZS1sWp8tJjD5dV4+9W80tTwx62Ef9FU9OmGjzdgeY3PkL4tkEaUwwFA26kw/wibqxdwqh40LDAOs76DDjHMcnR3c8G5gehRpjDxV8Rbucjy7n7TK2axpGHtg68vSuyCv4K60GuDVuKz4xRguYDh8FO3HkfSxDVFB3mr0wlnEk4aqC6VT4J9UbRk3qkUAmEiZWG9YNAwq+rOm08oFVCqZE557ZGCHKkhd7WAOHSIjOVGfH+ZV8M2nr8/8LqganPnaVGEAVKJ1rrxHMGA+0oQY3s3QfkLy9fuz4fZpx9oMywLPFSOcLMpE1GxFi/uTpDJNtnBnbEAUUQNEtv7ZaQpT/podM00QbZWNf0O1J7D8olMMnvgoAkQeuCcZiuduH/Oxt7IlwbLsjdGgl4epQrUyQYDO4HqwdHjcEbRbkLhkcBRmn+0YEHQh84tSX0R/BNTfgCny69b1q/S2T0MO+ASFX+//q3f019A0/ClNZrqMjxp632CyIumKvTIOSWMbvOTvfoGJJLaBY7UdQ9aSk6/qDREuMxSymg/H3GTvVx3SHvD0MqF8SKpgSn65sVBPQCCRLcY=
-  file: build/*
+  file: package/build/*
   file_glob: true
   skip_cleanup: true
   on:
