@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 
-OUTPUT=../build/Goboy.app
+OUTPUT=../build
 
 cp $1 ${OUTPUT}/GoBoy.exe

@@ -1,8 +1,6 @@
 package dialog
 
-import (
-	"github.com/Humpheh/goboy/pkg/dialog/cocoa"
-)
+import "github.com/Humpheh/goboy/dialog/cocoa"
 
 func (b *MsgBuilder) yesNo() bool {
 	return cocoa.YesNoDlg(b.Msg, b.Dlg.Title)

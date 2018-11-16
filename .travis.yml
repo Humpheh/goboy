@@ -10,6 +10,9 @@ before_install:
   - sudo apt-get install libasound2-dev alsa-utils alsa-oss
   - sudo apt-get install libgl1-mesa-dev xorg-dev
 
+install:
+  - go get ./pkg/...
+
 script:
   - go test ./pkg/... -v -race -coverprofile=coverage.txt -covermode=atomic -coverpkg=github.com/Humpheh/goboy/pkg/...
 

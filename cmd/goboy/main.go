@@ -7,7 +7,7 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/Humpheh/goboy/pkg/dialog"
+	"github.com/Humpheh/goboy/dialog"
 
 	"fmt"
 
