@@ -23,3 +23,5 @@ else
     # Move the input file to the contents executable
     cp $1 ${OUTPUT}/Contents/MacOS/GoBoy
 fi
+
+cp ${OUTPUT}/Contents/MacOS/GoBoy ../build/GoBoy
