@@ -50,7 +50,7 @@ type Gameboy struct {
 	interruptsOn       bool
 	halted             bool
 
-	cbInst    map[byte]func()
+	cbInst    []func()
 	InputMask byte
 
 	// Flag if the game is running in cgb mode. For this to be true the game
@@ -191,7 +191,7 @@ func (gb *Gameboy) RequestJoypadInterrupt() {
 
 // Request the Gameboy to perform an interrupt.
 func (gb *Gameboy) requestInterrupt(interrupt byte) {
-	req := gb.Memory.Read(0xFF0F)
+	req := gb.Memory.ReadHighRam(0xFF0F)
 	req = bits.Set(req, interrupt)
 	gb.Memory.Write(0xFF0F, req)
 }
@@ -206,8 +206,8 @@ func (gb *Gameboy) doInterrupts() (cycles int) {
 		return 0
 	}
 
-	req := gb.Memory.Read(0xFF0F)
-	enabled := gb.Memory.Read(0xFFFF)
+	req := gb.Memory.ReadHighRam(0xFF0F)
+	enabled := gb.Memory.ReadHighRam(0xFFFF)
 
 	if req > 0 {
 		var i byte
@@ -241,7 +241,7 @@ func (gb *Gameboy) serviceInterrupt(interrupt byte) {
 	gb.interruptsOn = false
 	gb.halted = false
 
-	req := gb.Memory.Read(0xFF0F)
+	req := gb.Memory.ReadHighRam(0xFF0F)
 	req = bits.Reset(req, interrupt)
 	gb.Memory.Write(0xFF0F, req)
 
@@ -288,6 +288,19 @@ func (gb *Gameboy) IsCGB() bool {
 
 // Initialise the Gameboy using a path to a rom.
 func (gb *Gameboy) init(romFile string) error {
+	gb.setup()
+
+	// Load the ROM file
+	hasCGB, err := gb.Memory.LoadCart(romFile)
+	if err != nil {
+		return fmt.Errorf("failed to open rom file: %s", err)
+	}
+	gb.cgbMode = gb.options.cgbMode && hasCGB
+	return nil
+}
+
+// Setup and instantitate the gameboys components.
+func (gb *Gameboy) setup() error {
 	gb.ExecutionPaused = false
 
 	// Initialise the CPU
@@ -300,13 +313,6 @@ func (gb *Gameboy) init(romFile string) error {
 
 	gb.Sound = &apu.APU{}
 	gb.Sound.Init(gb.options.sound)
-
-	// Load the ROM file
-	hasCGB, err := gb.Memory.LoadCart(romFile)
-	if err != nil {
-		return fmt.Errorf("failed to open rom file: %s", err)
-	}
-	gb.cgbMode = gb.options.cgbMode && hasCGB
 
 	gb.Debug = DebugFlags{}
 	gb.scanlineCounter = 456

@@ -442,7 +442,7 @@ func (gb *Gameboy) ExecuteOpcode(opcode byte) {
 
 	// LD A,(0xFF00+n)
 	case 0xF0:
-		val := gb.Memory.Read(0xFF00 + uint16(gb.popPC()))
+		val := gb.Memory.ReadHighRam(0xFF00 + uint16(gb.popPC()))
 		gb.CPU.AF.SetHi(val)
 
 	// ========== 16-Bit Loads ===========
