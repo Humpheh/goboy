@@ -7,6 +7,8 @@ import (
 	"runtime/pprof"
 	"time"
 
+	"github.com/Humpheh/goboy/dialog"
+
 	"fmt"
 
 	"github.com/Humpheh/goboy/pkg/gb"
@@ -39,21 +41,38 @@ var (
 )
 
 func main() {
-	pixelgl.Run(start)
-}
-
-func start() {
 	flag.Parse()
 	rom := flag.Arg(0)
 
+	// Check if rom was passed in as first argument. If not, we
+	// should prompt the user to select a rom file
+	if rom == "" {
+		var err error
+		rom, err = dialog.File().
+			Filter("GameBoy ROM", "zip", "gb", "gbc", "bin").
+			Title("Load GameBoy ROM File").Load()
+		if err != nil {
+			os.Exit(1)
+		}
+	}
+
+	pixelgl.Run(func() {
+		start(rom)
+	})
+}
+
+func start(rom string) {
 	// Check if to run the CPU profile
 	if *cpuprofile != "" {
 		log.Print("start profile")
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("Failed to create CPU profile: %v", err)
 		}
-		pprof.StartCPUProfile(f)
+		err = pprof.StartCPUProfile(f)
+		if err != nil {
+			log.Fatalf("Failed to start CPU profile: %v", err)
+		}
 		defer pprof.StopCPUProfile()
 	}
 
