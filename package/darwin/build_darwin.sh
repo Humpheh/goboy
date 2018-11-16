@@ -14,6 +14,7 @@ mkdir -p ${OUTPUT}/Contents
 
 # Copy the contents into the app contents folder
 cp -Rp Contents/ ${OUTPUT}/Contents
+#sed 's/VERSION/'${MYV}'/g' package/darwin/Contents/Info.plist TODO: sort version
 
 # Build GoBoy or copy if argument is passed in
 if [[ $1 == "" ]]; then
