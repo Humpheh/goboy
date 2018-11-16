@@ -92,7 +92,7 @@ func (gb *Gameboy) setLCDStatus() {
 	}
 
 	// Check is LYC == LY (coincidence flag)
-	if gb.Memory.Read(0xFF44) == gb.Memory.Read(0xFF45) {
+	if currentLine == gb.Memory.Read(0xFF45) {
 		status = bits.Set(status, 2)
 		// If enabled request an interrupt for this
 		if bits.Test(status, 6) {
@@ -177,6 +177,9 @@ func (gb *Gameboy) renderTiles(lcdControl byte, scanline byte) {
 	// which of the 8 vertical pixels of the current tile is the scanline on?
 	var tileRow = uint16(yPos/8) * 32
 
+	// Load the palette which will be used to draw the tiles
+	var palette = gb.Memory.Read(0xFF47)
+
 	// start drawing the 160 horizontal pixels for this scanline
 	gb.tileScanline = [160]uint8{}
 	for pixel := byte(0); pixel < 160; pixel++ {
@@ -234,18 +237,18 @@ func (gb *Gameboy) renderTiles(lcdControl byte, scanline byte) {
 		}
 		colourBit := byte(int8((xPos%8)-7) * -1)
 		colourNum := (bits.Val(data2, colourBit) << 1) | bits.Val(data1, colourBit)
-		gb.setTilePixel(pixel, scanline, tileAttr, colourNum)
+		gb.setTilePixel(pixel, scanline, tileAttr, colourNum, palette)
 	}
 }
 
-func (gb *Gameboy) setTilePixel(x, y, tileAttr, colourNum byte) {
+func (gb *Gameboy) setTilePixel(x, y, tileAttr, colourNum, palette byte) {
 	// Set the pixel
 	if gb.IsCGB() {
-		cgbPalette := tileAttr & 0x7 //
+		cgbPalette := tileAttr & 0x7
 		red, green, blue := gb.BGPalette.get(cgbPalette, colourNum)
 		gb.setPixel(x, y, red, green, blue, true)
 	} else {
-		red, green, blue := gb.getColour(colourNum, 0xFF47)
+		red, green, blue := gb.getColour(colourNum, palette)
 		gb.setPixel(x, y, red, green, blue, true)
 	}
 
@@ -254,22 +257,10 @@ func (gb *Gameboy) setTilePixel(x, y, tileAttr, colourNum byte) {
 }
 
 // Get the RGB colour value for a colour num at an address using the current palette.
-func (gb *Gameboy) getColour(colourNum byte, address uint16) (uint8, uint8, uint8) {
-	var hi, lo byte
-	switch colourNum {
-	case 0:
-		hi, lo = 1, 0
-	case 1:
-		hi, lo = 3, 2
-	case 2:
-		hi, lo = 5, 4
-	case 3:
-		hi, lo = 7, 6
-	}
-
-	palette := gb.Memory.Read(address)
+func (gb *Gameboy) getColour(colourNum byte, palette byte) (uint8, uint8, uint8) {
+	hi := colourNum<<1 | 1
+	lo := colourNum << 1
 	col := (bits.Val(palette, hi) << 1) | bits.Val(palette, lo)
-
 	return GetPaletteColour(col)
 }
 
@@ -279,6 +270,10 @@ func (gb *Gameboy) renderSprites(lcdControl byte, scanline int32) {
 	if bits.Test(lcdControl, 2) {
 		ySize = 16
 	}
+
+	// Load the two palettes which sprites can be drawn in
+	var palette1 = gb.Memory.Read(0xFF48)
+	var palette2 = gb.Memory.Read(0xFF49)
 
 	for sprite := 0; sprite < 40; sprite++ {
 		// Load sprite data from memory.
@@ -338,11 +333,11 @@ func (gb *Gameboy) renderSprites(lcdControl byte, scanline int32) {
 					gb.setPixel(byte(pixel), byte(scanline), red, green, blue, priority)
 				} else {
 					// Determine the colour palette to use
-					var colourAddress uint16 = 0xFF48
+					var palette = palette1
 					if bits.Test(attributes, 4) {
-						colourAddress = 0xFF49
+						palette = palette2
 					}
-					red, green, blue := gb.getColour(colourNum, colourAddress)
+					red, green, blue := gb.getColour(colourNum, palette)
 					gb.setPixel(byte(pixel), byte(scanline), red, green, blue, priority)
 				}
 			}

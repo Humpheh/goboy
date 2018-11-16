@@ -127,7 +127,6 @@ func (gb *Gameboy) checkSpeedSwitch() {
 		} else {
 			gb.currentSpeed = 0
 		}
-		log.Print("new speed", gb.currentSpeed)
 		gb.halted = false
 	}
 }
