@@ -29,11 +29,11 @@ before_deploy:
 
   # Build the darwin bundle
   - cd ../package/darwin
-  - ./build_darwin.sh goboy-darwin-10.6-amd64
+  - ./build_darwin.sh ../../build/goboy-darwin-10.6-amd64
 
   # Build (rename) the windows bundle
   - cd ../windows
-  - ./build_windows.sh goboy-windows-4.0-amd64.exe
+  - ./build_windows.sh ../../build/goboy-windows-4.0-amd64.exe
 
 deploy:
   provider: releases
