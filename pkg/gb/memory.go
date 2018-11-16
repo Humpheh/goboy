@@ -163,7 +163,6 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 	case address == 0xFF4D:
 		// CGB speed change
 		if mem.gb.IsCGB() {
-			log.Print("Change speed")
 			mem.gb.prepareSpeed = bits.Test(value, 0)
 		}
 
