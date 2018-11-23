@@ -1432,8 +1432,9 @@ func (gb *Gameboy) mainInstructions() [0x100]func() {
 	// with a noop function to eliminate null checks
 	for k, v := range ret {
 		if v == nil {
+			opcode := k
 			ret[k] = func() {
-				log.Printf("Unimplemented opcode: %#2x", k)
+				log.Printf("Unimplemented opcode: %#2x", opcode)
 				WaitForInput()
 			}
 		}
