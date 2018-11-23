@@ -98,10 +98,10 @@ func (gb *Gameboy) instSwap(setter func(byte), val byte) {
 	gb.CPU.SetC(false)
 }
 
-func (gb *Gameboy) cbInstructions() []func() {
-	instructions := make([]func(), 0x100)
+func (gb *Gameboy) cbInstructions() [0x100]func() {
+	instructions := [0x100]func(){}
 
-	getMap := []func() byte{
+	getMap := [8]func() byte{
 		gb.CPU.BC.Hi,
 		gb.CPU.BC.Lo,
 		gb.CPU.DE.Hi,
@@ -111,7 +111,7 @@ func (gb *Gameboy) cbInstructions() []func() {
 		func() byte { return gb.Memory.Read(gb.CPU.HL.HiLo()) },
 		gb.CPU.AF.Hi,
 	}
-	setMap := []func(byte){
+	setMap := [8]func(byte){
 		gb.CPU.BC.SetHi,
 		gb.CPU.BC.SetLo,
 		gb.CPU.DE.SetHi,
@@ -126,44 +126,45 @@ func (gb *Gameboy) cbInstructions() []func() {
 		// Store x so it can be used in the function scopes
 		var i = x
 
-		instructions[byte(0x00+i)] = func() { gb.instRlc(setMap[i], getMap[i]()) }
-		instructions[byte(0x08+i)] = func() { gb.instRrc(setMap[i], getMap[i]()) }
-		instructions[byte(0x10+i)] = func() { gb.instRl(setMap[i], getMap[i]()) }
-		instructions[byte(0x18+i)] = func() { gb.instRr(setMap[i], getMap[i]()) }
-		instructions[byte(0x20+i)] = func() { gb.instSla(setMap[i], getMap[i]()) }
-		instructions[byte(0x28+i)] = func() { gb.instSra(setMap[i], getMap[i]()) }
-		instructions[byte(0x30+i)] = func() { gb.instSwap(setMap[i], getMap[i]()) }
-		instructions[byte(0x38+i)] = func() { gb.instSrl(setMap[i], getMap[i]()) }
+		instructions[0x00+i] = func() { gb.instRlc(setMap[i], getMap[i]()) }
+		instructions[0x08+i] = func() { gb.instRrc(setMap[i], getMap[i]()) }
+		instructions[0x10+i] = func() { gb.instRl(setMap[i], getMap[i]()) }
+		instructions[0x18+i] = func() { gb.instRr(setMap[i], getMap[i]()) }
+		instructions[0x20+i] = func() { gb.instSla(setMap[i], getMap[i]()) }
+		instructions[0x28+i] = func() { gb.instSra(setMap[i], getMap[i]()) }
+		instructions[0x30+i] = func() { gb.instSwap(setMap[i], getMap[i]()) }
+		instructions[0x38+i] = func() { gb.instSrl(setMap[i], getMap[i]()) }
 
 		// BIT instructions
-		instructions[byte(0x40+i)] = func() { gb.instBit(0, getMap[i]()) }
-		instructions[byte(0x48+i)] = func() { gb.instBit(1, getMap[i]()) }
-		instructions[byte(0x50+i)] = func() { gb.instBit(2, getMap[i]()) }
-		instructions[byte(0x58+i)] = func() { gb.instBit(3, getMap[i]()) }
-		instructions[byte(0x60+i)] = func() { gb.instBit(4, getMap[i]()) }
-		instructions[byte(0x68+i)] = func() { gb.instBit(5, getMap[i]()) }
-		instructions[byte(0x70+i)] = func() { gb.instBit(6, getMap[i]()) }
-		instructions[byte(0x78+i)] = func() { gb.instBit(7, getMap[i]()) }
+		instructions[0x40+i] = func() { gb.instBit(0, getMap[i]()) }
+		instructions[0x48+i] = func() { gb.instBit(1, getMap[i]()) }
+		instructions[0x50+i] = func() { gb.instBit(2, getMap[i]()) }
+		instructions[0x58+i] = func() { gb.instBit(3, getMap[i]()) }
+		instructions[0x60+i] = func() { gb.instBit(4, getMap[i]()) }
+		instructions[0x68+i] = func() { gb.instBit(5, getMap[i]()) }
+		instructions[0x70+i] = func() { gb.instBit(6, getMap[i]()) }
+		instructions[0x78+i] = func() { gb.instBit(7, getMap[i]()) }
 
 		// RES instructions
-		instructions[byte(0x80+i)] = func() { setMap[i](bits.Reset(getMap[i](), 0)) }
-		instructions[byte(0x88+i)] = func() { setMap[i](bits.Reset(getMap[i](), 1)) }
-		instructions[byte(0x90+i)] = func() { setMap[i](bits.Reset(getMap[i](), 2)) }
-		instructions[byte(0x98+i)] = func() { setMap[i](bits.Reset(getMap[i](), 3)) }
-		instructions[byte(0xA0+i)] = func() { setMap[i](bits.Reset(getMap[i](), 4)) }
-		instructions[byte(0xA8+i)] = func() { setMap[i](bits.Reset(getMap[i](), 5)) }
-		instructions[byte(0xB0+i)] = func() { setMap[i](bits.Reset(getMap[i](), 6)) }
-		instructions[byte(0xB8+i)] = func() { setMap[i](bits.Reset(getMap[i](), 7)) }
+		instructions[0x80+i] = func() { setMap[i](bits.Reset(getMap[i](), 0)) }
+		instructions[0x88+i] = func() { setMap[i](bits.Reset(getMap[i](), 1)) }
+		instructions[0x90+i] = func() { setMap[i](bits.Reset(getMap[i](), 2)) }
+		instructions[0x98+i] = func() { setMap[i](bits.Reset(getMap[i](), 3)) }
+		instructions[0xA0+i] = func() { setMap[i](bits.Reset(getMap[i](), 4)) }
+		instructions[0xA8+i] = func() { setMap[i](bits.Reset(getMap[i](), 5)) }
+		instructions[0xB0+i] = func() { setMap[i](bits.Reset(getMap[i](), 6)) }
+		instructions[0xB8+i] = func() { setMap[i](bits.Reset(getMap[i](), 7)) }
 
 		// SET instructions
-		instructions[byte(0xC0+i)] = func() { setMap[i](bits.Set(getMap[i](), 0)) }
-		instructions[byte(0xC8+i)] = func() { setMap[i](bits.Set(getMap[i](), 1)) }
-		instructions[byte(0xD0+i)] = func() { setMap[i](bits.Set(getMap[i](), 2)) }
-		instructions[byte(0xD8+i)] = func() { setMap[i](bits.Set(getMap[i](), 3)) }
-		instructions[byte(0xE0+i)] = func() { setMap[i](bits.Set(getMap[i](), 4)) }
-		instructions[byte(0xE8+i)] = func() { setMap[i](bits.Set(getMap[i](), 5)) }
-		instructions[byte(0xF0+i)] = func() { setMap[i](bits.Set(getMap[i](), 6)) }
-		instructions[byte(0xF8+i)] = func() { setMap[i](bits.Set(getMap[i](), 7)) }
+		instructions[0xC0+i] = func() { setMap[i](bits.Set(getMap[i](), 0)) }
+		instructions[0xC8+i] = func() { setMap[i](bits.Set(getMap[i](), 1)) }
+		instructions[0xD0+i] = func() { setMap[i](bits.Set(getMap[i](), 2)) }
+		instructions[0xD8+i] = func() { setMap[i](bits.Set(getMap[i](), 3)) }
+		instructions[0xE0+i] = func() { setMap[i](bits.Set(getMap[i](), 4)) }
+		instructions[0xE8+i] = func() { setMap[i](bits.Set(getMap[i](), 5)) }
+		instructions[0xF0+i] = func() { setMap[i](bits.Set(getMap[i](), 6)) }
+		instructions[0xF8+i] = func() { setMap[i](bits.Set(getMap[i](), 7)) }
 	}
+
 	return instructions
 }
