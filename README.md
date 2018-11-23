@@ -22,12 +22,22 @@ step (although will greatly slow down the emulation) and toggling of individual 
 go get github.com/Humpheh/goboy/cmd/goboy
 ```
 
+## Building from Source
+If you have go1.11:
+```sh
+https://github.com/Humpheh/goboy.git
+cd goboy
+go build -o goboy cmd/goboy/main.go
+```
+
 The program has been tested on MacOS and Windows 10, and is likely to work on Linux. Building on Windows 10
 requires MinGW.
 
 GoBoy uses the go library [pixel](https://github.com/faiface/pixel) for control binding and graphics rendering,
 which requires OpenGL. You may need to install some requirements which can be found on the
 [pixels readme](https://github.com/faiface/pixel#requirements).
+
+On linux, you'll need to install [gtk](https://www.gtk.org/download/linux.php).
 
 ## Usage 
 ```sh
