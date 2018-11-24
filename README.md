@@ -25,7 +25,7 @@ go get github.com/Humpheh/goboy/cmd/goboy
 ## Building from Source
 If you have go1.11:
 ```sh
-https://github.com/Humpheh/goboy.git
+git clone https://github.com/Humpheh/goboy.git
 cd goboy
 go build -o goboy cmd/goboy/main.go
 ```
@@ -37,7 +37,7 @@ GoBoy uses the go library [pixel](https://github.com/faiface/pixel) for control 
 which requires OpenGL. You may need to install some requirements which can be found on the
 [pixels readme](https://github.com/faiface/pixel#requirements).
 
-On linux, you'll need to install [gtk](https://www.gtk.org/download/linux.php).
+On Linux, you'll need to install [gtk](https://www.gtk.org/download/linux.php).
 
 ## Usage 
 ```sh
