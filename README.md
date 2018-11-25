@@ -53,8 +53,6 @@ Debug or experimental options:
     	write cpu profile to file (debugging)
   -disableVsync
     	set to disable vsync (debugging)
-  -load string
-    	location of save state to load (experimental)
   -stepthrough
     	step through opcodes (debugging)
   -unlocked

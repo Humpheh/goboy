@@ -9,7 +9,6 @@ import (
 
 	"github.com/Humpheh/goboy/pkg/bits"
 	"github.com/Humpheh/goboy/pkg/gb"
-	"github.com/Humpheh/goboy/pkg/gbio"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 )
@@ -18,8 +17,8 @@ import (
 var PixelScale float64 = 3
 
 // NewPixelsIOBinding returns a new Pixelsgl IOBinding
-func NewPixelsIOBinding(gameboy *gb.Gameboy, disableVsync bool) gbio.IOBinding {
-	monitor := PixelsIOBinding{Gameboy: gameboy}
+func NewPixelsIOBinding(disableVsync bool) *PixelsIOBinding {
+	monitor := PixelsIOBinding{}
 	monitor.Init(disableVsync)
 	return &monitor
 }
@@ -189,11 +188,6 @@ var extraKeyMap = map[pixelgl.Button]func(*PixelsIOBinding){
 	// Fullscreen toggle
 	pixelgl.KeyF: func(mon *PixelsIOBinding) {
 		mon.toggleFullscreen()
-	},
-	// Gob
-	pixelgl.KeyG: func(mon *PixelsIOBinding) {
-		err := mon.Gameboy.Gob()
-		log.Print(err)
 	},
 }
 

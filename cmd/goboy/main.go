@@ -7,10 +7,11 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/Humpheh/goboy/dialog"
+	"github.com/faiface/mainthread"
 
 	"fmt"
 
+	"github.com/Humpheh/goboy/dialog"
 	"github.com/Humpheh/goboy/pkg/gb"
 	"github.com/Humpheh/goboy/pkg/gbio"
 	"github.com/Humpheh/goboy/pkg/gbio/iopixel"
@@ -35,51 +36,31 @@ var (
 
 	cpuprofile  = flag.String("cpuprofile", "", "write cpu profile to file (debugging)")
 	vsyncOff    = flag.Bool("disableVsync", false, "set to disable vsync (debugging)")
-	saveState   = flag.String("load", "", "location of save state to load (experimental)")
 	stepThrough = flag.Bool("stepthrough", false, "step through opcodes (debugging)")
 	unlocked    = flag.Bool("unlocked", false, "if to unlock the cpu speed (debugging)")
 )
 
 func main() {
 	flag.Parse()
-	rom := flag.Arg(0)
-
-	// Check if rom was passed in as first argument. If not, we
-	// should prompt the user to select a rom file
-	if rom == "" {
-		var err error
-		rom, err = dialog.File().
-			Filter("GameBoy ROM", "zip", "gb", "gbc", "bin").
-			Title("Load GameBoy ROM File").Load()
-		if err != nil {
-			os.Exit(1)
-		}
-	}
-
-	pixelgl.Run(func() {
-		start(rom)
-	})
+	pixelgl.Run(start)
 }
 
-func start(rom string) {
-	// Check if to run the CPU profile
+func start() {
+	// Create the monitor for pixels
+	monitor := iopixel.NewPixelsIOBinding(*vsyncOff || *unlocked)
+
+	// Load the rom from the flag argument, or prompt with file select
+	rom := getROM()
+
+	// If the CPU profile flag is set, then setup the profiling
 	if *cpuprofile != "" {
-		log.Print("start profile")
-		f, err := os.Create(*cpuprofile)
-		if err != nil {
-			log.Fatalf("Failed to create CPU profile: %v", err)
-		}
-		err = pprof.StartCPUProfile(f)
-		if err != nil {
-			log.Fatalf("Failed to start CPU profile: %v", err)
-		}
+		startCPUProfiling()
 		defer pprof.StopCPUProfile()
 	}
 
+	// Print the logo and the run settings to the console
 	fmt.Println(fmt.Sprintf(logo, version))
-	fmt.Printf(" %-5v: %v\n", "ROM", rom)
-	fmt.Printf(" %-5v: %v\n", "Sound", !*mute)
-	fmt.Printf(" %-5v: %v\n\n", "CGB", !*dmgMode)
+	fmt.Printf("APU: %v\nCGB: %v\nROM: %v\n", !*mute, !*dmgMode, rom)
 
 	var opts []gb.GameboyOption
 	if !*dmgMode {
@@ -89,40 +70,27 @@ func start(rom string) {
 		opts = append(opts, gb.WithSound())
 	}
 
-	var gameboy *gb.Gameboy
-	var err error
-	if rom != "" {
-		// Initialise the GameBoy with the flag options
-		gameboy, err = gb.NewGameboy(rom, opts...)
-		if err != nil {
-			log.Fatal(err)
-		}
-	} else {
-		// Load the gameboy from a save state
-		gameboy, err = gb.NewGameboyFromGob(*saveState)
-		if err != nil {
-			log.Fatal(err)
-		}
+	// Initialise the GameBoy with the flag options
+	gameboy, err := gb.NewGameboy(rom, opts...)
+	if err != nil {
+		log.Fatal(err)
 	}
-
 	if *stepThrough {
 		gameboy.Debug.OutputOpcodes = true
 	}
 
-	monitor := iopixel.NewPixelsIOBinding(gameboy, *vsyncOff || *unlocked)
-	startGB(gameboy, monitor)
+	monitor.Gameboy = gameboy
+	startGBLoop(gameboy, monitor)
 }
 
-func startGB(gameboy *gb.Gameboy, monitor gbio.IOBinding) {
-	var div time.Duration = 1.0
+func startGBLoop(gameboy *gb.Gameboy, monitor gbio.IOBinding) {
+	frameTime := time.Second / gb.FramesSecond
 	if *unlocked {
-		div = 1000.0
+		frameTime = 1
 	}
 
-	perframe := time.Second / gb.FramesSecond / div
-	ticker := time.NewTicker(perframe)
+	ticker := time.NewTicker(frameTime)
 	start := time.Now()
-
 	frames := 0
 	for range ticker.C {
 		if !monitor.IsRunning() {
@@ -131,10 +99,7 @@ func startGB(gameboy *gb.Gameboy, monitor gbio.IOBinding) {
 
 		frames++
 		monitor.ProcessInput()
-
-		if gameboy.IsGameLoaded() {
-			_ = gameboy.Update()
-		}
+		_ = gameboy.Update()
 		monitor.RenderScreen()
 
 		since := time.Since(start)
@@ -143,5 +108,36 @@ func startGB(gameboy *gb.Gameboy, monitor gbio.IOBinding) {
 			monitor.SetTitle(frames)
 			frames = 0
 		}
+	}
+}
+
+// Determine the ROM location. If the string in the flag value is empty then it
+// should prompt the user to select a rom file using the OS dialog.
+func getROM() string {
+	rom := flag.Arg(0)
+	if rom == "" {
+		mainthread.Call(func() {
+			var err error
+			rom, err = dialog.File().
+				Filter("GameBoy ROM", "zip", "gb", "gbc", "bin").
+				Title("Load GameBoy ROM File").Load()
+			if err != nil {
+				os.Exit(1)
+			}
+		})
+	}
+	return rom
+}
+
+// Start the CPU profile to a the file passed in from the flag.
+func startCPUProfiling() {
+	log.Print("Starting CPU profile...")
+	f, err := os.Create(*cpuprofile)
+	if err != nil {
+		log.Fatalf("Failed to create CPU profile: %v", err)
+	}
+	err = pprof.StartCPUProfile(f)
+	if err != nil {
+		log.Fatalf("Failed to start CPU profile: %v", err)
 	}
 }
