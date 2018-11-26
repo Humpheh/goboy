@@ -34,6 +34,7 @@ before_deploy:
   # Build (rename) the windows bundle
   - cd ../windows
   - ./build_windows.sh ../../build/goboy-windows-4.0-amd64.exe
+  - cd ../../ # Reset to root
 
 deploy:
   provider: releases
