@@ -18,26 +18,28 @@ building one yourself. These functions include printing of opcodes and register 
 step (although will greatly slow down the emulation) and toggling of individual sound channels.
 
 ## Installation
+
+Download the [latest release](https://github.com/Humpheh/goboy/releases/latest) of GoBoy from the releases page. 
+
+### Building from source
+
+With go installed, you can install GoBoy into your go bin by running:
 ```sh
 go get github.com/Humpheh/goboy/cmd/goboy
 ```
 
-## Building from Source
-If you have go1.11:
+If you have Go 1.11 you can also do:
 ```sh
 git clone https://github.com/Humpheh/goboy.git
 cd goboy
 go build -o goboy cmd/goboy/main.go
 ```
 
-The program has been tested on MacOS and Windows 10, and is likely to work on Linux. Building on Windows 10
-requires MinGW.
+GoBoy is compatible with MacOS, Windows and Linux. Building on Windows 10 requires MinGW and on Linux, you'll need to install [gtk](https://www.gtk.org/download/linux.php).
 
 GoBoy uses the go library [pixel](https://github.com/faiface/pixel) for control binding and graphics rendering,
 which requires OpenGL. You may need to install some requirements which can be found on the
 [pixels readme](https://github.com/faiface/pixel#requirements).
-
-On Linux, you'll need to install [gtk](https://www.gtk.org/download/linux.php).
 
 ## Usage 
 ```sh
@@ -99,30 +101,27 @@ Please feel free to open pull requests to this project or play around if you're 
 still plenty of small bugs that can easily be found through playing games on the emulator, or take a
 task from the TODO list below!
 
-## Known Bugs 
+## Known Bugs and TODO list
 - [ ] Sprite Z-drawing
 - [x] Sprites near edge of screen not drawing
 - [x] Top half of sprite disappearing off top of screen
 - [x] Small sprites row glitch
-- [ ] Many CGB bugs
-- [x] BG tile window offset issue - visible on *Pokemon Red* splash screen - possibly mistimed interrupt?
-- [ ] Harry Potter and The Chamber of Secrets has odd sprite issues
+- [ ] BG tile window offset issue - visible on *Pokemon Red* splash screen - possibly mistimed interrupt?
+- [ ] *Harry Potter and The Chamber of Secrets* has odd sprite issues
 - [ ] Request to set screen to white does not do so
-
-## TODO List
 - [x] MBC3 banking support
-- [x] GameBoy Color support (partial)
-- [ ] Rewrite APU emulation
+- [ ] Improve APU (see *Pokemon Yellow* opening screen for reason why)
 - [ ] MBC3 clock support
-- [ ] Complete CGB emulation
-- [ ] Icon
+- [ ] Icon 
 - [ ] White screen when off
-- [ ] Speed up CPU
+- [ ] Speed up CPU and PPU
 - [x] Resizable window
-- [ ] Some kind of nice UI
+- [ ] Platform native UI?
 - [ ] MBC4-7 support (?)
-- [ ] More colour palettes
+- [ ] More DMG colour palettes
 - [ ] STOP opcode behaviour
+- [ ] Support save-states (could use gob)
+- [ ] Support boot roms
 - [ ] [Blargg's test ROMs](http://gbdev.gg8.se/wiki/articles/Test_ROMs)
 
 <img src="docs/images/links-awakening.png" width="400"><img src="docs/images/pkmn-tcg.png" width="400">
