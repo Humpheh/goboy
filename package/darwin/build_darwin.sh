@@ -30,5 +30,6 @@ fi
 ls ${OUTPUT}/Contents/MacOS/GoBoy
 
 cp ${OUTPUT}/Contents/MacOS/GoBoy ../build/GoBoy
-zip -r ../build/Goboy.MacOS.zip ../build/Goboy.app/
+zip -r ../build/GoBoy.MacOS.App.zip ../build/Goboy.app/
+zip -r ../build/GoBoy.MacOS.Binary.zip ../build/GoBoy
 rm -r ../build/Goboy.app/
