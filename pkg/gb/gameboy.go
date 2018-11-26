@@ -2,10 +2,6 @@ package gb
 
 import (
 	"fmt"
-	"log"
-
-	"encoding/gob"
-	"os"
 
 	"github.com/Humpheh/goboy/pkg/apu"
 	"github.com/Humpheh/goboy/pkg/bits"
@@ -300,7 +296,7 @@ func (gb *Gameboy) init(romFile string) error {
 }
 
 // Setup and instantitate the gameboys components.
-func (gb *Gameboy) setup() error {
+func (gb *Gameboy) setup() {
 	gb.ExecutionPaused = false
 
 	// Initialise the CPU
@@ -322,24 +318,6 @@ func (gb *Gameboy) setup() error {
 
 	gb.SpritePalette = NewPalette()
 	gb.BGPalette = NewPalette()
-
-	return nil
-}
-
-// Gob writes a gob'd version of the Gameboy instance to a file (experimental).
-func (gb *Gameboy) Gob() error {
-	f, err := os.Create("test.gob")
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	enc := gob.NewEncoder(f)
-	err = enc.Encode(gb)
-	if err != nil {
-		return err
-	}
-	log.Print("Gob'd")
-	return nil
 }
 
 // NewGameboy returns a new Gameboy instance.
@@ -353,28 +331,5 @@ func NewGameboy(romFile string, opts ...GameboyOption) (*Gameboy, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &gameboy, nil
-}
-
-// NewGameboyFromGob returns a new Gameboy instance from an existing gob output
-// of a Gameboy (experimental).
-func NewGameboyFromGob(gobFile string, opts ...GameboyOption) (*Gameboy, error) {
-	f, err := os.Open(gobFile)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	dec := gob.NewDecoder(f)
-	gameboy := Gameboy{}
-	for _, opt := range opts {
-		opt(&gameboy.options)
-	}
-	err = dec.Decode(&gameboy)
-	if err != nil {
-		return nil, err
-	}
-	gameboy.Memory.gb = &gameboy
-	gameboy.Sound.Init(gameboy.options.sound)
-	gameboy.cbInst = gameboy.cbInstructions()
 	return &gameboy, nil
 }
