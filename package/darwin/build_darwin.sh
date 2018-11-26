@@ -22,7 +22,7 @@ if [[ $1 == "" ]]; then
     go build -o ${OUTPUT}/Contents/MacOS/GoBoy github.com/Humpheh/goboy/cmd/goboy
 else
     # Ensure the folder exists
-    mkdir -p ${OUTPUT}/Contents/MacOS/GoBoy
+    mkdir -p ${OUTPUT}/Contents/MacOS
     # Move the input file to the contents executable
     cp $1 ${OUTPUT}/Contents/MacOS/GoBoy
 fi

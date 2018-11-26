@@ -14,7 +14,7 @@ install:
   - go get -t -v ./pkg/...
 
 script:
-  - go test ./pkg/... -v -race -coverprofile=coverage.txt -covermode=atomic -coverpkg=github.com/Humpheh/goboy/pkg/...
+  - go test ./pkg/cart/... -v -race -coverprofile=coverage.txt -covermode=atomic -coverpkg=github.com/Humpheh/goboy/pkg/cart/...
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
@@ -29,8 +29,6 @@ before_deploy:
 
   # Build the darwin bundle
   - cd ../package/darwin
-  - ls ../build
-  - ls ../../build
   - ./build_darwin.sh ../../build/goboy-darwin-10.6-amd64
 
   # Build (rename) the windows bundle
