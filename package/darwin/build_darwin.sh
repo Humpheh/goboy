@@ -27,15 +27,8 @@ else
     cp $1 ${OUTPUT}/Contents/MacOS/GoBoy
 fi
 
-echo 'Package Build'
-ls ../build
-
-echo 'Build'
-ls ../../build
-
-echo 'Moving' ${OUTPUT}/Contents/MacOS/GoBoy
-echo 'Out' ../build/GoBoy
-
 ls ${OUTPUT}/Contents/MacOS/GoBoy
 
 cp ${OUTPUT}/Contents/MacOS/GoBoy ../build/GoBoy
+zip -r ../build/Goboy.MacOS.zip ../build/Goboy.app/
+rm -r ../build/Goboy.app/
