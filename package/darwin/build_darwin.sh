@@ -32,4 +32,7 @@ ls ${OUTPUT}/Contents/MacOS/GoBoy
 cp ${OUTPUT}/Contents/MacOS/GoBoy ../build/GoBoy
 zip -r ../build/GoBoy.MacOS.App.zip ../build/Goboy.app/
 zip -r ../build/GoBoy.MacOS.Binary.zip ../build/GoBoy
+
+# Cleanup
 rm -r ../build/Goboy.app/
+rm ../build/GoBoy
