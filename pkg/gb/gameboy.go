@@ -46,7 +46,8 @@ type Gameboy struct {
 	interruptsOn       bool
 	halted             bool
 
-	cbInst    []func()
+	mainInst  [0x100]func()
+	cbInst    [0x100]func()
 	InputMask byte
 
 	// Flag if the game is running in cgb mode. For this to be true the game
@@ -314,6 +315,7 @@ func (gb *Gameboy) setup() {
 	gb.scanlineCounter = 456
 	gb.InputMask = 0xFF
 
+	gb.mainInst = gb.mainInstructions()
 	gb.cbInst = gb.cbInstructions()
 
 	gb.SpritePalette = NewPalette()
