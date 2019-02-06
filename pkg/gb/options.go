@@ -15,8 +15,10 @@ type gameboyOptions struct {
 type DebugFlags struct {
 	// HideSprites turns off rendering of sprites to the display.
 	HideSprites bool
+
 	// HideBackground turns off rendering of background tiles to the display.
 	HideBackground bool
+
 	// OutputOpcodes will log the current opcode to the console on each tick.
 	// This will slow down execution massively so is only used for debugging
 	// issues with the emulation.

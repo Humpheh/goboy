@@ -35,7 +35,9 @@ func (gb *Gameboy) setLCDStatus() {
 	status := gb.Memory.ReadHighRam(0xFF41)
 
 	if !gb.isLCDEnabled() {
-		// TODO: Set screen to white in this instance
+		// set the screen to white
+		gb.clearScreen()
+
 		gb.scanlineCounter = 456
 		gb.Memory.HighRAM[0x44] = 0
 		status &= 252
@@ -46,6 +48,7 @@ func (gb *Gameboy) setLCDStatus() {
 		gb.Memory.Write(0xFF41, status)
 		return
 	}
+	gb.screenCleared = false
 
 	currentLine := gb.Memory.ReadHighRam(0xFF44)
 	currentMode := status & 0x3
@@ -355,7 +358,23 @@ func (gb *Gameboy) setPixel(x byte, y byte, r uint8, g uint8, b uint8, priority 
 	}
 }
 
-// GetScanlineCounter returns the current value of the scanline counter.
-func (gb *Gameboy) GetScanlineCounter() int {
-	return gb.scanlineCounter
+// Clear the screen by setting every pixel to white.
+func (gb *Gameboy) clearScreen() {
+	// Check if we have cleared the screen already
+	if gb.screenCleared {
+		return
+	}
+
+	// Set every pixel to white
+	for x := 0; x < len(gb.screenData); x++ {
+		for y := 0; y < len(gb.screenData[x]); y++ {
+			gb.screenData[x][y][0] = 255
+			gb.screenData[x][y][1] = 255
+			gb.screenData[x][y][2] = 255
+		}
+	}
+
+	// Push the cleared data right now
+	gb.PreparedData = gb.screenData
+	gb.screenCleared = true
 }

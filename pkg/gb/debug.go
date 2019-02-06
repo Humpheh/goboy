@@ -26,7 +26,7 @@ func LogOpcode(gb *Gameboy, short bool) {
 	opcode := gb.Memory.Read(pc)
 
 	next := gb.Memory.Read(pc + 1)
-	fmt.Printf("[%0#2x]: %3v %-20v %0#4x", opcode, gb.GetScanlineCounter(), debug.GetOpcodeName(opcode, next), pc)
+	fmt.Printf("[%0#2x]: %3v %-20v %0#4x", opcode, gb.scanlineCounter, debug.GetOpcodeName(opcode, next), pc)
 
 	if !short {
 		fmt.Printf("  [[")
