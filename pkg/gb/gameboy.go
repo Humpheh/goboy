@@ -37,6 +37,7 @@ type Gameboy struct {
 	tileScanline      [160]uint8
 	scanlineCounter   int
 	lastDrawnScanline byte
+	screenCleared     bool
 
 	// PreparedData is a matrix of screen pixel data for a single frame which has
 	// been fully rendered.
