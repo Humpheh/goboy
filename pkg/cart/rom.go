@@ -7,7 +7,8 @@ func NewROM(data []byte) BankingController {
 	}
 }
 
-// ROM is a basic Gameboy cartridge.
+// ROM is a basic Gameboy cartridge that contains a fixed rom and no
+// banking or RAM.
 type ROM struct {
 	rom []byte
 }

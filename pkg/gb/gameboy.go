@@ -47,9 +47,11 @@ type Gameboy struct {
 	interruptsOn       bool
 	halted             bool
 
-	mainInst  [0x100]func()
-	cbInst    [0x100]func()
-	InputMask byte
+	mainInst [0x100]func()
+	cbInst   [0x100]func()
+
+	// Mask of the currenly pressed buttons.
+	inputMask byte
 
 	// Flag if the game is running in cgb mode. For this to be true the game
 	// rom must support cgb mode and the option be true.
@@ -181,12 +183,6 @@ func (gb *Gameboy) dividerRegister(cycles int) {
 	}
 }
 
-// RequestJoypadInterrupt triggers a joypad interrupt. To be called by the io
-// binding implementation.
-func (gb *Gameboy) RequestJoypadInterrupt() {
-	gb.requestInterrupt(4) // Joypad interrupt
-}
-
 // Request the Gameboy to perform an interrupt.
 func (gb *Gameboy) requestInterrupt(interrupt byte) {
 	req := gb.Memory.ReadHighRam(0xFF0F)
@@ -267,9 +263,9 @@ func (gb *Gameboy) popStack() uint16 {
 func (gb *Gameboy) joypadValue(current byte) byte {
 	var in byte = 0xF
 	if bits.Test(current, 4) {
-		in = gb.InputMask & 0xF
+		in = gb.inputMask & 0xF
 	} else if bits.Test(current, 5) {
-		in = (gb.InputMask >> 4) & 0xF
+		in = (gb.inputMask >> 4) & 0xF
 	}
 	return current | 0xc0 | in
 }
@@ -279,7 +275,7 @@ func (gb *Gameboy) IsGameLoaded() bool {
 	return gb.Memory != nil && gb.Memory.Cart != nil
 }
 
-// IsCGB returns if we are using CGB features
+// IsCGB returns if we are using CGB features.
 func (gb *Gameboy) IsCGB() bool {
 	return gb.cgbMode
 }
@@ -314,7 +310,7 @@ func (gb *Gameboy) setup() {
 
 	gb.Debug = DebugFlags{}
 	gb.scanlineCounter = 456
-	gb.InputMask = 0xFF
+	gb.inputMask = 0xFF
 
 	gb.mainInst = gb.mainInstructions()
 	gb.cbInst = gb.cbInstructions()

@@ -7,7 +7,6 @@ import (
 
 	"math"
 
-	"github.com/Humpheh/goboy/pkg/bits"
 	"github.com/Humpheh/goboy/pkg/gb"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
@@ -115,23 +114,15 @@ func (mon *PixelsIOBinding) SetTitle(fps int) {
 }
 
 // Mapping from keys to GB index.
-var keyMap = map[pixelgl.Button]byte{
-	// A button
-	pixelgl.KeyZ: 0,
-	// B button
-	pixelgl.KeyX: 1,
-	// SELECT button
-	pixelgl.KeyBackspace: 2,
-	// START button
-	pixelgl.KeyEnter: 3,
-	// RIGHT button
-	pixelgl.KeyRight: 4,
-	// LEFT button
-	pixelgl.KeyLeft: 5,
-	// UP button
-	pixelgl.KeyUp: 6,
-	// DOWN button
-	pixelgl.KeyDown: 7,
+var keyMap = map[pixelgl.Button]gb.Button{
+	pixelgl.KeyZ:         gb.ButtonA,
+	pixelgl.KeyX:         gb.ButtonB,
+	pixelgl.KeyBackspace: gb.ButtonSelect,
+	pixelgl.KeyEnter:     gb.ButtonStart,
+	pixelgl.KeyRight:     gb.ButtonRight,
+	pixelgl.KeyLeft:      gb.ButtonLeft,
+	pixelgl.KeyUp:        gb.ButtonUp,
+	pixelgl.KeyDown:      gb.ButtonDown,
 }
 
 // Extra key bindings to functions.
@@ -219,13 +210,12 @@ func (mon *PixelsIOBinding) ProcessInput() {
 
 // Check the input and process it.
 func (mon *PixelsIOBinding) processGBInput() {
-	for key, offset := range keyMap {
+	for key, button := range keyMap {
 		if mon.Window.JustPressed(key) {
-			mon.Gameboy.InputMask = bits.Reset(mon.Gameboy.InputMask, offset)
-			mon.Gameboy.RequestJoypadInterrupt() // Joypad interrupt
+			mon.Gameboy.PressButton(button)
 		}
 		if mon.Window.JustReleased(key) {
-			mon.Gameboy.InputMask = bits.Set(mon.Gameboy.InputMask, offset)
+			mon.Gameboy.ReleaseButton(button)
 		}
 	}
 }
