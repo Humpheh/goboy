@@ -8,50 +8,51 @@ import (
 // for setting and getting the higher and lower bytes.
 type register struct {
 	// The value of the register.
-	Val uint16
+	value uint16
+
 	// A mask over the possible values in the register.
 	// Only used for the AF register where lower bits of
 	// F cannot be set.
-	Mask uint16
+	mask uint16
 }
 
 // Hi gets the higher byte of the register.
 func (reg *register) Hi() byte {
-	return byte(reg.Val >> 8)
+	return byte(reg.value >> 8)
 }
 
 // Lo gets the lower byte of the register.
 func (reg *register) Lo() byte {
-	return byte(reg.Val & 0xFF)
+	return byte(reg.value & 0xFF)
 }
 
 // HiLo gets the 2 byte value of the register.
 func (reg *register) HiLo() uint16 {
-	return reg.Val
+	return reg.value
 }
 
 // SetHi sets the higher byte of the register.
 func (reg *register) SetHi(val byte) {
-	reg.Val = uint16(val)<<8 | (uint16(reg.Val) & 0xFF)
+	reg.value = uint16(val)<<8 | (uint16(reg.value) & 0xFF)
 	reg.updateMask()
 }
 
 // SetLog sets the lower byte of the register.
 func (reg *register) SetLo(val byte) {
-	reg.Val = uint16(val) | (uint16(reg.Val) & 0xFF00)
+	reg.value = uint16(val) | (uint16(reg.value) & 0xFF00)
 	reg.updateMask()
 }
 
 // Set the value of the register.
 func (reg *register) Set(val uint16) {
-	reg.Val = val
+	reg.value = val
 	reg.updateMask()
 }
 
 // Mask the value if one is set on this register.
 func (reg *register) updateMask() {
-	if reg.Mask != 0 {
-		reg.Val &= reg.Mask
+	if reg.mask != 0 {
+		reg.value &= reg.mask
 	}
 }
 
@@ -82,7 +83,7 @@ func (cpu *CPU) Init(cgb bool) {
 	cpu.HL.Set(0x000D)
 	cpu.SP.Set(0xFFFE)
 
-	cpu.AF.Mask = 0xFFF0
+	cpu.AF.mask = 0xFFF0
 }
 
 // Internally set the value of a flag on the flag register.
