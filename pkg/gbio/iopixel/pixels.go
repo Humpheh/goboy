@@ -129,7 +129,8 @@ var keyMap = map[pixelgl.Button]gb.Button{
 var extraKeyMap = map[pixelgl.Button]func(*PixelsIOBinding){
 	// Pause execution
 	pixelgl.KeyEscape: func(mon *PixelsIOBinding) {
-		mon.Gameboy.ExecutionPaused = !mon.Gameboy.ExecutionPaused
+		// Toggle the paused state
+		mon.Gameboy.SetPaused(!mon.Gameboy.IsPaused())
 	},
 
 	// Change GB colour palette
@@ -143,14 +144,6 @@ var extraKeyMap = map[pixelgl.Button]func(*PixelsIOBinding){
 	},
 	pixelgl.KeyW: func(mon *PixelsIOBinding) {
 		mon.Gameboy.Debug.HideSprites = !mon.Gameboy.Debug.HideSprites
-	},
-	pixelgl.KeyA: func(mon *PixelsIOBinding) {
-		fmt.Println("BG Tile Palette:")
-		fmt.Println(mon.Gameboy.BGPalette.String())
-	},
-	pixelgl.KeyS: func(mon *PixelsIOBinding) {
-		fmt.Println("Sprite Palette:")
-		fmt.Println(mon.Gameboy.SpritePalette.String())
 	},
 	pixelgl.KeyD: func(mon *PixelsIOBinding) {
 		fmt.Println("BG Map:")
@@ -197,7 +190,7 @@ func (mon *PixelsIOBinding) toggleFullscreen() {
 
 // ProcessInput checks the input and process it.
 func (mon *PixelsIOBinding) ProcessInput() {
-	if mon.Gameboy.IsGameLoaded() && !mon.Gameboy.ExecutionPaused {
+	if mon.Gameboy.IsGameLoaded() && !mon.Gameboy.IsPaused() {
 		mon.processGBInput()
 	}
 	// Extra keys not related to emulation

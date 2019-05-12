@@ -1,8 +1,6 @@
 package gb
 
 import (
-	"fmt"
-
 	"github.com/Humpheh/goboy/pkg/bits"
 )
 
@@ -59,9 +57,7 @@ func NewPalette() *cgbPalette {
 		pal[i] = 0xFF
 	}
 
-	return &cgbPalette{
-		Palette: pal,
-	}
+	return &cgbPalette{Palette: pal}
 }
 
 // Palette for cgb containing information tracking the palette colour info.
@@ -81,8 +77,7 @@ func (pal *cgbPalette) updateIndex(value byte) {
 	pal.Inc = bits.Test(value, 7)
 }
 
-// Read the palette information stored at the current
-// index.
+// Read the palette information stored at the current index.
 func (pal *cgbPalette) read() byte {
 	return pal.Palette[pal.Index]
 }
@@ -108,18 +103,6 @@ func (pal *cgbPalette) get(palette byte, num byte) (uint8, uint8, uint8) {
 	g := uint8((colour >> 5) & 0x1F)
 	b := uint8((colour >> 10) & 0x1F)
 	return colArr[r], colArr[g], colArr[b]
-}
-
-// String output of the palette values.
-func (pal *cgbPalette) String() string {
-	out := ""
-	for i := 0; i < len(pal.Palette); i += 2 {
-		out += fmt.Sprintf("%02x%02x ", pal.Palette[i+1], pal.Palette[i])
-		if (i+2)%8 == 0 {
-			out += "\n"
-		}
-	}
-	return out
 }
 
 // Mapping of the 5 bit colour value to a 8 bit value.

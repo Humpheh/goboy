@@ -2,12 +2,12 @@ package debug
 
 // Mapping of the opcode to their names
 var names = map[byte]string{
-	0x06: "LD B, n",
-	0x0E: "LD C, n",
-	0x16: "LD D, n",
-	0x1E: "LD E, n",
-	0x26: "LD H, n",
-	0x2E: "LD L, n",
+	0x06: "LD B,n",
+	0x0E: "LD C,n",
+	0x16: "LD D,n",
+	0x1E: "LD E,n",
+	0x26: "LD H,n",
+	0x2E: "LD L,n",
 	0x7F: "LD A,A",
 	0x78: "LD A,B",
 	0x79: "LD A,C",

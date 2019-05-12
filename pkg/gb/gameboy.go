@@ -25,8 +25,8 @@ type Gameboy struct {
 	CPU    *CPU
 	Sound  *apu.APU
 
-	Debug           DebugFlags
-	ExecutionPaused bool
+	Debug  DebugFlags
+	paused bool
 
 	timerCounter int
 
@@ -67,7 +67,7 @@ type Gameboy struct {
 
 // Update update the state of the gameboy by a single frame.
 func (gb *Gameboy) Update() int {
-	if gb.ExecutionPaused {
+	if gb.paused {
 		return 0
 	}
 
@@ -91,6 +91,16 @@ func (gb *Gameboy) Update() int {
 		cycles += gb.doInterrupts()
 	}
 	return cycles
+}
+
+// SetPaused sets the paused state of the execution.
+func (gb *Gameboy) SetPaused(paused bool) {
+	gb.paused = paused
+}
+
+// IsPaused returns if the GameBoy is paused or not.
+func (gb *Gameboy) IsPaused() bool {
+	return gb.paused
 }
 
 // ToggleSoundChannel toggles a sound channel for debugging.
@@ -295,8 +305,6 @@ func (gb *Gameboy) init(romFile string) error {
 
 // Setup and instantitate the gameboys components.
 func (gb *Gameboy) setup() {
-	gb.ExecutionPaused = false
-
 	// Initialise the CPU
 	gb.CPU = &CPU{}
 	gb.CPU.Init(gb.options.cgbMode)

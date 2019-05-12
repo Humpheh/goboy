@@ -68,8 +68,8 @@ func (gb *Gameboy) popPC16() uint16 {
 // mainInstructions creates and  returns a table of the main
 // insruction set
 func (gb *Gameboy) mainInstructions() [0x100]func() {
-	// TODO: possibly faster if we derefernce
-	// each register and gb methods in this scope
+	// TODO: possibly faster if we dereference
+	//  each register and gb methods in this scope
 
 	// ret gets returned
 	ret := [0x100]func(){
@@ -476,16 +476,7 @@ func (gb *Gameboy) mainInstructions() [0x100]func() {
 		},
 		0xF8: func() {
 			// LD HL,SP+n
-			val1 := int32(gb.CPU.SP.HiLo())
-			val2 := int32(int8(gb.popPC()))
-			result := val1 + val2
-			gb.CPU.HL.Set(uint16(result))
-			tempVal := val1 ^ val2 ^ result
-			gb.CPU.SetZ(false)
-			gb.CPU.SetN(false)
-			// TODO: Probably check these
-			gb.CPU.SetH((tempVal & 0x10) == 0x10)
-			gb.CPU.SetC((tempVal & 0x100) == 0x100)
+			gb.instAdd16Signed(gb.CPU.HL.Set, gb.CPU.SP.HiLo(), int8(gb.popPC()))
 		},
 		0x08: func() {
 			// LD (nn),SP
@@ -936,16 +927,16 @@ func (gb *Gameboy) mainInstructions() [0x100]func() {
 		},
 		0x27: func() {
 			// DAA
+
 			// When this instruction is executed, the A register is BCD
 			// corrected using the contents of the flags. The exact process
 			// is the following: if the least significant four bits of A
 			// contain a non-BCD digit (i. e. it is greater than 9) or the
-			// H flag is set, then $06 is added to the register. Then the
+			// H flag is set, then 0x60 is added to the register. Then the
 			// four most significant bits are checked. If this more significant
 			// digit also happens to be greater than 9 or the C flag is set,
-			// then $60 is added.
+			// then 0x60 is added.
 			if !gb.CPU.N() {
-				// TODO: This could be more efficient?
 				if gb.CPU.C() || gb.CPU.AF.Hi() > 0x99 {
 					gb.CPU.AF.SetHi(gb.CPU.AF.Hi() + 0x60)
 					gb.CPU.SetC(true)
@@ -992,6 +983,7 @@ func (gb *Gameboy) mainInstructions() [0x100]func() {
 		},
 		0x10: func() {
 			// STOP
+			// TODO: fix this
 			//gb.halted = true
 			log.Print("0x10 (STOP) unimplemented (is 0x00 follows)")
 		},
@@ -1244,8 +1236,7 @@ func (gb *Gameboy) mainInstructions() [0x100]func() {
 			gb.cbInst[nextInst]()
 		},
 	}
-	// fill the empty elements of the array
-	// with a noop function to eliminate null checks
+	// Fill the empty elements of the array with a noop function to eliminate null checks.
 	for k, v := range ret {
 		if v == nil {
 			opcode := k

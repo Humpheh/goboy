@@ -12,14 +12,6 @@ import (
 	"github.com/Humpheh/goboy/pkg/debug"
 )
 
-// CpuStateString is a debug function to get a string of the state of the CPU.
-func CpuStateString(cpu *CPU, label string) string {
-	return fmt.Sprintf("%5v - AF: %0#4x  BC: %0#4x  DE: %0#4x  HL: %0#4x  PC: %0#4x  SP: %0#4x",
-		label, cpu.AF.HiLo(), cpu.BC.HiLo(), cpu.DE.HiLo(), cpu.HL.HiLo(),
-		cpu.PC, cpu.SP.HiLo(),
-	)
-}
-
 // LogOpcode is a debug function to log the the current state of the gameboys CPU and next memory.
 func LogOpcode(gb *Gameboy, short bool) {
 	pc := gb.CPU.PC

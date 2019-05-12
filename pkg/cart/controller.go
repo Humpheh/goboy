@@ -109,7 +109,6 @@ func (c *Cart) initGameSaves() {
 func (c *Cart) Save() {
 	data := c.BankingController.GetSaveData()
 	if len(data) > 0 {
-		log.Printf("saving data to: %v", c.GetSaveFilename())
 		err := ioutil.WriteFile(c.GetSaveFilename(), data, 0644)
 		if err != nil {
 			log.Printf("Error saving cartridge RAM: %v", err)
