@@ -114,7 +114,6 @@ func (gb *Gameboy) instAdd16Signed(set func(uint16), val1 uint16, val2 int8) {
 	tmpVal := val1 ^ uint16(val2) ^ total
 	gb.CPU.SetZ(false)
 	gb.CPU.SetN(false)
-	// TODO: Check these!
 	gb.CPU.SetH((tmpVal & 0x10) == 0x10)
 	gb.CPU.SetC((tmpVal & 0x100) == 0x100)
 }

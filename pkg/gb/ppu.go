@@ -216,7 +216,7 @@ func (gb *Gameboy) renderTiles(lcdControl byte, scanline byte) {
 		//	 Bit 0-2  Background Palette number  (BGP0-7)
 		//	 Bit 5    Horizontal Flip            (0=Normal, 1=Mirror horizontally)
 		//	 Bit 6    Vertical Flip              (0=Normal, 1=Mirror vertically)
-		//	 Bit 7    BG-to-OAM Priority         (0=Use OAM priority bit, 1=BG Priority
+		//	 Bit 7    BG-to-OAM Priority         (0=Use OAM priority bit, 1=BG Priority)
 		//
 		tileAttr := gb.Memory.VRAM[tileAddress-0x6000]
 		if gb.IsCGB() && bits.Test(tileAttr, 3) {
