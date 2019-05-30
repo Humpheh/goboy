@@ -30,6 +30,11 @@ func (gb *Gameboy) updateGraphics(cycles int) {
 	}
 }
 
+const (
+	lcdMode2Bounds = 456 - 80
+	lcdMode3Bounds = lcdMode2Bounds - 172
+)
+
 // Set the status of the LCD based on the current state of memory.
 func (gb *Gameboy) setLCDStatus() {
 	status := gb.Memory.ReadHighRam(0xFF41)
@@ -56,37 +61,34 @@ func (gb *Gameboy) setLCDStatus() {
 	var mode byte
 	requestInterrupt := false
 
-	if currentLine >= 144 {
+	switch {
+	case currentLine >= 144:
 		mode = 1
 		status = bits.Set(status, 0)
 		status = bits.Reset(status, 1)
 		requestInterrupt = bits.Test(status, 4)
-	} else {
-		mode2Bounds := 456 - 80
-		mode3Bounds := mode2Bounds - 172
-
-		if gb.scanlineCounter >= mode2Bounds {
-			if currentLine != gb.lastDrawnScanline {
-				// Draw the scanline at the start of the v-blank period
-				gb.drawScanline(gb.lastDrawnScanline)
-				gb.lastDrawnScanline = currentLine
-			}
-			mode = 2
-			status = bits.Reset(status, 0)
-			status = bits.Set(status, 1)
-			requestInterrupt = bits.Test(status, 5)
-		} else if gb.scanlineCounter >= mode3Bounds {
-			mode = 3
-			status = bits.Set(status, 0)
-			status = bits.Set(status, 1)
-		} else {
-			mode = 0
-			status = bits.Reset(status, 0)
-			status = bits.Reset(status, 1)
-			requestInterrupt = bits.Test(status, 3)
-			if mode != currentMode {
-				gb.Memory.hbHDMATransfer()
-			}
+	case gb.scanlineCounter >= lcdMode2Bounds:
+		mode = 2
+		status = bits.Reset(status, 0)
+		status = bits.Set(status, 1)
+		requestInterrupt = bits.Test(status, 5)
+	case gb.scanlineCounter >= lcdMode3Bounds:
+		mode = 3
+		status = bits.Set(status, 0)
+		status = bits.Set(status, 1)
+		if mode != currentMode {
+			// Draw the scanline when we start mode 3. In the real GameBoy
+			// this would be done throughout mode 3 by reading OAM and VRAM
+			// to generate the picture.
+			gb.drawScanline(currentLine)
+		}
+	default:
+		mode = 0
+		status = bits.Reset(status, 0)
+		status = bits.Reset(status, 1)
+		requestInterrupt = bits.Test(status, 3)
+		if mode != currentMode {
+			gb.Memory.hbHDMATransfer()
 		}
 	}
 
@@ -94,7 +96,7 @@ func (gb *Gameboy) setLCDStatus() {
 		gb.requestInterrupt(1)
 	}
 
-	// Check is LYC == LY (coincidence flag)
+	// Check if LYC == LY (coincidence flag)
 	if currentLine == gb.Memory.ReadHighRam(0xFF45) {
 		status = bits.Set(status, 2)
 		// If enabled request an interrupt for this
@@ -213,10 +215,11 @@ func (gb *Gameboy) renderTiles(lcdControl byte, scanline byte) {
 
 		// Attributes used in CGB mode TODO: check in CGB mode
 		//
-		//	 Bit 0-2  Background Palette number  (BGP0-7)
-		//	 Bit 5    Horizontal Flip            (0=Normal, 1=Mirror horizontally)
-		//	 Bit 6    Vertical Flip              (0=Normal, 1=Mirror vertically)
-		//	 Bit 7    BG-to-OAM Priority         (0=Use OAM priority bit, 1=BG Priority)
+		//    Bit 0-2  Background Palette number  (BGP0-7)
+		//    Bit 3    Tile VRAM Bank number      (0=Bank 0, 1=Bank 1)
+		//    Bit 5    Horizontal Flip            (0=Normal, 1=Mirror horizontally)
+		//    Bit 6    Vertical Flip              (0=Normal, 1=Mirror vertically)
+		//    Bit 7    BG-to-OAM Priority         (0=Use OAM priority bit, 1=BG Priority)
 		//
 		tileAttr := gb.Memory.VRAM[tileAddress-0x6000]
 		if gb.IsCGB() && bits.Test(tileAttr, 3) {
@@ -291,9 +294,9 @@ func (gb *Gameboy) renderSprites(lcdControl byte, scanline int32) {
 		priority := !bits.Test(attributes, 7)
 
 		// Bank the sprite data in is (CGB only)
-		var bank uint16
-		if gb.IsCGB() {
-			bank = uint16((attributes & 0x8) >> 3)
+		var bank uint16 = 0
+		if gb.IsCGB() && bits.Test(attributes, 3) {
+			bank = 1
 		}
 
 		// If this is true the scanline is out of the area we care about
