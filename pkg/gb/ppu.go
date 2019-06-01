@@ -4,6 +4,11 @@ import (
 	"github.com/Humpheh/goboy/pkg/bits"
 )
 
+const (
+	// LCDC is the main LCD Control register.
+	LCDC = 0xFF40
+)
+
 // Update the state of the graphics.
 func (gb *Gameboy) updateGraphics(cycles int) {
 	gb.setLCDStatus()
@@ -18,6 +23,7 @@ func (gb *Gameboy) updateGraphics(cycles int) {
 		if gb.Memory.HighRAM[0x44] > 153 {
 			gb.PreparedData = gb.screenData
 			gb.screenData = [160][144][3]uint8{}
+			gb.bgPriority = [160][144]bool{}
 			gb.Memory.HighRAM[0x44] = 0
 		}
 
@@ -112,13 +118,15 @@ func (gb *Gameboy) setLCDStatus() {
 
 // Checks if the LCD is enabled by examining 0xFF40.
 func (gb *Gameboy) isLCDEnabled() bool {
-	return bits.Test(gb.Memory.ReadHighRam(0xFF40), 7)
+	return bits.Test(gb.Memory.ReadHighRam(LCDC), 7)
 }
 
 // Draw a single scanline to the graphics output.
 func (gb *Gameboy) drawScanline(scanline byte) {
-	control := gb.Memory.ReadHighRam(0xFF40)
-	if bits.Test(control, 0) && !gb.Debug.HideBackground {
+	control := gb.Memory.ReadHighRam(LCDC)
+
+	// LCDC bit 0 clears tiles on DMG but controls priority on CGB.
+	if (gb.IsCGB() || bits.Test(control, 0)) && !gb.Debug.HideBackground {
 		gb.renderTiles(control, scanline)
 	}
 
@@ -225,6 +233,7 @@ func (gb *Gameboy) renderTiles(lcdControl byte, scanline byte) {
 		if gb.IsCGB() && bits.Test(tileAttr, 3) {
 			bankOffset = 0x6000
 		}
+		priority := bits.Test(tileAttr, 7)
 
 		var line byte
 		if gb.IsCGB() && bits.Test(tileAttr, 6) {
@@ -243,16 +252,17 @@ func (gb *Gameboy) renderTiles(lcdControl byte, scanline byte) {
 		}
 		colourBit := byte(int8((xPos%8)-7) * -1)
 		colourNum := (bits.Val(data2, colourBit) << 1) | bits.Val(data1, colourBit)
-		gb.setTilePixel(pixel, scanline, tileAttr, colourNum, palette)
+		gb.setTilePixel(pixel, scanline, tileAttr, colourNum, palette, priority)
 	}
 }
 
-func (gb *Gameboy) setTilePixel(x, y, tileAttr, colourNum, palette byte) {
+func (gb *Gameboy) setTilePixel(x, y, tileAttr, colourNum, palette byte, priority bool) {
 	// Set the pixel
 	if gb.IsCGB() {
 		cgbPalette := tileAttr & 0x7
 		red, green, blue := gb.BGPalette.get(cgbPalette, colourNum)
 		gb.setPixel(x, y, red, green, blue, true)
+		gb.bgPriority[x][y] = priority
 	} else {
 		red, green, blue := gb.getColour(colourNum, palette)
 		gb.setPixel(x, y, red, green, blue, true)
@@ -354,7 +364,7 @@ func (gb *Gameboy) renderSprites(lcdControl byte, scanline int32) {
 // Set a pixel in the graphics screen data.
 func (gb *Gameboy) setPixel(x byte, y byte, r uint8, g uint8, b uint8, priority bool) {
 	// If priority is false then sprite pixel is only set if tile colour is 0
-	if priority || gb.tileScanline[x] == 0 {
+	if (priority && !gb.bgPriority[x][y]) || gb.tileScanline[x] == 0 {
 		gb.screenData[x][y][0] = r
 		gb.screenData[x][y][1] = g
 		gb.screenData[x][y][2] = b
