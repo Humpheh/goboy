@@ -983,9 +983,16 @@ func (gb *Gameboy) mainInstructions() [0x100]func() {
 		},
 		0x10: func() {
 			// STOP
-			// TODO: fix this
-			//gb.halted = true
-			log.Print("0x10 (STOP) unimplemented (is 0x00 follows)")
+			gb.halted = true
+			if gb.IsCGB() {
+				// Handle switching to double speed mode
+				gb.checkSpeedSwitch()
+			}
+
+			// Pop the next value as the STOP instruction is 2 bytes long. The second value
+			// can be ignored, although generally it is expected to be 0x00 and any other
+			// value is counted as a corrupted STOP instruction.
+			gb.popPC()
 		},
 		0xF3: func() {
 			// DI
