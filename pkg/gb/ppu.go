@@ -88,7 +88,7 @@ func (gb *Gameboy) setLCDStatus() {
 		status = bits.Reset(status, 1)
 		requestInterrupt = bits.Test(status, 3)
 		if mode != currentMode {
-			gb.Memory.hbHDMATransfer()
+			gb.Memory.doHDMATransfer()
 		}
 	}
 
