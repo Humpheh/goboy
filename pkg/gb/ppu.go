@@ -5,6 +5,12 @@ import (
 )
 
 const (
+	// ScreenWidth is the number of pixels width on the GameBoy LCD panel.
+	ScreenWidth = 160
+
+	// ScreenHeight is the number of pixels height on the GameBoy LCD panel.
+	ScreenHeight = 144
+
 	// LCDC is the main LCD Control register.
 	LCDC = 0xFF40
 )
@@ -22,15 +28,15 @@ func (gb *Gameboy) updateGraphics(cycles int) {
 		gb.Memory.HighRAM[0x44]++
 		if gb.Memory.HighRAM[0x44] > 153 {
 			gb.PreparedData = gb.screenData
-			gb.screenData = [160][144][3]uint8{}
-			gb.bgPriority = [160][144]bool{}
+			gb.screenData = [ScreenWidth][ScreenHeight][3]uint8{}
+			gb.bgPriority = [ScreenWidth][ScreenHeight]bool{}
 			gb.Memory.HighRAM[0x44] = 0
 		}
 
 		currentLine := gb.Memory.ReadHighRam(0xFF44)
 		gb.scanlineCounter += 456 * gb.getSpeed()
 
-		if currentLine == 144 {
+		if currentLine == ScreenHeight {
 			gb.requestInterrupt(0)
 		}
 	}
@@ -280,6 +286,8 @@ func (gb *Gameboy) getColour(colourNum byte, palette byte) (uint8, uint8, uint8)
 	return GetPaletteColour(col)
 }
 
+const spritePriorityOffset = 100
+
 // Render the sprites to the screen on the current scanline using the lcdControl register.
 func (gb *Gameboy) renderSprites(lcdControl byte, scanline int32) {
 	var ySize int32 = 8
@@ -291,10 +299,24 @@ func (gb *Gameboy) renderSprites(lcdControl byte, scanline int32) {
 	var palette1 = gb.Memory.ReadHighRam(0xFF48)
 	var palette2 = gb.Memory.ReadHighRam(0xFF49)
 
-	for sprite := 0; sprite < 40; sprite++ {
+	var minx [ScreenWidth]int32
+	var lineSprites = 0
+	for sprite := uint16(0); sprite < 40; sprite++ {
 		// Load sprite data from memory.
 		index := sprite * 4
+
+		// If this is true the scanline is out of the area we care about
 		yPos := int32(gb.Memory.Read(uint16(0xFE00+index))) - 16
+		if scanline < yPos || scanline >= (yPos+ySize) {
+			continue
+		}
+
+		// Only 10 sprites are allowed to be displayed on each line
+		if lineSprites >= 10 {
+			break
+		}
+		lineSprites++
+
 		xPos := int32(gb.Memory.Read(uint16(0xFE00+index+1))) - 8
 		tileLocation := gb.Memory.Read(uint16(0xFE00 + index + 2))
 		attributes := gb.Memory.Read(uint16(0xFE00 + index + 3))
@@ -307,11 +329,6 @@ func (gb *Gameboy) renderSprites(lcdControl byte, scanline int32) {
 		var bank uint16 = 0
 		if gb.IsCGB() && bits.Test(attributes, 3) {
 			bank = 1
-		}
-
-		// If this is true the scanline is out of the area we care about
-		if scanline < yPos || scanline >= (yPos+ySize) {
-			continue
 		}
 
 		// Set the line to draw based on if the sprite is flipped on the y
@@ -327,6 +344,20 @@ func (gb *Gameboy) renderSprites(lcdControl byte, scanline int32) {
 
 		// Draw the line of the sprite
 		for tilePixel := byte(0); tilePixel < 8; tilePixel++ {
+			pixel := int16(xPos) + int16(7-tilePixel)
+			if pixel < 0 || pixel >= ScreenWidth {
+				continue
+			}
+
+			// Check if the pixel has priority.
+			//  - In DMG this is determined by the sprite with the smallest X coordinate,
+			//    then the first sprite in the OAM.
+			//  - In CGB this is determined by the first sprite appearing in the OAM.
+			// We add a fixed 100 to the xPos so we can use the 0 value as the absence of a sprite.
+			if minx[pixel] != 0 && (gb.IsCGB() || minx[pixel] <= xPos+spritePriorityOffset) {
+				continue
+			}
+
 			colourBit := tilePixel
 			if xFlip {
 				colourBit = byte(int8(colourBit-7) * -1)
@@ -339,24 +370,23 @@ func (gb *Gameboy) renderSprites(lcdControl byte, scanline int32) {
 			if colourNum == 0 {
 				continue
 			}
-			pixel := int16(xPos) + int16(7-tilePixel)
 
-			// Set the pixel if it is in bounds
-			if pixel >= 0 && pixel < 160 {
-				if gb.IsCGB() {
-					cgbPalette := attributes & 0x7
-					red, green, blue := gb.SpritePalette.get(cgbPalette, colourNum)
-					gb.setPixel(byte(pixel), byte(scanline), red, green, blue, priority)
-				} else {
-					// Determine the colour palette to use
-					var palette = palette1
-					if bits.Test(attributes, 4) {
-						palette = palette2
-					}
-					red, green, blue := gb.getColour(colourNum, palette)
-					gb.setPixel(byte(pixel), byte(scanline), red, green, blue, priority)
+			if gb.IsCGB() {
+				cgbPalette := attributes & 0x7
+				red, green, blue := gb.SpritePalette.get(cgbPalette, colourNum)
+				gb.setPixel(byte(pixel), byte(scanline), red, green, blue, priority)
+			} else {
+				// Determine the colour palette to use
+				var palette = palette1
+				if bits.Test(attributes, 4) {
+					palette = palette2
 				}
+				red, green, blue := gb.getColour(colourNum, palette)
+				gb.setPixel(byte(pixel), byte(scanline), red, green, blue, priority)
 			}
+
+			// Store the xpos of the sprite for this pixel for priority resolution
+			minx[pixel] = xPos + spritePriorityOffset
 		}
 	}
 }
