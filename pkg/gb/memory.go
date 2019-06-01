@@ -42,12 +42,9 @@ type Memory struct {
 
 	OAM [0x100]byte
 
-	// H-Blank DMA transfer variables
-	hbDMADestination uint16
-	hbDMASource      uint16
-	hbDMALength      byte
-	hbDMAActive      bool
-	// TODO: Block bank change when active
+	// CGB HDMA transfer variables
+	hdmaLength byte
+	hdmaActive bool
 }
 
 // Init the gb memory to the post-boot values.
@@ -167,13 +164,16 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 		}
 
 	case address == 0xFF4F:
-		// VRAM bank (CGB only)
-		if mem.gb.IsCGB() {
+		// VRAM bank (CGB only), blocked when HDMA is active
+		if mem.gb.IsCGB() && !mem.hdmaActive {
 			mem.VRAMBank = value & 0x1
 		}
 
 	case address == 0xFF55:
-		mem.doHDMATransfer(value)
+		// CGB DMA transfer
+		if mem.gb.IsCGB() {
+			mem.doNewDMATransfer(value)
+		}
 
 	case address == 0xFF68:
 		// BG palette index
@@ -385,55 +385,63 @@ func (mem *Memory) doDMATransfer(value byte) {
 	}
 }
 
-// Start a HDMA transfer.
-func (mem *Memory) doHDMATransfer(value byte) {
-	if mem.hbDMAActive && bits.Val(value, 7) == 0 {
+// Start a CGB DMA transfer.
+func (mem *Memory) doNewDMATransfer(value byte) {
+	if mem.hdmaActive && bits.Val(value, 7) == 0 {
 		// Abort a HDMA transfer
-		mem.hbDMAActive = false
+		mem.hdmaActive = false
 		mem.HighRAM[0x55] |= 0x80 // Set bit 7
 		return
 	}
 
-	source := (uint16(mem.HighRAM[0x51])<<8 | uint16(mem.HighRAM[0x52])) & 0xFFF0
-	destination := (uint16(mem.HighRAM[0x53])<<8 | uint16(mem.HighRAM[0x54])) & 0x1FF0
-	destination += 0x8000
-
 	length := ((uint16(value) & 0x7F) + 1) * 0x10
 
-	dmaMode := value >> 7
-	if dmaMode == 0 {
-		// General purpose DMA
-		var i uint16
-		for i = 0; i < length; i++ {
-			mem.Write(destination+i, mem.Read(source+i))
-		}
+	// The 7th bit is DMA mode
+	if value>>7 == 0 {
+		// Mode 0, general purpose DMA
+		mem.performNewDMATransfer(length)
 		mem.HighRAM[0x55] = 0xFF
 	} else {
-		// H-Blank DMA
-		mem.hbDMADestination = destination
-		mem.hbDMASource = source
-		mem.hbDMALength = byte(value)
-		mem.hbDMAActive = true
+		// Mode 1, H-Blank DMA
+		mem.hdmaLength = byte(value)
+		mem.hdmaActive = true
 	}
 }
 
 // Perform a HDMA transfer during a HBlank period.
-func (mem *Memory) hbHDMATransfer() {
-	if !mem.hbDMAActive {
+func (mem *Memory) doHDMATransfer() {
+	if !mem.hdmaActive {
 		return
 	}
-	var i uint16
-	for i = 0; i < 0x10; i++ {
-		mem.Write(mem.hbDMADestination, mem.Read(mem.hbDMASource))
-		mem.hbDMADestination++
-		mem.hbDMASource++
-	}
-	if mem.hbDMALength > 0 {
-		mem.hbDMALength--
-		mem.HighRAM[0x55] = mem.hbDMALength
+
+	mem.performNewDMATransfer(0x10)
+	if mem.hdmaLength > 0 {
+		mem.hdmaLength--
+		mem.HighRAM[0x55] = mem.hdmaLength
 	} else {
 		// DMA has finished
 		mem.HighRAM[0x55] = 0xFF
-		mem.hbDMAActive = false
+		mem.hdmaActive = false
 	}
+}
+
+// Transfer a set amount of DMA data based on the current register values.
+func (mem *Memory) performNewDMATransfer(length uint16) {
+	// Load the source and destination from RAM
+	source := (uint16(mem.HighRAM[0x51])<<8 | uint16(mem.HighRAM[0x52])) & 0xFFF0
+	destination := (uint16(mem.HighRAM[0x53])<<8 | uint16(mem.HighRAM[0x54])) & 0x1FF0
+	destination += 0x8000
+
+	// Transfer the data from the source to the destination
+	for i := uint16(0); i < length; i++ {
+		mem.Write(destination, mem.Read(source))
+		destination++
+		source++
+	}
+
+	// Update the source and destination in RAM
+	mem.HighRAM[0x51] = byte(source >> 8)
+	mem.HighRAM[0x52] = byte(source & 0xFF)
+	mem.HighRAM[0x53] = byte(destination >> 8)
+	mem.HighRAM[0x54] = byte(destination & 0xF0)
 }
