@@ -81,9 +81,6 @@ func (gb *Gameboy) Update() int {
 		} else {
 			// TODO: This is incorrect
 		}
-		if gb.IsCGB() {
-			gb.checkSpeedSwitch()
-		}
 		cycles += cyclesOp
 		gb.updateGraphics(cyclesOp)
 		gb.updateTimers(cyclesOp)
@@ -127,7 +124,6 @@ func (gb *Gameboy) getSpeed() int {
 
 // Check if the speed needs to be switched for CGB mode.
 func (gb *Gameboy) checkSpeedSwitch() {
-	// TODO: This should actually happen after a STOP after asking to switch
 	if gb.prepareSpeed {
 		// Switch speed
 		gb.prepareSpeed = false
