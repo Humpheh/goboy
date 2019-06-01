@@ -63,15 +63,31 @@ func (a *APU) Init(sound bool) {
 	}
 }
 
+// Time in seconds which to buffer ahead of the emulation.
+const bufferTime = 0.05
+
 func (a *APU) play(player *oto.Player) {
-	for range time.Tick(time.Second / 60) {
-		buffer := make([]byte, sampleRate/60)
+	start := time.Now()
+	var totalSamples int64 = 0
+	for c := range time.Tick(time.Second / 60) {
+		// Calculate the expected samples since the start adding on the buffer
+		expectedSamples := int64(math.Ceil((c.Sub(start).Seconds() + bufferTime) * sampleRate))
+		newSamples := expectedSamples - totalSamples
+		totalSamples = expectedSamples
+		if newSamples <= 0 {
+			continue
+		}
+
+		// Populate the buffer by sampling the channels
+		buffer := make([]byte, newSamples)
 		vol := (a.lVol + a.rVol) / 10
 		for i := range buffer {
+			// TODO: output stereo channels instead of combining
 			val := (a.chn1.Sample() + a.chn2.Sample() + a.chn3.Sample() + a.chn4.Sample()) / 4
 			buffer[i] = byte(float64(val) * vol)
 		}
 
+		// TODO: handle error
 		player.Write(buffer)
 	}
 }
