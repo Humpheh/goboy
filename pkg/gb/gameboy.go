@@ -33,10 +33,12 @@ type Gameboy struct {
 	// Matrix of pixel data which is used while the screen is rendering. When a
 	// frame has been completed, this data is copied into the PreparedData matrix.
 	screenData [160][144][3]uint8
+	bgPriority [160][144]bool
+
 	// Track colour of tiles in scanline for priority management.
-	tileScanline      [160]uint8
-	scanlineCounter   int
-	screenCleared     bool
+	tileScanline    [160]uint8
+	scanlineCounter int
+	screenCleared   bool
 
 	// PreparedData is a matrix of screen pixel data for a single frame which has
 	// been fully rendered.
