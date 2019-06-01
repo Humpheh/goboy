@@ -35,7 +35,7 @@ func (mon *PixelsIOBinding) Init(disableVsync bool) {
 		Title: "GoBoy",
 		Bounds: pixel.R(
 			0, 0,
-			float64(160*PixelScale), float64(144*PixelScale),
+			float64(gb.ScreenWidth*PixelScale), float64(gb.ScreenHeight*PixelScale),
 		),
 		VSync:     !disableVsync,
 		Resizable: true,
@@ -52,9 +52,9 @@ func (mon *PixelsIOBinding) Init(disableVsync bool) {
 	mon.UpdateCamera()
 
 	mon.picture = &pixel.PictureData{
-		Pix:    make([]color.RGBA, 144*160),
-		Stride: 160,
-		Rect:   pixel.R(0, 0, 160, 144),
+		Pix:    make([]color.RGBA, gb.ScreenWidth*gb.ScreenHeight),
+		Stride: gb.ScreenWidth,
+		Rect:   pixel.R(0, 0, gb.ScreenWidth, gb.ScreenHeight),
 	}
 }
 
@@ -77,11 +77,11 @@ func (mon *PixelsIOBinding) IsRunning() bool {
 
 // RenderScreen renders the pixels on the screen.
 func (mon *PixelsIOBinding) RenderScreen() {
-	for y := 0; y < 144; y++ {
-		for x := 0; x < 160; x++ {
+	for y := 0; y < gb.ScreenHeight; y++ {
+		for x := 0; x < gb.ScreenWidth; x++ {
 			col := mon.Gameboy.PreparedData[x][y]
 			rgb := color.RGBA{R: col[0], G: col[1], B: col[2], A: 0xFF}
-			mon.picture.Pix[(143-y)*160+x] = rgb
+			mon.picture.Pix[(gb.ScreenHeight-1-y)*gb.ScreenWidth+x] = rgb
 		}
 	}
 
@@ -89,7 +89,7 @@ func (mon *PixelsIOBinding) RenderScreen() {
 	bg := color.RGBA{R: r, G: g, B: b, A: 0xFF}
 	mon.Window.Clear(bg)
 
-	spr := pixel.NewSprite(pixel.Picture(mon.picture), pixel.R(0, 0, 160, 144))
+	spr := pixel.NewSprite(pixel.Picture(mon.picture), pixel.R(0, 0, gb.ScreenWidth, gb.ScreenHeight))
 	spr.Draw(mon.Window, pixel.IM)
 
 	mon.UpdateCamera()
