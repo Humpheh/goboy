@@ -80,6 +80,7 @@ func start() {
 	}
 
 	monitor.Gameboy = gameboy
+	//go monitor.VRAMDebugger(gameboy)
 	startGBLoop(gameboy, monitor)
 }
 

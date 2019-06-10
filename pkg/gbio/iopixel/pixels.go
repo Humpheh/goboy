@@ -4,6 +4,11 @@ import (
 	"fmt"
 	"image/color"
 	"log"
+	"time"
+
+	"github.com/Humpheh/goboy/pkg/bits"
+
+	"github.com/faiface/pixel/imdraw"
 
 	"math"
 
@@ -56,6 +61,81 @@ func (mon *PixelsIOBinding) Init(disableVsync bool) {
 		Stride: gb.ScreenWidth,
 		Rect:   pixel.R(0, 0, gb.ScreenWidth, gb.ScreenHeight),
 	}
+}
+
+const debugPixelSize = 4
+const debugSize = debugPixelSize*8 + 2
+const debugHeight = float64(32 * debugSize)
+const debugWidth = float64(24 * debugSize)
+
+func (mon *PixelsIOBinding) VRAMDebugger(gameboy *gb.Gameboy) {
+	const defaultTitle = "GoBoy Debug"
+	cfg := pixelgl.WindowConfig{
+		Title: defaultTitle,
+		Bounds: pixel.R(
+			0, 0,
+			debugHeight, debugWidth,
+		),
+		Resizable: true,
+	}
+	win, err := pixelgl.NewWindow(cfg)
+	if err != nil {
+		log.Fatalf("Failed to create window: %v", err)
+	}
+
+	win.SetPos(win.GetPos().Add(pixel.V(500, 0)))
+
+	ticker := time.NewTicker(time.Second / gb.FramesSecond)
+	start := time.Now()
+	frames := 0
+
+	drawer := imdraw.New(nil)
+	for range ticker.C {
+		if win.Closed() {
+			return
+		}
+
+		mon.drawVRAM(gameboy, win, drawer)
+		win.Update()
+
+		frames++
+		since := time.Since(start)
+		if since > time.Second {
+			start = time.Now()
+			win.SetTitle(fmt.Sprintf("%v - FPS: %v", defaultTitle, frames))
+			frames = 0
+		}
+	}
+}
+
+func (mon *PixelsIOBinding) drawVRAM(gameboy *gb.Gameboy, win *pixelgl.Window, drawer *imdraw.IMDraw) {
+	for bank := 0; bank < 2; bank++ {
+		for addr := 0x8000; addr < 0x9800; addr += 0x10 {
+			sx := int(((addr - 0x8000) % 0x100) / 0x10)
+			sy := 23 - int(math.Floor(float64(addr-0x8000)/0x100))
+
+			for y := 0; y < 8; y++ {
+				bankOffset := uint16(bank) * 0x2000
+				x1 := gameboy.Memory.VRAM[uint16(addr+y*2)-0x8000+bankOffset]
+				x2 := gameboy.Memory.VRAM[uint16(addr+y*2+1)-0x8000+bankOffset]
+
+				for x := 0; x < 8; x++ {
+					col := bits.Val(x1, byte(x))<<1 | bits.Val(x2, byte(x))
+					r, g, b := gb.GetPaletteColour(col)
+					drawer.Color = color.RGBA{R: r, G: g, B: b, A: 0xFF}
+
+					ix := float64(sx+bank*16) * debugSize
+					iy := float64(sy) * debugSize
+					drawer.Push(
+						pixel.V(ix+float64(8-x)*debugPixelSize, iy+float64(8-y)*debugPixelSize),
+						pixel.V(ix+float64(8-x+1)*debugPixelSize, iy+float64(8-y+1)*debugPixelSize),
+					)
+					drawer.Rectangle(0)
+				}
+			}
+		}
+	}
+	drawer.Draw(win)
 }
 
 // UpdateCamera updates the window camera to center the output.
