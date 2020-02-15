@@ -1,18 +1,23 @@
 module github.com/Humpheh/goboy
 
-go 1.12
+go 1.13
 
 require (
-	github.com/TheTitanrain/w32 v0.0.0-20180517000239-4f5cfb03fabf
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/faiface/glhf v0.0.0-20181018222622-82a6317ac380 // indirect
 	github.com/faiface/mainthread v0.0.0-20171120011319-8b78f0a41ae3
 	github.com/faiface/pixel v0.8.0
 	github.com/go-gl/gl v0.0.0-20190320180904-bf2b1f2f34d7 // indirect
 	github.com/go-gl/glfw v0.0.0-20190409004039-e6da0acd62b1 // indirect
 	github.com/go-gl/mathgl v0.0.0-20190416160123-c4601bc793c7 // indirect
-	github.com/hajimehoshi/oto v0.3.4
-	github.com/mattn/go-gtk v0.0.0-20190405072524-4deadb416788
-	github.com/mattn/go-pointer v0.0.0-20180825124634-49522c3f3791 // indirect
+	github.com/gotk3/gotk3 v0.0.0-20200103101635-d3629b451bb5 // indirect
+	github.com/hajimehoshi/oto v0.5.4
 	github.com/pkg/errors v0.8.1 // indirect
-	github.com/stretchr/testify v1.3.0
+	github.com/sqweek/dialog v0.0.0-20190728103509-6254ed5b0d3c
+	github.com/stretchr/testify v1.4.0
+	golang.org/x/exp v0.0.0-20191227195350-da58074b4299 // indirect
+	golang.org/x/image v0.0.0-20191214001246-9130b4cfad52 // indirect
+	golang.org/x/mobile v0.0.0-20191210151939-1a1fef82734d // indirect
+	golang.org/x/sys v0.0.0-20200107162124-548cf772de50 // indirect
+	gopkg.in/yaml.v2 v2.2.7 // indirect
 )

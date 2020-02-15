@@ -1,1 +1,0 @@
-Dialog is a fork of https://github.com/sqweek/dialog with some minor alterations.
