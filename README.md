@@ -1,5 +1,3 @@
-<img src="package/icon/icon.png" width="105" align="left">
-
 # GoBoy
 
 [![Build Status](https://travis-ci.org/Humpheh/goboy.svg?branch=master)](https://travis-ci.org/Humpheh/goboy)
