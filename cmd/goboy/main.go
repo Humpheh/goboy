@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/faiface/mainthread"
+	"github.com/sqweek/dialog"
 
 	"fmt"
 
-	"github.com/Humpheh/goboy/dialog"
 	"github.com/Humpheh/goboy/pkg/gb"
 	"github.com/Humpheh/goboy/pkg/gbio"
 	"github.com/Humpheh/goboy/pkg/gbio/iopixel"
