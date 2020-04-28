@@ -2,7 +2,12 @@ package gbio
 
 import (
 	"github.com/Humpheh/goboy/pkg/gb"
+	"github.com/faiface/pixel/pixelgl"
 )
+
+type IOInput struct {
+	Pressed, Released []pixelgl.Button
+}
 
 // IOBinding provides an interface for display and input bindings.
 type IOBinding interface {
