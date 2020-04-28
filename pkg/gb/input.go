@@ -5,7 +5,6 @@ import (
 
 	"github.com/Humpheh/goboy/pkg/bits"
 	"github.com/Humpheh/goboy/pkg/gbio"
-	"github.com/faiface/pixel/pixelgl"
 )
 
 // Button represents the button on a GameBoy.
@@ -45,76 +44,83 @@ func (gb *Gameboy) ReleaseButton(button Button) {
 func (gb *Gameboy) ProcessInput(buttons gbio.ButtonInput) {
 
 	// Mapping from keys to GB index.
-	var keyMap = map[pixelgl.Button]Button{
-		pixelgl.KeyZ:         ButtonA,
-		pixelgl.KeyX:         ButtonB,
-		pixelgl.KeyBackspace: ButtonSelect,
-		pixelgl.KeyEnter:     ButtonStart,
-		pixelgl.KeyRight:     ButtonRight,
-		pixelgl.KeyLeft:      ButtonLeft,
-		pixelgl.KeyUp:        ButtonUp,
-		pixelgl.KeyDown:      ButtonDown,
+	var keyMap = map[string]Button{
+		"Z":         ButtonA,
+		"X":         ButtonB,
+		"Backspace": ButtonSelect,
+		"Enter":     ButtonStart,
+		"Right":     ButtonRight,
+		"Left":      ButtonLeft,
+		"Up":        ButtonUp,
+		"Down":      ButtonDown,
 	}
 
 	// Extra key bindings to functions.
-	var extraKeyMap = map[pixelgl.Button]func(*Gameboy){
+	var extraKeyMap = map[string]func(*Gameboy){
 		// Pause execution
-		pixelgl.KeyEscape: func(gameboy *Gameboy) {
+		"Escape": func(gameboy *Gameboy) {
 			// Toggle the paused state
 			gameboy.SetPaused(!gameboy.IsPaused())
 		},
 
 		// Change GB colour palette
-		pixelgl.KeyEqual: func(gameboy *Gameboy) {
+		"Equal": func(gameboy *Gameboy) {
 			CurrentPalette = (CurrentPalette + 1) % byte(len(Palettes))
 		},
 
 		// GPU debugging
-		pixelgl.KeyQ: func(gameboy *Gameboy) {
+		"Q": func(gameboy *Gameboy) {
 			gameboy.Debug.HideBackground = !gameboy.Debug.HideBackground
 		},
-		pixelgl.KeyW: func(gameboy *Gameboy) {
+		"W": func(gameboy *Gameboy) {
 			gameboy.Debug.HideSprites = !gameboy.Debug.HideSprites
 		},
-		pixelgl.KeyD: func(gameboy *Gameboy) {
+		"D": func(gameboy *Gameboy) {
 			fmt.Println("BG Map:")
 			fmt.Println(gameboy.BGMapString())
 		},
 
 		// CPU debugging
-		pixelgl.KeyE: func(gameboy *Gameboy) {
+		"E": func(gameboy *Gameboy) {
 			gameboy.Debug.OutputOpcodes = !gameboy.Debug.OutputOpcodes
 		},
 
 		// Audio channel debugging
-		pixelgl.Key7: func(gameboy *Gameboy) {
+		"7": func(gameboy *Gameboy) {
 			gameboy.ToggleSoundChannel(1)
 		},
-		pixelgl.Key8: func(gameboy *Gameboy) {
+		"8": func(gameboy *Gameboy) {
 			gameboy.ToggleSoundChannel(2)
 		},
-		pixelgl.Key9: func(gameboy *Gameboy) {
+		"9": func(gameboy *Gameboy) {
 			gameboy.ToggleSoundChannel(3)
 		},
-		pixelgl.Key0: func(gameboy *Gameboy) {
+		"0": func(gameboy *Gameboy) {
 			gameboy.ToggleSoundChannel(4)
 		},
 	}
 
-	if gb.IsGameLoaded() && !gb.IsPaused() {
+	if !gb.IsGameLoaded() || gb.IsPaused() {
 		for _, pressedButton := range buttons.Pressed {
-			if gameboyButton, ok := keyMap[pressedButton]; ok {
-				gb.PressButton(gameboyButton)
-			}
-			if handler, ok := extraKeyMap[pressedButton]; ok {
-				handler(gb)
+			if pressedButton == "Escape" {
+				extraKeyMap[pressedButton](gb)
 			}
 		}
+		return
+	}
 
-		for _, releasedButton := range buttons.Released {
-			if gameboyButton, ok := keyMap[releasedButton]; ok {
-				gb.ReleaseButton(gameboyButton)
-			}
+	for _, pressedButton := range buttons.Pressed {
+		if gameboyButton, ok := keyMap[pressedButton]; ok {
+			gb.PressButton(gameboyButton)
+		}
+		if handler, ok := extraKeyMap[pressedButton]; ok {
+			handler(gb)
+		}
+	}
+
+	for _, releasedButton := range buttons.Released {
+		if gameboyButton, ok := keyMap[releasedButton]; ok {
+			gb.ReleaseButton(gameboyButton)
 		}
 	}
 }

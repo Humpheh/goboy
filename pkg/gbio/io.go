@@ -1,11 +1,7 @@
 package gbio
 
-import (
-	"github.com/faiface/pixel/pixelgl"
-)
-
 type ButtonInput struct {
-	Pressed, Released []pixelgl.Button
+	Pressed, Released []string
 }
 
 // IOBinding provides an interface for display and input bindings.

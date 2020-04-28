@@ -120,15 +120,15 @@ func (mon *PixelsIOBinding) ButtonInput() gbio.ButtonInput {
 
 	for input := pixelgl.Button(0); input < pixelgl.KeyLast; input++ {
 		if mon.window.JustPressed(input) {
-			buttons.Pressed = append(buttons.Pressed, input)
+			buttons.Pressed = append(buttons.Pressed, input.String())
 		}
 		if mon.window.JustReleased(input) {
-			buttons.Released = append(buttons.Released, input)
+			buttons.Released = append(buttons.Released, input.String())
 		}
 	}
 
 	for _, pressedButton := range buttons.Pressed {
-		if pressedButton == pixelgl.KeyF {
+		if pressedButton == "F" {
 			mon.toggleFullscreen()
 		}
 	}
