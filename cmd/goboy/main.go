@@ -92,20 +92,28 @@ func startGBLoop(gameboy *gb.Gameboy, monitor gbio.IOBinding) {
 	ticker := time.NewTicker(frameTime)
 	start := time.Now()
 	frames := 0
+
+	var cartName string
+	if gameboy.IsGameLoaded() {
+		cartName = gameboy.Memory.Cart.GetName()
+	}
+
 	for range ticker.C {
 		if !monitor.IsRunning() {
 			return
 		}
 
 		frames++
-		monitor.ProcessInput()
+		monitor.ProcessInput(gameboy)
 		_ = gameboy.Update()
-		monitor.RenderScreen()
+		monitor.Render(&gameboy.PreparedData)
 
 		since := time.Since(start)
 		if since > time.Second {
 			start = time.Now()
-			monitor.SetTitle(frames)
+
+			title := fmt.Sprintf("GoBoy - %s (FPS: %2v)", cartName, frames)
+			monitor.SetTitle(title)
 			frames = 0
 		}
 	}

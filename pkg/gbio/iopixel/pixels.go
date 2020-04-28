@@ -17,7 +17,6 @@ var PixelScale float64 = 3
 
 // PixelsIOBinding binds screen output and input using the pixels library.
 type PixelsIOBinding struct {
-	gameboy *gb.Gameboy
 	window  *pixelgl.Window
 	picture *pixel.PictureData
 }
@@ -50,7 +49,6 @@ func NewPixelsIOBinding(enableVSync bool, gameboy *gb.Gameboy) *PixelsIOBinding 
 
 	monitor := PixelsIOBinding{
 		window:  window,
-		gameboy: gameboy,
 		picture: picture,
 	}
 
@@ -76,11 +74,11 @@ func (mon *PixelsIOBinding) IsRunning() bool {
 	return !mon.window.Closed()
 }
 
-// RenderScreen renders the pixels on the screen.
-func (mon *PixelsIOBinding) RenderScreen() {
+// Render renders the pixels on the screen.
+func (mon *PixelsIOBinding) Render(screen *[160][144][3]uint8) {
 	for y := 0; y < gb.ScreenHeight; y++ {
 		for x := 0; x < gb.ScreenWidth; x++ {
-			col := mon.gameboy.PreparedData[x][y]
+			col := screen[x][y]
 			rgb := color.RGBA{R: col[0], G: col[1], B: col[2], A: 0xFF}
 			mon.picture.Pix[(gb.ScreenHeight-1-y)*gb.ScreenWidth+x] = rgb
 		}
@@ -98,14 +96,7 @@ func (mon *PixelsIOBinding) RenderScreen() {
 }
 
 // SetTitle sets the title of the game window.
-func (mon *PixelsIOBinding) SetTitle(fps int) {
-	title := "GoBoy"
-	if mon.gameboy.IsGameLoaded() {
-		title += fmt.Sprintf(" - %s", mon.gameboy.Memory.Cart.GetName())
-		if fps != 0 {
-			title += fmt.Sprintf(" (FPS: %2v)", fps)
-		}
-	}
+func (mon *PixelsIOBinding) SetTitle(title string) {
 	mon.window.SetTitle(title)
 }
 
@@ -119,59 +110,6 @@ var keyMap = map[pixelgl.Button]gb.Button{
 	pixelgl.KeyLeft:      gb.ButtonLeft,
 	pixelgl.KeyUp:        gb.ButtonUp,
 	pixelgl.KeyDown:      gb.ButtonDown,
-}
-
-// Extra key bindings to functions.
-var extraKeyMap = map[pixelgl.Button]func(*PixelsIOBinding){
-	// Pause execution
-	pixelgl.KeyEscape: func(mon *PixelsIOBinding) {
-		// Toggle the paused state
-		mon.gameboy.SetPaused(!mon.gameboy.IsPaused())
-	},
-
-	// Change GB colour palette
-	pixelgl.KeyEqual: func(mon *PixelsIOBinding) {
-		gb.CurrentPalette = (gb.CurrentPalette + 1) % byte(len(gb.Palettes))
-	},
-
-	// GPU debugging
-	pixelgl.KeyQ: func(mon *PixelsIOBinding) {
-		mon.gameboy.Debug.HideBackground = !mon.gameboy.Debug.HideBackground
-	},
-	pixelgl.KeyW: func(mon *PixelsIOBinding) {
-		mon.gameboy.Debug.HideSprites = !mon.gameboy.Debug.HideSprites
-	},
-	pixelgl.KeyD: func(mon *PixelsIOBinding) {
-		fmt.Println("BG Map:")
-		fmt.Println(mon.gameboy.BGMapString())
-	},
-
-	// CPU debugging
-	pixelgl.KeyE: func(mon *PixelsIOBinding) {
-		mon.gameboy.Debug.OutputOpcodes = !mon.gameboy.Debug.OutputOpcodes
-	},
-
-	// Audio channel debugging
-	pixelgl.Key7: func(mon *PixelsIOBinding) {
-		mon.gameboy.ToggleSoundChannel(1)
-	},
-	pixelgl.Key8: func(mon *PixelsIOBinding) {
-		mon.gameboy.ToggleSoundChannel(2)
-	},
-	pixelgl.Key9: func(mon *PixelsIOBinding) {
-		mon.gameboy.ToggleSoundChannel(3)
-	},
-	pixelgl.Key0: func(mon *PixelsIOBinding) {
-		mon.gameboy.ToggleSoundChannel(4)
-	},
-	pixelgl.KeyMinus: func(mon *PixelsIOBinding) {
-		mon.Gameboy.SoundString()
-	},
-
-	// Fullscreen toggle
-	pixelgl.KeyF: func(mon *PixelsIOBinding) {
-		mon.toggleFullscreen()
-	},
 }
 
 // Toggle the fullscreen window on the main monitor.
@@ -188,26 +126,72 @@ func (mon *PixelsIOBinding) toggleFullscreen() {
 }
 
 // ProcessInput checks the input and process it.
-func (mon *PixelsIOBinding) ProcessInput() {
-	if mon.gameboy.IsGameLoaded() && !mon.gameboy.IsPaused() {
-		mon.processGBInput()
+func (mon *PixelsIOBinding) ProcessInput(gameboy *gb.Gameboy) {
+	if gameboy.IsGameLoaded() && !gameboy.IsPaused() {
+		for key, button := range keyMap {
+			if mon.window.JustPressed(key) {
+				gameboy.PressButton(button)
+			}
+			if mon.window.JustReleased(key) {
+				gameboy.ReleaseButton(button)
+			}
+		}
 	}
+
+	// Extra key bindings to functions.
+	var extraKeyMap = map[pixelgl.Button]func(*PixelsIOBinding){
+		// Pause execution
+		pixelgl.KeyEscape: func(mon *PixelsIOBinding) {
+			// Toggle the paused state
+			gameboy.SetPaused(!gameboy.IsPaused())
+		},
+
+		// Change GB colour palette
+		pixelgl.KeyEqual: func(mon *PixelsIOBinding) {
+			gb.CurrentPalette = (gb.CurrentPalette + 1) % byte(len(gb.Palettes))
+		},
+
+		// GPU debugging
+		pixelgl.KeyQ: func(mon *PixelsIOBinding) {
+			gameboy.Debug.HideBackground = !gameboy.Debug.HideBackground
+		},
+		pixelgl.KeyW: func(mon *PixelsIOBinding) {
+			gameboy.Debug.HideSprites = !gameboy.Debug.HideSprites
+		},
+		pixelgl.KeyD: func(mon *PixelsIOBinding) {
+			fmt.Println("BG Map:")
+			fmt.Println(gameboy.BGMapString())
+		},
+
+		// CPU debugging
+		pixelgl.KeyE: func(mon *PixelsIOBinding) {
+			gameboy.Debug.OutputOpcodes = !gameboy.Debug.OutputOpcodes
+		},
+
+		// Audio channel debugging
+		pixelgl.Key7: func(mon *PixelsIOBinding) {
+			gameboy.ToggleSoundChannel(1)
+		},
+		pixelgl.Key8: func(mon *PixelsIOBinding) {
+			gameboy.ToggleSoundChannel(2)
+		},
+		pixelgl.Key9: func(mon *PixelsIOBinding) {
+			gameboy.ToggleSoundChannel(3)
+		},
+		pixelgl.Key0: func(mon *PixelsIOBinding) {
+			gameboy.ToggleSoundChannel(4)
+		},
+
+		// Fullscreen toggle
+		pixelgl.KeyF: func(mon *PixelsIOBinding) {
+			mon.toggleFullscreen()
+		},
+	}
+
 	// Extra keys not related to emulation
 	for key, f := range extraKeyMap {
 		if mon.window.JustPressed(key) {
 			f(mon)
-		}
-	}
-}
-
-// Check the input and process it.
-func (mon *PixelsIOBinding) processGBInput() {
-	for key, button := range keyMap {
-		if mon.window.JustPressed(key) {
-			mon.gameboy.PressButton(button)
-		}
-		if mon.window.JustReleased(key) {
-			mon.gameboy.ReleaseButton(button)
 		}
 	}
 }
