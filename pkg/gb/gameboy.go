@@ -64,6 +64,8 @@ type Gameboy struct {
 	prepareSpeed bool
 
 	thisCpuTicks int
+
+	keyHandlers map[string]func()
 }
 
 // Update update the state of the gameboy by a single frame.
@@ -93,14 +95,9 @@ func (gb *Gameboy) Update() int {
 	return cycles
 }
 
-// SetPaused sets the paused state of the execution.
-func (gb *Gameboy) SetPaused(paused bool) {
-	gb.paused = paused
-}
-
-// IsPaused returns if the GameBoy is paused or not.
-func (gb *Gameboy) IsPaused() bool {
-	return gb.paused
+// togglePaused switches the paused state of the execution.
+func (gb *Gameboy) togglePaused() {
+	gb.paused = !gb.paused
 }
 
 // ToggleSoundChannel toggles a sound channel for debugging.
@@ -123,6 +120,10 @@ func (gb *Gameboy) BGMapString() string {
 		out += "\n"
 	}
 	return out
+}
+
+func (gb *Gameboy) printBGMap() {
+	fmt.Printf("BG Map:\n%s", gb.BGMapString())
 }
 
 // Get the current CPU speed multiplier (either 1 or 2).
@@ -306,6 +307,21 @@ func (gb *Gameboy) init(romFile string) error {
 	return nil
 }
 
+func (gb *Gameboy) initKeyHandlers() {
+	gb.keyHandlers = map[string]func(){
+		"Escape": gb.togglePaused,
+		"Equal":  changePallete,
+		"Q":      gb.Debug.toggleBackGround,
+		"W":      gb.Debug.toggleSprites,
+		"E":      gb.Debug.toggleOutputOpCode,
+		"D":      gb.printBGMap,
+		"7":      func() { gb.ToggleSoundChannel(1) },
+		"8":      func() { gb.ToggleSoundChannel(2) },
+		"9":      func() { gb.ToggleSoundChannel(3) },
+		"0":      func() { gb.ToggleSoundChannel(4) },
+	}
+}
+
 // Setup and instantitate the gameboys components.
 func (gb *Gameboy) setup() {
 	// Initialise the CPU
@@ -328,6 +344,8 @@ func (gb *Gameboy) setup() {
 
 	gb.SpritePalette = NewPalette()
 	gb.BGPalette = NewPalette()
+
+	gb.initKeyHandlers()
 }
 
 // NewGameboy returns a new Gameboy instance.
