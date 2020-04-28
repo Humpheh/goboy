@@ -1,11 +1,10 @@
 package gbio
 
 import (
-	"github.com/Humpheh/goboy/pkg/gb"
 	"github.com/faiface/pixel/pixelgl"
 )
 
-type IOInput struct {
+type ButtonInput struct {
 	Pressed, Released []pixelgl.Button
 }
 
@@ -13,8 +12,8 @@ type IOInput struct {
 type IOBinding interface {
 	// RenderScreen renders a frame of the game.
 	Render(screen *[160][144][3]uint8)
-	// ProcessInput processes input.
-	ProcessInput(gameboy *gb.Gameboy)
+	// ButtonInput returns which buttons were pressed and released
+	ButtonInput() ButtonInput
 	// SetTitle sets the title of the window.
 	SetTitle(title string)
 	// IsRunning returns if the monitor is still running.

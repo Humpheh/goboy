@@ -1,7 +1,6 @@
 package iopixel
 
 import (
-	"fmt"
 	"image/color"
 	"log"
 
@@ -115,93 +114,24 @@ func (mon *PixelsIOBinding) toggleFullscreen() {
 }
 
 // ProcessInput checks the input and process it.
-func (mon *PixelsIOBinding) ProcessInput(gameboyArg *gb.Gameboy) {
+func (mon *PixelsIOBinding) ButtonInput() gbio.ButtonInput {
 
-	// Mapping from keys to GB index.
-	var keyMap = map[pixelgl.Button]gb.Button{
-		pixelgl.KeyZ:         gb.ButtonA,
-		pixelgl.KeyX:         gb.ButtonB,
-		pixelgl.KeyBackspace: gb.ButtonSelect,
-		pixelgl.KeyEnter:     gb.ButtonStart,
-		pixelgl.KeyRight:     gb.ButtonRight,
-		pixelgl.KeyLeft:      gb.ButtonLeft,
-		pixelgl.KeyUp:        gb.ButtonUp,
-		pixelgl.KeyDown:      gb.ButtonDown,
-	}
-
-	// Extra key bindings to functions.
-	var extraKeyMap = map[pixelgl.Button]func(*gb.Gameboy){
-		// Pause execution
-		pixelgl.KeyEscape: func(gameboy *gb.Gameboy) {
-			// Toggle the paused state
-			gameboy.SetPaused(!gameboy.IsPaused())
-		},
-
-		// Change GB colour palette
-		pixelgl.KeyEqual: func(gameboy *gb.Gameboy) {
-			gb.CurrentPalette = (gb.CurrentPalette + 1) % byte(len(gb.Palettes))
-		},
-
-		// GPU debugging
-		pixelgl.KeyQ: func(gameboy *gb.Gameboy) {
-			gameboy.Debug.HideBackground = !gameboy.Debug.HideBackground
-		},
-		pixelgl.KeyW: func(gameboy *gb.Gameboy) {
-			gameboy.Debug.HideSprites = !gameboy.Debug.HideSprites
-		},
-		pixelgl.KeyD: func(gameboy *gb.Gameboy) {
-			fmt.Println("BG Map:")
-			fmt.Println(gameboy.BGMapString())
-		},
-
-		// CPU debugging
-		pixelgl.KeyE: func(gameboy *gb.Gameboy) {
-			gameboy.Debug.OutputOpcodes = !gameboy.Debug.OutputOpcodes
-		},
-
-		// Audio channel debugging
-		pixelgl.Key7: func(gameboy *gb.Gameboy) {
-			gameboy.ToggleSoundChannel(1)
-		},
-		pixelgl.Key8: func(gameboy *gb.Gameboy) {
-			gameboy.ToggleSoundChannel(2)
-		},
-		pixelgl.Key9: func(gameboy *gb.Gameboy) {
-			gameboy.ToggleSoundChannel(3)
-		},
-		pixelgl.Key0: func(gameboy *gb.Gameboy) {
-			gameboy.ToggleSoundChannel(4)
-		},
-	}
-
-	var ioInput gbio.IOInput
+	var buttons gbio.ButtonInput
 
 	for input := pixelgl.Button(0); input < pixelgl.KeyLast; input++ {
 		if mon.window.JustPressed(input) {
-			ioInput.Pressed = append(ioInput.Pressed, input)
+			buttons.Pressed = append(buttons.Pressed, input)
 		}
 		if mon.window.JustReleased(input) {
-			ioInput.Released = append(ioInput.Released, input)
+			buttons.Released = append(buttons.Released, input)
 		}
 	}
 
-	if gameboyArg.IsGameLoaded() && !gameboyArg.IsPaused() {
-		for _, pressedButton := range ioInput.Pressed {
-			if gameboyButton, ok := keyMap[pressedButton]; ok {
-				gameboyArg.PressButton(gameboyButton)
-			}
-			if handler, ok := extraKeyMap[pressedButton]; ok {
-				handler(gameboyArg)
-			}
-			if pressedButton == pixelgl.KeyF {
-				mon.toggleFullscreen()
-			}
-		}
-
-		for _, releasedButton := range ioInput.Released {
-			if gameboyButton, ok := keyMap[releasedButton]; ok {
-				gameboyArg.ReleaseButton(gameboyButton)
-			}
+	for _, pressedButton := range buttons.Pressed {
+		if pressedButton == pixelgl.KeyF {
+			mon.toggleFullscreen()
 		}
 	}
+
+	return buttons
 }

@@ -104,7 +104,10 @@ func startGBLoop(gameboy *gb.Gameboy, monitor gbio.IOBinding) {
 		}
 
 		frames++
-		monitor.ProcessInput(gameboy)
+
+		buttons := monitor.ButtonInput()
+		gameboy.ProcessInput(buttons)
+
 		_ = gameboy.Update()
 		monitor.Render(&gameboy.PreparedData)
 
