@@ -46,8 +46,6 @@ func main() {
 }
 
 func start() {
-	// Create the monitor for pixels
-	monitor := iopixel.NewPixelsIOBinding(*vsyncOff || *unlocked)
 
 	// Load the rom from the flag argument, or prompt with file select
 	rom := getROM()
@@ -79,7 +77,8 @@ func start() {
 		gameboy.Debug.OutputOpcodes = true
 	}
 
-	monitor.Gameboy = gameboy
+	// Create the monitor for pixels
+	monitor := iopixel.NewPixelsIOBinding(*vsyncOff || *unlocked, gameboy)
 	startGBLoop(gameboy, monitor)
 }
 
