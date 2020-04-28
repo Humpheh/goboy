@@ -23,14 +23,14 @@ type PixelsIOBinding struct {
 }
 
 // NewPixelsIOBinding returns a new Pixelsgl IOBinding
-func NewPixelsIOBinding(disableVsync bool, gameboy *gb.Gameboy) *PixelsIOBinding {
+func NewPixelsIOBinding(enableVSync bool, gameboy *gb.Gameboy) *PixelsIOBinding {
 	windowConfig := pixelgl.WindowConfig{
 		Title: "GoBoy",
 		Bounds: pixel.R(
 			0, 0,
 			float64(gb.ScreenWidth*PixelScale), float64(gb.ScreenHeight*PixelScale),
 		),
-		VSync:     !disableVsync,
+		VSync:     enableVSync,
 		Resizable: true,
 	}
 
