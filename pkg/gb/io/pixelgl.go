@@ -1,4 +1,4 @@
-package iopixel
+package io
 
 import (
 	"image/color"
@@ -7,7 +7,6 @@ import (
 	"math"
 
 	"github.com/Humpheh/goboy/pkg/gb"
-	"github.com/Humpheh/goboy/pkg/gbio"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 )
@@ -113,25 +112,45 @@ func (mon *PixelsIOBinding) toggleFullscreen() {
 	}
 }
 
+var keyMap = map[pixelgl.Button]gb.Button{
+	pixelgl.KeyZ:         gb.ButtonA,
+	pixelgl.KeyX:         gb.ButtonB,
+	pixelgl.KeyBackspace: gb.ButtonSelect,
+	pixelgl.KeyEnter:     gb.ButtonStart,
+	pixelgl.KeyRight:     gb.ButtonRight,
+	pixelgl.KeyLeft:      gb.ButtonLeft,
+	pixelgl.KeyUp:        gb.ButtonUp,
+	pixelgl.KeyDown:      gb.ButtonDown,
+}
+
 // ProcessInput checks the input and process it.
-func (mon *PixelsIOBinding) ButtonInput() gbio.ButtonInput {
+func (mon *PixelsIOBinding) ButtonInput() gb.ButtonInput {
 
-	var buttons gbio.ButtonInput
+	var (
+		buttonInput gb.ButtonInput
+		firstKey    = pixelgl.Button(0)
+		lastKey     = pixelgl.KeyLast
+	)
 
-	for input := pixelgl.Button(0); input < pixelgl.KeyLast; input++ {
-		if mon.window.JustPressed(input) {
-			buttons.Pressed = append(buttons.Pressed, input.String())
+	for key := firstKey; key <= lastKey; key++ {
+
+		if mon.window.JustPressed(key) {
+			if gameboyButton, ok := keyMap[key]; ok {
+				buttonInput.Pressed = append(buttonInput.Pressed, gameboyButton)
+			}
+			buttonInput.KeysPressed = append(buttonInput.KeysPressed, key.String())
+
+			if key == pixelgl.KeyF {
+				mon.toggleFullscreen()
+			}
 		}
-		if mon.window.JustReleased(input) {
-			buttons.Released = append(buttons.Released, input.String())
+
+		if mon.window.JustReleased(key) {
+			if gameboyButton, ok := keyMap[key]; ok {
+				buttonInput.Released = append(buttonInput.Released, gameboyButton)
+			}
 		}
 	}
 
-	for _, pressedButton := range buttons.Pressed {
-		if pressedButton == "F" {
-			mon.toggleFullscreen()
-		}
-	}
-
-	return buttons
+	return buttonInput
 }

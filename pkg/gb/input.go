@@ -2,7 +2,6 @@ package gb
 
 import (
 	"github.com/Humpheh/goboy/pkg/bits"
-	"github.com/Humpheh/goboy/pkg/gbio"
 )
 
 // Button represents the button on a GameBoy.
@@ -27,34 +26,43 @@ const (
 	ButtonDown = 7
 )
 
-// PressButton notifies the GameBoy that a button has just been pressed
+type ButtonInput struct {
+	// Pressed and Released are gameboy button inputs on this frame
+	Pressed, Released []Button
+
+	// KeysPressed list all keyboard keys pressed last frame
+	// This is used to call handlers that list/modify emulator config
+	KeysPressed []string
+}
+
+// IOBinding provides an interface for display and input bindings.
+type IOBinding interface {
+	// RenderScreen renders a frame of the game.
+	Render(screen *[160][144][3]uint8)
+	// ButtonInput returns which buttons were pressed and released
+	ButtonInput() ButtonInput
+	// SetTitle sets the title of the window.
+	SetTitle(title string)
+	// IsRunning returns if the monitor is still running.
+	IsRunning() bool
+}
+
+// pressButton notifies the GameBoy that a button has just been pressed
 // and requests a joypad interrupt.
-func (gb *Gameboy) PressButton(button Button) {
+func (gb *Gameboy) pressButton(button Button) {
 	gb.inputMask = bits.Reset(gb.inputMask, byte(button))
 	gb.requestInterrupt(4) // Request the joypad interrupt
 }
 
-// ReleaseButton notifies the GameBoy that a button has just been released.
-func (gb *Gameboy) ReleaseButton(button Button) {
+// releaseButton notifies the GameBoy that a button has just been released.
+func (gb *Gameboy) releaseButton(button Button) {
 	gb.inputMask = bits.Set(gb.inputMask, byte(button))
 }
 
-// Mapping from keys to GB index.
-var keyMap = map[string]Button{
-	"Z":         ButtonA,
-	"X":         ButtonB,
-	"Backspace": ButtonSelect,
-	"Enter":     ButtonStart,
-	"Right":     ButtonRight,
-	"Left":      ButtonLeft,
-	"Up":        ButtonUp,
-	"Down":      ButtonDown,
-}
-
-func (gb *Gameboy) ProcessInput(buttons gbio.ButtonInput) {
+func (gb *Gameboy) ProcessInput(buttons ButtonInput) {
 
 	if !gb.IsGameLoaded() || gb.paused {
-		for _, pressedButton := range buttons.Pressed {
+		for _, pressedButton := range buttons.KeysPressed {
 			if pressedButton == "Escape" {
 				gb.keyHandlers[pressedButton]()
 			}
@@ -62,18 +70,17 @@ func (gb *Gameboy) ProcessInput(buttons gbio.ButtonInput) {
 		return
 	}
 
-	for _, pressedButton := range buttons.Pressed {
-		if gameboyButton, ok := keyMap[pressedButton]; ok {
-			gb.PressButton(gameboyButton)
-		}
-		if handler, ok := gb.keyHandlers[pressedButton]; ok {
-			handler()
-		}
+	for _, button := range buttons.Pressed {
+		gb.pressButton(button)
 	}
 
-	for _, releasedButton := range buttons.Released {
-		if gameboyButton, ok := keyMap[releasedButton]; ok {
-			gb.ReleaseButton(gameboyButton)
+	for _, button := range buttons.Released {
+		gb.releaseButton(button)
+	}
+
+	for _, key := range buttons.KeysPressed {
+		if handler, ok := gb.keyHandlers[key]; ok {
+			handler()
 		}
 	}
 }

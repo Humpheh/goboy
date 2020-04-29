@@ -13,8 +13,7 @@ import (
 	"fmt"
 
 	"github.com/Humpheh/goboy/pkg/gb"
-	"github.com/Humpheh/goboy/pkg/gbio"
-	"github.com/Humpheh/goboy/pkg/gbio/iopixel"
+	"github.com/Humpheh/goboy/pkg/gb/io"
 	"github.com/faiface/pixel/pixelgl"
 )
 
@@ -79,11 +78,11 @@ func start() {
 
 	// Create the monitor for pixels
 	enableVSync := !(*vsyncOff || *unlocked)
-	monitor := iopixel.NewPixelsIOBinding(enableVSync, gameboy)
+	monitor := io.NewPixelsIOBinding(enableVSync, gameboy)
 	startGBLoop(gameboy, monitor)
 }
 
-func startGBLoop(gameboy *gb.Gameboy, monitor gbio.IOBinding) {
+func startGBLoop(gameboy *gb.Gameboy, monitor gb.IOBinding) {
 	frameTime := time.Second / gb.FramesSecond
 	if *unlocked {
 		frameTime = 1
