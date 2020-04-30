@@ -4,7 +4,9 @@ import (
 	"flag"
 	"log"
 	"os"
+	"os/signal"
 	"runtime/pprof"
+	"syscall"
 	"time"
 
 	"github.com/faiface/mainthread"
@@ -30,13 +32,13 @@ const logo = `
 `
 
 var (
-	mute    = flag.Bool("mute", false, "mute sound output")
-	dmgMode = flag.Bool("dmg", false, "set to force dmg mode")
-
-	cpuprofile  = flag.String("cpuprofile", "", "write cpu profile to file (debugging)")
-	vsyncOff    = flag.Bool("disableVsync", false, "set to disable vsync (debugging)")
-	stepThrough = flag.Bool("stepthrough", false, "step through opcodes (debugging)")
-	unlocked    = flag.Bool("unlocked", false, "if to unlock the cpu speed (debugging)")
+	mute         = flag.Bool("mute", false, "mute sound output")
+	dmgMode      = flag.Bool("dmg", false, "set to force dmg mode")
+	cpuprofile   = flag.String("cpuprofile", "", "write cpu profile to file (debugging)")
+	vsyncOff     = flag.Bool("disableVsync", false, "set to disable vsync (debugging)")
+	stepThrough  = flag.Bool("stepthrough", false, "step through opcodes (debugging)")
+	unlocked     = flag.Bool("unlocked", false, "if to unlock the cpu speed (debugging)")
+	frontendName = flag.String("frontend", "pixelgl", "select frontend")
 )
 
 func main() {
@@ -82,8 +84,20 @@ func start() {
 
 	// Create the monitor for pixels
 	enableVSync := !(*vsyncOff || *unlocked)
-	monitor := io.NewPixelsIOBinding(enableVSync, gameboy)
-	startGBLoop(gameboy, monitor)
+
+	frontendCreators := map[string]func() gb.IOBinding{
+		"pixelgl": func() gb.IOBinding { return io.NewPixelsIOBinding(enableVSync) },
+		"dummy":   func() gb.IOBinding { return &io.Dummy{} },
+	}
+
+	frontendCreator, ok := frontendCreators[*frontendName]
+
+	if !ok {
+		log.Fatalf("Could not find frontend named %s", *frontendName)
+	}
+
+	frontend := frontendCreator()
+	startGBLoop(gameboy, frontend)
 }
 
 func startGBLoop(gameboy *gb.Gameboy, monitor gb.IOBinding) {
@@ -154,4 +168,13 @@ func startCPUProfiling() {
 	if err != nil {
 		log.Fatalf("Failed to start CPU profile: %v", err)
 	}
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT)
+
+	go func() {
+		<-signalChan
+		pprof.StopCPUProfile()
+		os.Exit(0)
+	}()
 }
