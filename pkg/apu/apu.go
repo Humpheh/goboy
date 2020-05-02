@@ -15,32 +15,32 @@ const (
 	twoPi      = 2 * math.Pi
 	perSample  = 1 / float64(sampleRate)
 
-	cpuTicksPerSample    = float64(4194304) / 44100
+	cpuTicksPerSample    = float64(4194304) / sampleRate
 	maxFrameBufferLength = 5000
 )
 
-// APU is the GameBoy's audio processing unit. Audio is comprised of four
+// APU is the GameBoy's audio processing unit. Audio comprises four
 // channels, each one controlled by a set of registers.
 //
 // Channels 1 and 2 are both Square channels, channel 3 is a arbitrary
 // waveform channel which can be set in RAM, and channel 4 outputs noise.
 type APU struct {
-	memory [52]byte
+	playing bool
+
+	memory      [52]byte
+	waveformRam []byte
 
 	player                 *oto.Player
 	chn1, chn2, chn3, chn4 *Channel
 	tickCounter            float64
+	lVol, rVol             float64
 
 	audioBuffer chan [2]byte
-
-	lVol, rVol float64
-
-	// TODO: waveform RAM
-	waveformRam []byte
 }
 
 // Init the sound emulation for a Gameboy.
 func (a *APU) Init(sound bool) {
+	a.playing = sound
 	a.waveformRam = make([]byte, 0x20)
 	a.audioBuffer = make(chan [2]byte, maxFrameBufferLength)
 
@@ -100,6 +100,9 @@ func (a *APU) playSound(bufferSeconds int) {
 }
 
 func (a *APU) Buffer(cpuTicks int, speed int) {
+	if !a.playing {
+		return
+	}
 	a.tickCounter += float64(cpuTicks) / float64(speed)
 	if a.tickCounter < cpuTicksPerSample {
 		return
@@ -309,8 +312,8 @@ func (a *APU) Write(address uint16, value byte) {
 // WriteWaveform writes a value to the waveform ram.
 func (a *APU) WriteWaveform(address uint16, value byte) {
 	soundIndex := (address - 0xFF30) * 2
-	a.waveformRam[soundIndex] = byte((value>>4)&0xF) * 0x11
-	a.waveformRam[soundIndex+1] = byte(value&0xF) * 0x11
+	a.waveformRam[soundIndex] = (value >> 4) & 0xF * 0x11
+	a.waveformRam[soundIndex+1] = value & 0xF * 0x11
 }
 
 // ToggleSoundChannel toggles a sound channel for debugging.
