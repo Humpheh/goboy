@@ -51,7 +51,7 @@ type Gameboy struct {
 	mainInst [0x100]func()
 	cbInst   [0x100]func()
 
-	// Mask of the currenly pressed buttons.
+	// Mask of the currently pressed buttons.
 	inputMask byte
 
 	// Flag if the game is running in cgb mode. For this to be true the game
@@ -87,6 +87,8 @@ func (gb *Gameboy) Update() int {
 		gb.updateGraphics(cyclesOp)
 		gb.updateTimers(cyclesOp)
 		cycles += gb.doInterrupts()
+
+		gb.Sound.Buffer(cyclesOp, gb.getSpeed())
 	}
 	return cycles
 }
@@ -104,6 +106,10 @@ func (gb *Gameboy) IsPaused() bool {
 // ToggleSoundChannel toggles a sound channel for debugging.
 func (gb *Gameboy) ToggleSoundChannel(channel int) {
 	gb.Sound.ToggleSoundChannel(channel)
+}
+
+func (gb *Gameboy) SoundString() {
+	gb.Sound.LogSoundState()
 }
 
 // BGMapString returns a string of the values in the background map.
