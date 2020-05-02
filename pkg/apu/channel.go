@@ -16,9 +16,9 @@ type Channel struct {
 
 	// Duration in samples
 	duration int
-	length int
+	length   int
 
-	envelopeVolume int
+	envelopeVolume     int
 	envelopeTime       int
 	envelopeSteps      int
 	envelopeStepsInit  int

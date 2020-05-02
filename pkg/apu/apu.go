@@ -27,9 +27,9 @@ const (
 type APU struct {
 	memory [52]byte
 
-	player *oto.Player
+	player                 *oto.Player
 	chn1, chn2, chn3, chn4 *Channel
-	tickCounter float64
+	tickCounter            float64
 
 	audioBuffer chan [2]byte
 
@@ -68,31 +68,35 @@ func (a *APU) Init(sound bool) {
 		if err != nil {
 			log.Fatalf("Failed to start audio: %v", err)
 		}
-
-		frameTime := time.Second / bufferSeconds
-		ticker := time.NewTicker(frameTime)
-		targetSamples := sampleRate / bufferSeconds
-		go func() {
-			var reading [2]byte
-			var buffer []byte
-			for range ticker.C {
-				fbLen := len(a.audioBuffer)
-				if fbLen >= targetSamples / 2 {
-					newBuffer := make([]byte, fbLen * 2)
-					for i := 0; i < fbLen * 2; i += 2 {
-						reading = <-a.audioBuffer
-						newBuffer[i], newBuffer[i+1] = reading[0], reading[1]
-					}
-					buffer = newBuffer
-				}
-
-				_, err := a.player.Write(buffer)
-				if err != nil {
-					log.Printf("error sampling: %v", err)
-				}
-			}
-		}()
+		a.playSound(bufferSeconds)
 	}
+}
+
+// Starts a goroutine which plays the sound
+func (a *APU) playSound(bufferSeconds int) {
+	frameTime := time.Second / time.Duration(bufferSeconds)
+	ticker := time.NewTicker(frameTime)
+	targetSamples := sampleRate / bufferSeconds
+	go func() {
+		var reading [2]byte
+		var buffer []byte
+		for range ticker.C {
+			fbLen := len(a.audioBuffer)
+			if fbLen >= targetSamples/2 {
+				newBuffer := make([]byte, fbLen*2)
+				for i := 0; i < fbLen*2; i += 2 {
+					reading = <-a.audioBuffer
+					newBuffer[i], newBuffer[i+1] = reading[0], reading[1]
+				}
+				buffer = newBuffer
+			}
+
+			_, err := a.player.Write(buffer)
+			if err != nil {
+				log.Printf("error sampling: %v", err)
+			}
+		}
+	}()
 }
 
 func (a *APU) Buffer(cpuTicks int, speed int) {
@@ -149,7 +153,7 @@ func (a *APU) Write(address uint16, value byte) {
 		// -PPP NSSS Sweep period, negate, shift
 		a.chn1.sweepStepLen = (a.memory[0x10] & 0b111_0000) >> 4
 		a.chn1.sweepSteps = a.memory[0x10] & 0b111
-		a.chn1.sweepIncrease = a.memory[0x10] & 0b1000 == 0 // 1 = decrease
+		a.chn1.sweepIncrease = a.memory[0x10]&0b1000 == 0 // 1 = decrease
 	case 0xFF11:
 		// DDLL LLLL Duty, Length load
 		duty := (value & 0b1100_0000) >> 6
@@ -170,11 +174,11 @@ func (a *APU) Write(address uint16, value byte) {
 		frequencyValue := uint16(value&0b111)<<8 | uint16(a.memory[0x13])
 		a.chn1.frequency = 131072 / (2048 - float64(frequencyValue))
 		if value&0b1000_0000 != 0 {
-			if a.chn3.length == 0 {
-				a.chn3.length = 64
+			if a.chn1.length == 0 {
+				a.chn1.length = 64
 			}
 			duration := -1
-			if value & 0b100_0000 != 0 { // 1 = use length
+			if value&0b100_0000 != 0 { // 1 = use length
 				duration = int(float64(a.chn1.length)*(1/64)) * sampleRate
 			}
 			a.chn1.Reset(duration)
@@ -204,12 +208,12 @@ func (a *APU) Write(address uint16, value byte) {
 	case 0xFF19:
 		// TL-- -FFF Trigger, Length enable, Frequency MSB
 		if value&0b1000_0000 != 0 {
-			if a.chn3.length == 0 {
-				a.chn3.length = 64
+			if a.chn2.length == 0 {
+				a.chn2.length = 64
 			}
 			duration := -1
-			if value & 0b100_0000 != 0 {
-				duration = int(float64(a.chn3.length)*(1/64)) * sampleRate
+			if value&0b100_0000 != 0 {
+				duration = int(float64(a.chn2.length)*(1/64)) * sampleRate
 			}
 			a.chn2.Reset(duration)
 			a.chn2.envelopeSteps = a.chn2.envelopeVolume
@@ -240,7 +244,7 @@ func (a *APU) Write(address uint16, value byte) {
 				a.chn3.length = 256
 			}
 			duration := -1
-			if value & 0b100_0000 != 0 { // 1 = use length
+			if value&0b100_0000 != 0 { // 1 = use length
 				duration = int((256-float64(a.chn3.length))*(1/256)) * sampleRate
 			}
 			a.chn3.generator = Waveform(func(i int) byte { return a.waveformRam[i] })
@@ -258,7 +262,7 @@ func (a *APU) Write(address uint16, value byte) {
 	case 0xFF21:
 		// VVVV APPP Starting volume, Envelope add mode, period
 		envVolume, envDirection, envSweep := a.extractEnvelope(value)
-		a.chn2.envelopeVolume = int(envVolume)
+		a.chn4.envelopeVolume = int(envVolume)
 		a.chn4.envelopeSamples = int(envSweep) * sampleRate / 64
 		a.chn4.envelopeIncreasing = envDirection == 1
 	case 0xFF22:
@@ -274,13 +278,13 @@ func (a *APU) Write(address uint16, value byte) {
 		// TL-- ---- Trigger, Length enable
 		if value&0x80 == 0x80 {
 			duration := -1
-			if value & 0b100_0000 != 0 { // 1 = use length
+			if value&0b100_0000 != 0 { // 1 = use length
 				duration = int(float64(61-a.chn4.length)*(1/256)) * sampleRate
 			}
 			a.chn4.generator = Noise()
 			a.chn4.Reset(duration)
-			a.chn4.envelopeSteps = a.chn2.envelopeVolume
-			a.chn4.envelopeStepsInit = a.chn2.envelopeVolume
+			a.chn4.envelopeSteps = a.chn4.envelopeVolume
+			a.chn4.envelopeStepsInit = a.chn4.envelopeVolume
 		}
 
 	case 0xFF24:
@@ -289,8 +293,6 @@ func (a *APU) Write(address uint16, value byte) {
 		a.rVol = float64(a.memory[0x24]&0x7) / 7
 
 	case 0xFF25:
-		value = value & 0b1111_0000
-		fmt.Printf("vol channel: %08b\n", value)
 		// Channel control
 		a.chn1.onR = value&0x1 != 0
 		a.chn2.onR = value&0x2 != 0
