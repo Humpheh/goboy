@@ -1,6 +1,6 @@
 language: go
 go:
-  - 1.11.5
+  - 1.14.2
 sudo: required
 services:
   - docker
@@ -25,7 +25,7 @@ before_deploy:
   - mkdir package/build
   - cd build
   - go get github.com/karalabe/xgo
-  - xgo -go 1.11.1 --targets=windows/amd64,darwin/amd64 -out goboy -ldflags "-X main.version=$TRAVIS_TAG" --pkg cmd/goboy github.com/Humpheh/goboy
+  - xgo -go 1.14.2 --targets=windows/amd64,darwin/amd64 -out goboy -ldflags "-X main.version=$TRAVIS_TAG" --pkg cmd/goboy github.com/Humpheh/goboy
 
   # Build the darwin bundle
   - cd ../package/darwin
