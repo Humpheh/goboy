@@ -55,6 +55,10 @@ func start() {
 		defer pprof.StopCPUProfile()
 	}
 
+	if *unlocked {
+		*mute = true
+	}
+
 	// Print the logo and the run settings to the console
 	fmt.Println(fmt.Sprintf(logo, version))
 	fmt.Printf("APU: %v\nCGB: %v\nROM: %v\n", !*mute, !*dmgMode, rom)
