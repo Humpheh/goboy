@@ -121,34 +121,34 @@ var keyMap = map[pixelgl.Button]gb.Button{
 	pixelgl.KeyLeft:      gb.ButtonLeft,
 	pixelgl.KeyUp:        gb.ButtonUp,
 	pixelgl.KeyDown:      gb.ButtonDown,
+
+	pixelgl.KeyEscape: gb.ButtonPause,
+	pixelgl.KeyEqual:  gb.ButtonChangePallete,
+	pixelgl.KeyQ:      gb.ButtonToggleBackground,
+	pixelgl.KeyW:      gb.ButtonToggleSprites,
+	pixelgl.KeyE:      gb.ButttonToggleOutputOpCode,
+	pixelgl.KeyD:      gb.ButtonPrintBGMap,
+	pixelgl.Key7:      gb.ButtonToggleSoundChannel1,
+	pixelgl.Key8:      gb.ButtonToggleSoundChannel2,
+	pixelgl.Key9:      gb.ButtonToggleSoundChannel3,
+	pixelgl.Key0:      gb.ButtonToggleSoundChannel4,
 }
 
 // ProcessInput checks the input and process it.
 func (mon *PixelsIOBinding) ButtonInput() gb.ButtonInput {
 
-	var (
-		buttonInput gb.ButtonInput
-		firstKey    = pixelgl.Button(0)
-		lastKey     = pixelgl.KeyLast
-	)
+	if mon.window.JustPressed(pixelgl.KeyF) {
+		mon.toggleFullscreen()
+	}
 
-	for key := firstKey; key <= lastKey; key++ {
+	var buttonInput gb.ButtonInput
 
-		if mon.window.JustPressed(key) {
-			if gameboyButton, ok := keyMap[key]; ok {
-				buttonInput.Pressed = append(buttonInput.Pressed, gameboyButton)
-			}
-			buttonInput.KeysPressed = append(buttonInput.KeysPressed, key.String())
-
-			if key == pixelgl.KeyF {
-				mon.toggleFullscreen()
-			}
+	for handledKey, button := range keyMap {
+		if mon.window.JustPressed(handledKey) {
+			buttonInput.Pressed = append(buttonInput.Pressed, button)
 		}
-
-		if mon.window.JustReleased(key) {
-			if gameboyButton, ok := keyMap[key]; ok {
-				buttonInput.Released = append(buttonInput.Released, gameboyButton)
-			}
+		if mon.window.JustReleased(handledKey) {
+			buttonInput.Released = append(buttonInput.Released, button)
 		}
 	}
 

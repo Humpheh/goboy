@@ -24,15 +24,27 @@ const (
 	ButtonUp = 6
 	// ButtonDown is the down dpad direction on the GameBoy.
 	ButtonDown = 7
+
+	ButtonPause               = 8
+	ButtonChangePallete       = 9
+	ButtonToggleBackground    = 10
+	ButtonToggleSprites       = 11
+	ButttonToggleOutputOpCode = 12
+	ButtonPrintBGMap          = 13
+	ButtonToggleSoundChannel1 = 14
+	ButtonToggleSoundChannel2 = 15
+	ButtonToggleSoundChannel3 = 16
+	ButtonToggleSoundChannel4 = 17
 )
 
-type ButtonInput struct {
-	// Pressed and Released are gameboy button inputs on this frame
-	Pressed, Released []Button
+// IsGameBoyInput checks whether a button value represents a physical button on a gameboy
+func (button Button) IsGameBoyButton() bool {
+	return button <= ButtonDown
+}
 
-	// KeysPressed list all keyboard keys pressed last frame
-	// This is used to call handlers that list/modify emulator config
-	KeysPressed []string
+type ButtonInput struct {
+	// Pressed and Released are inputs on this frame
+	Pressed, Released []Button
 }
 
 // IOBinding provides an interface for display and input bindings.
@@ -50,37 +62,37 @@ type IOBinding interface {
 // pressButton notifies the GameBoy that a button has just been pressed
 // and requests a joypad interrupt.
 func (gb *Gameboy) pressButton(button Button) {
+
+	if gb.paused || !gb.IsGameLoaded() {
+		return
+	}
+
 	gb.inputMask = bits.Reset(gb.inputMask, byte(button))
 	gb.requestInterrupt(4) // Request the joypad interrupt
 }
 
 // releaseButton notifies the GameBoy that a button has just been released.
 func (gb *Gameboy) releaseButton(button Button) {
+	if gb.paused || !gb.IsGameLoaded() {
+		return
+	}
+
 	gb.inputMask = bits.Set(gb.inputMask, byte(button))
 }
 
 func (gb *Gameboy) ProcessInput(buttons ButtonInput) {
 
-	if !gb.IsGameLoaded() || gb.paused {
-		for _, pressedButton := range buttons.KeysPressed {
-			if pressedButton == "Escape" {
-				gb.keyHandlers[pressedButton]()
-			}
-		}
-		return
-	}
-
 	for _, button := range buttons.Pressed {
-		gb.pressButton(button)
+		if button.IsGameBoyButton() {
+			gb.pressButton(button)
+		} else if handler, ok := gb.keyHandlers[button]; ok {
+			handler()
+		}
 	}
 
 	for _, button := range buttons.Released {
-		gb.releaseButton(button)
-	}
-
-	for _, key := range buttons.KeysPressed {
-		if handler, ok := gb.keyHandlers[key]; ok {
-			handler()
+		if button.IsGameBoyButton() {
+			gb.releaseButton(button)
 		}
 	}
 }

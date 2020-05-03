@@ -65,7 +65,7 @@ type Gameboy struct {
 
 	thisCpuTicks int
 
-	keyHandlers map[string]func()
+	keyHandlers map[Button]func()
 }
 
 // Update update the state of the gameboy by a single frame.
@@ -308,17 +308,17 @@ func (gb *Gameboy) init(romFile string) error {
 }
 
 func (gb *Gameboy) initKeyHandlers() {
-	gb.keyHandlers = map[string]func(){
-		"Escape": gb.togglePaused,
-		"Equal":  changePallete,
-		"Q":      gb.Debug.toggleBackGround,
-		"W":      gb.Debug.toggleSprites,
-		"E":      gb.Debug.toggleOutputOpCode,
-		"D":      gb.printBGMap,
-		"7":      func() { gb.ToggleSoundChannel(1) },
-		"8":      func() { gb.ToggleSoundChannel(2) },
-		"9":      func() { gb.ToggleSoundChannel(3) },
-		"0":      func() { gb.ToggleSoundChannel(4) },
+	gb.keyHandlers = map[Button]func(){
+		ButtonPause:               gb.togglePaused,
+		ButtonChangePallete:       changePallete,
+		ButtonToggleBackground:    gb.Debug.toggleBackGround,
+		ButtonToggleSprites:       gb.Debug.toggleSprites,
+		ButttonToggleOutputOpCode: gb.Debug.toggleOutputOpCode,
+		ButtonPrintBGMap:          gb.printBGMap,
+		ButtonToggleSoundChannel1: func() { gb.ToggleSoundChannel(1) },
+		ButtonToggleSoundChannel2: func() { gb.ToggleSoundChannel(2) },
+		ButtonToggleSoundChannel3: func() { gb.ToggleSoundChannel(3) },
+		ButtonToggleSoundChannel4: func() { gb.ToggleSoundChannel(4) },
 	}
 }
 
