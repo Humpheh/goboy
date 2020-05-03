@@ -102,25 +102,26 @@ still plenty of small bugs that can easily be found through playing games on the
 task from the TODO list below!
 
 ## Known Bugs and TODO list
-- [ ] Sprite Z-drawing
 - [x] Sprites near edge of screen not drawing
 - [x] Top half of sprite disappearing off top of screen
 - [x] Small sprites row glitch
-- [ ] BG tile window offset issue - visible on *Pokemon Red* splash screen - possibly mistimed interrupt?
-- [ ] *Harry Potter and The Chamber of Secrets* has odd sprite issues
-- [ ] Request to set screen to white does not do so
+- [x] BG tile window offset issue - visible on *Pokemon Red* splash screen - possibly mistimed interrupt?
+- [x] *Harry Potter and The Chamber of Secrets* has odd sprite issues
+- [x] Request to set screen to white does not do so
 - [x] MBC3 banking support
-- [ ] Improve APU (see *Pokemon Yellow* opening screen for reason why)
-- [ ] MBC3 clock support
-- [ ] Icon 
-- [ ] White screen when off
-- [ ] Speed up CPU and PPU
+- [x] Improve APU (see *Pokemon Yellow* opening screen for reason why)
 - [x] Resizable window
+- [x] White screen when off
+- [x] STOP opcode behaviour
+- [ ] Sprite Z-drawing bugs
+- [ ] Minor APU timing issues
+- [ ] Better APU buffering
+- [ ] Stop jittering
+- [ ] MBC3 clock support
+- [ ] Speed up CPU and PPU
 - [ ] Platform native UI?
-- [ ] MBC4-7 support (?)
 - [ ] More DMG colour palettes
-- [ ] STOP opcode behaviour
-- [ ] Support save-states (could use gob)
+- [ ] Support save-states
 - [ ] Support boot roms
 - [ ] [Blargg's test ROMs](http://gbdev.gg8.se/wiki/articles/Test_ROMs)
 
