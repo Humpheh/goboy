@@ -13,8 +13,7 @@ import (
 	"fmt"
 
 	"github.com/Humpheh/goboy/pkg/gb"
-	"github.com/Humpheh/goboy/pkg/gbio"
-	"github.com/Humpheh/goboy/pkg/gbio/iopixel"
+	"github.com/Humpheh/goboy/pkg/gb/io"
 	"github.com/faiface/pixel/pixelgl"
 )
 
@@ -46,8 +45,6 @@ func main() {
 }
 
 func start() {
-	// Create the monitor for pixels
-	monitor := iopixel.NewPixelsIOBinding(*vsyncOff || *unlocked)
 
 	// Load the rom from the flag argument, or prompt with file select
 	rom := getROM()
@@ -56,6 +53,10 @@ func start() {
 	if *cpuprofile != "" {
 		startCPUProfiling()
 		defer pprof.StopCPUProfile()
+	}
+
+	if *unlocked {
+		*mute = true
 	}
 
 	// Print the logo and the run settings to the console
@@ -79,11 +80,13 @@ func start() {
 		gameboy.Debug.OutputOpcodes = true
 	}
 
-	monitor.Gameboy = gameboy
+	// Create the monitor for pixels
+	enableVSync := !(*vsyncOff || *unlocked)
+	monitor := io.NewPixelsIOBinding(enableVSync, gameboy)
 	startGBLoop(gameboy, monitor)
 }
 
-func startGBLoop(gameboy *gb.Gameboy, monitor gbio.IOBinding) {
+func startGBLoop(gameboy *gb.Gameboy, monitor gb.IOBinding) {
 	frameTime := time.Second / gb.FramesSecond
 	if *unlocked {
 		frameTime = 1
@@ -92,20 +95,31 @@ func startGBLoop(gameboy *gb.Gameboy, monitor gbio.IOBinding) {
 	ticker := time.NewTicker(frameTime)
 	start := time.Now()
 	frames := 0
+
+	var cartName string
+	if gameboy.IsGameLoaded() {
+		cartName = gameboy.Memory.Cart.GetName()
+	}
+
 	for range ticker.C {
 		if !monitor.IsRunning() {
 			return
 		}
 
 		frames++
-		monitor.ProcessInput()
+
+		buttons := monitor.ButtonInput()
+		gameboy.ProcessInput(buttons)
+
 		_ = gameboy.Update()
-		monitor.RenderScreen()
+		monitor.Render(&gameboy.PreparedData)
 
 		since := time.Since(start)
 		if since > time.Second {
 			start = time.Now()
-			monitor.SetTitle(frames)
+
+			title := fmt.Sprintf("GoBoy - %s (FPS: %2v)", cartName, frames)
+			monitor.SetTitle(title)
 			frames = 0
 		}
 	}

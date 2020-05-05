@@ -60,6 +60,10 @@ func NewPalette() *cgbPalette {
 	return &cgbPalette{Palette: pal}
 }
 
+func changePallete() {
+	CurrentPalette = (CurrentPalette + 1) % byte(len(Palettes))
+}
+
 // Palette for cgb containing information tracking the palette colour info.
 type cgbPalette struct {
 	// Palette colour information.

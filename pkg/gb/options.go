@@ -25,6 +25,18 @@ type DebugFlags struct {
 	OutputOpcodes bool
 }
 
+func (flags *DebugFlags) toggleBackGround() {
+	flags.HideBackground = !flags.HideBackground
+}
+
+func (flags *DebugFlags) toggleSprites() {
+	flags.HideSprites = !flags.HideSprites
+}
+
+func (flags *DebugFlags) toggleOutputOpCode() {
+	flags.OutputOpcodes = !flags.OutputOpcodes
+}
+
 // WithCGBEnabled runs the Gameboy with cgb mode enabled.
 func WithCGBEnabled() GameboyOption {
 	return func(o *gameboyOptions) {
