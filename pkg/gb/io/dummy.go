@@ -4,7 +4,7 @@ import "github.com/Humpheh/goboy/pkg/gb"
 
 type Dummy struct{}
 
-func (dummy Dummy) Render(frame *gb.Frame) {
+func (dummy Dummy) Render(frame *[160][144][3]uint8) {
 	_ = frame
 }
 

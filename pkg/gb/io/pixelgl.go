@@ -21,7 +21,7 @@ type PixelsIOBinding struct {
 }
 
 // NewPixelsIOBinding returns a new Pixelsgl IOBinding
-func NewPixelsIOBinding(enableVSync bool, gameboy *gb.Gameboy) *PixelsIOBinding {
+func NewPixelsIOBinding(enableVSync bool) *PixelsIOBinding {
 	windowConfig := pixelgl.WindowConfig{
 		Title: "GoBoy",
 		Bounds: pixel.R(

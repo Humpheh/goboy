@@ -43,10 +43,6 @@ var (
 
 func main() {
 	flag.Parse()
-	pixelgl.Run(start)
-}
-
-func start() {
 
 	// Load the rom from the flag argument, or prompt with file select
 	rom := getROM()
@@ -88,6 +84,7 @@ func start() {
 	frontendCreators := map[string]func() gb.IOBinding{
 		"pixelgl": func() gb.IOBinding { return io.NewPixelsIOBinding(enableVSync) },
 		"dummy":   func() gb.IOBinding { return &io.Dummy{} },
+		"web":     func() gb.IOBinding { return io.NewWebServer() },
 	}
 
 	frontendCreator, ok := frontendCreators[*frontendName]
@@ -96,8 +93,16 @@ func start() {
 		log.Fatalf("Could not find frontend named %s", *frontendName)
 	}
 
-	frontend := frontendCreator()
-	startGBLoop(gameboy, frontend)
+	start := func() {
+		frontend := frontendCreator()
+		startGBLoop(gameboy, frontend)
+	}
+
+	if *frontendName == "pixelgl" {
+		pixelgl.Run(start)
+	} else {
+		start()
+	}
 }
 
 func startGBLoop(gameboy *gb.Gameboy, monitor gb.IOBinding) {
