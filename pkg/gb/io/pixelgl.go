@@ -112,7 +112,7 @@ func (mon *PixelsIOBinding) toggleFullscreen() {
 	}
 }
 
-var keyMap = map[pixelgl.Button]gb.Button{
+var pixelglKeyMap = map[pixelgl.Button]gb.Button{
 	pixelgl.KeyZ:         gb.ButtonA,
 	pixelgl.KeyX:         gb.ButtonB,
 	pixelgl.KeyBackspace: gb.ButtonSelect,
@@ -143,7 +143,7 @@ func (mon *PixelsIOBinding) ButtonInput() gb.ButtonInput {
 
 	var buttonInput gb.ButtonInput
 
-	for handledKey, button := range keyMap {
+	for handledKey, button := range pixelglKeyMap {
 		if mon.window.JustPressed(handledKey) {
 			buttonInput.Pressed = append(buttonInput.Pressed, button)
 		}

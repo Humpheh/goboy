@@ -8,7 +8,6 @@ $(function(){
     ws.onclose = function(evt) {};
 
     ws.onmessage = function(evt) {
-        console.log('RESPONSE: ' + evt.data);
         let message = JSON.parse(evt.data);
 
         switch(message.type){
@@ -18,5 +17,20 @@ $(function(){
             default:
                 console.log("unhandled message type " + message.type);
         }
+    }
+
+    window.addEventListener("keyup", send_input);
+    window.addEventListener("keydown", send_input);
+
+    function send_input(event){
+        if(event.repeat){
+            return
+        }
+        let message = {
+            "type": "input",
+            "key": event.key,
+            "pressed": event.type === "keydown"
+        }
+        ws.send(JSON.stringify(message));
     }
 });
