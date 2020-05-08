@@ -146,9 +146,9 @@ func (gb *Gameboy) updateTimers(cycles int) {
 		freq := gb.getClockFreqCount()
 		for gb.timerCounter >= freq {
 			gb.timerCounter -= freq
-			tima := gb.Memory.Read(TIMA)
+			tima := gb.Memory.HighRAM[0x05] /* TIMA */
 			if tima == 0xFF {
-				gb.Memory.HighRAM[TIMA-0xFF00] = gb.Memory.Read(TMA)
+				gb.Memory.HighRAM[TIMA-0xFF00] = gb.Memory.HighRAM[0x06] /* TMA */
 				gb.requestInterrupt(2)
 			} else {
 				gb.Memory.HighRAM[TIMA-0xFF00] = tima + 1
@@ -158,11 +158,11 @@ func (gb *Gameboy) updateTimers(cycles int) {
 }
 
 func (gb *Gameboy) isClockEnabled() bool {
-	return bits.Test(gb.Memory.Read(TAC), 2)
+	return bits.Test(gb.Memory.HighRAM[0x07] /* TAC */, 2)
 }
 
 func (gb *Gameboy) getClockFreq() byte {
-	return gb.Memory.Read(TAC) & 0x3
+	return gb.Memory.HighRAM[0x07] /* TAC */ & 0x3
 }
 
 func (gb *Gameboy) getClockFreqCount() int {
@@ -192,7 +192,7 @@ func (gb *Gameboy) dividerRegister(cycles int) {
 
 // Request the Gameboy to perform an interrupt.
 func (gb *Gameboy) requestInterrupt(interrupt byte) {
-	req := gb.Memory.ReadHighRam(0xFF0F)
+	req := gb.Memory.HighRAM[0x0F] | 0xE0
 	req = bits.Set(req, interrupt)
 	gb.Memory.Write(0xFF0F, req)
 }
@@ -207,8 +207,8 @@ func (gb *Gameboy) doInterrupts() (cycles int) {
 		return 0
 	}
 
-	req := gb.Memory.ReadHighRam(0xFF0F)
-	enabled := gb.Memory.ReadHighRam(0xFFFF)
+	req := gb.Memory.HighRAM[0x0F] | 0xE0
+	enabled := gb.Memory.HighRAM[0xFF]
 
 	if req > 0 {
 		var i byte
