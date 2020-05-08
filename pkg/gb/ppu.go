@@ -49,7 +49,7 @@ const (
 
 // Set the status of the LCD based on the current state of memory.
 func (gb *Gameboy) setLCDStatus() {
-	status := gb.Memory.ReadHighRam(0xFF41)
+	status := gb.Memory.HighRAM[0x41]
 
 	if !gb.isLCDEnabled() {
 		// set the screen to white
@@ -67,7 +67,7 @@ func (gb *Gameboy) setLCDStatus() {
 	}
 	gb.screenCleared = false
 
-	currentLine := gb.Memory.ReadHighRam(0xFF44)
+	currentLine := gb.Memory.HighRAM[0x44]
 	currentMode := status & 0x3
 
 	var mode byte
@@ -109,7 +109,7 @@ func (gb *Gameboy) setLCDStatus() {
 	}
 
 	// Check if LYC == LY (coincidence flag)
-	if currentLine == gb.Memory.ReadHighRam(0xFF45) {
+	if currentLine == gb.Memory.HighRAM[0x45] {
 		status = bits.Set(status, 2)
 		// If enabled request an interrupt for this
 		if bits.Test(status, 6) {
@@ -124,7 +124,7 @@ func (gb *Gameboy) setLCDStatus() {
 
 // Checks if the LCD is enabled by examining 0xFF40.
 func (gb *Gameboy) isLCDEnabled() bool {
-	return bits.Test(gb.Memory.ReadHighRam(LCDC), 7)
+	return bits.Test(gb.Memory.HighRAM[0x40], 7)
 }
 
 // Draw a single scanline to the graphics output.
