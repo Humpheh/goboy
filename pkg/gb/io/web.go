@@ -113,8 +113,13 @@ func (server *WebServer) ButtonInput() gb.ButtonInput {
 	var input gb.ButtonInput
 
 	server.RLock()
+	// create a deep copy
+	// TODO simplify this
 	input.Pressed = append(input.Pressed, server.input.Pressed...)
 	input.Released = append(input.Released, server.input.Released...)
+
+	// input will be sent to emulator, so reset our input state
+	server.input = gb.ButtonInput{}
 	server.RUnlock()
 
 	return input
@@ -199,16 +204,12 @@ func (server *WebServer) readWebSocket(ws *websocket.Conn) {
 			continue
 		}
 
-		var input gb.ButtonInput
-
-		if inputMessage.Pressed {
-			input.Pressed = []gb.Button{key}
-		} else {
-			input.Released = []gb.Button{key}
-		}
-
 		server.Lock()
-		server.input = input
+		if inputMessage.Pressed {
+			server.input.Pressed = append(server.input.Pressed, key)
+		} else {
+			server.input.Released = append(server.input.Released, key)
+		}
 		server.Unlock()
 	}
 }
