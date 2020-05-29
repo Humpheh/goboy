@@ -50,3 +50,11 @@ func cpuInstTest(t *testing.T, options ...GameboyOption) {
 func TestInstructionsCGB(t *testing.T) {
 	cpuInstTest(t, WithCGBEnabled())
 }
+
+func BenchmarkGameboy_ExecuteNextOpcode(b *testing.B) {
+	gb, err := NewGameboy("./../../roms/blargg/cpu_instrs.gb")
+	require.NoError(b, err, "error in init gb %v", err)
+	for i := 0; i < b.N; i++ {
+		gb.ExecuteNextOpcode()
+	}
+}
