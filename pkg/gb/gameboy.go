@@ -48,8 +48,7 @@ type Gameboy struct {
 	interruptsOn       bool
 	halted             bool
 
-	mainInst [0x100]func()
-	cbInst   [0x100]func()
+	cbInst [0x100]func()
 
 	// Mask of the currently pressed buttons.
 	inputMask byte
@@ -339,7 +338,6 @@ func (gb *Gameboy) setup() {
 	gb.scanlineCounter = 456
 	gb.inputMask = 0xFF
 
-	gb.mainInst = gb.mainInstructions()
 	gb.cbInst = gb.cbInstructions()
 
 	gb.SpritePalette = NewPalette()
