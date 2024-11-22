@@ -49,7 +49,11 @@ type ButtonInput struct {
 
 // IOBinding provides an interface for display and input bindings.
 type IOBinding interface {
-	// RenderScreen renders a frame of the game.
+	// Start starts the io.
+	Start()
+	// SetVSync sets the vsync value
+	SetVSync(enabled bool)
+	// Render renders a frame of the game.
 	Render(screen *[160][144][3]uint8)
 	// ButtonInput returns which buttons were pressed and released
 	ButtonInput() ButtonInput

@@ -1,63 +1,68 @@
-package io
+package pixelio
 
 import (
 	"image/color"
 	"log"
-
 	"math"
 
-	"github.com/Humpheh/goboy/pkg/gb"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
+
+	"github.com/Humpheh/goboy/pkg/gb"
 )
 
-// PixelScale is the multiplier on the pixels on display
-var PixelScale float64 = 3
+// defaultPixelScale is the default multiplier on the pixels on display
+var defaultPixelScale float64 = 3
 
-// PixelsIOBinding binds screen output and input using the pixels library.
-type PixelsIOBinding struct {
+// pixelsIOBinding binds screen output and input using the pixels library.
+type pixelsIOBinding struct {
 	window  *pixelgl.Window
 	picture *pixel.PictureData
+	vsync bool
 }
 
-// NewPixelsIOBinding returns a new Pixelsgl IOBinding
-func NewPixelsIOBinding(enableVSync bool, gameboy *gb.Gameboy) *PixelsIOBinding {
+// New returns a new PixelGL IOBinding
+func New(start func(iob gb.IOBinding)) {
+	binding := &pixelsIOBinding{}
+	pixelgl.Run(func() {
+		start(binding)
+	})
+}
+
+func (mon *pixelsIOBinding) Start() {
 	windowConfig := pixelgl.WindowConfig{
 		Title: "GoBoy",
 		Bounds: pixel.R(
 			0, 0,
-			float64(gb.ScreenWidth*PixelScale), float64(gb.ScreenHeight*PixelScale),
+			gb.ScreenWidth*defaultPixelScale, gb.ScreenHeight*defaultPixelScale,
 		),
-		VSync:     enableVSync,
+		VSync:     mon.vsync,
 		Resizable: true,
 	}
 
-	window, err := pixelgl.NewWindow(windowConfig)
+	var err error
+	mon.window, err = pixelgl.NewWindow(windowConfig)
 	if err != nil {
 		log.Fatalf("Failed to create window: %v", err)
 	}
 
 	// Hack so that pixelgl renders on Darwin
-	window.SetPos(window.GetPos().Add(pixel.V(0, 1)))
+	mon.window.SetPos(mon.window.GetPos().Add(pixel.V(0, 1)))
 
-	picture := &pixel.PictureData{
+	mon.picture = &pixel.PictureData{
 		Pix:    make([]color.RGBA, gb.ScreenWidth*gb.ScreenHeight),
 		Stride: gb.ScreenWidth,
 		Rect:   pixel.R(0, 0, gb.ScreenWidth, gb.ScreenHeight),
 	}
+	mon.updateCamera()
+}
 
-	monitor := PixelsIOBinding{
-		window:  window,
-		picture: picture,
-	}
-
-	monitor.updateCamera()
-
-	return &monitor
+func (mon *pixelsIOBinding) SetVSync(enabled bool) {
+	mon.vsync = enabled
 }
 
 // updateCamera updates the window camera to center the output.
-func (mon *PixelsIOBinding) updateCamera() {
+func (mon *pixelsIOBinding) updateCamera() {
 	xScale := mon.window.Bounds().W() / 160
 	yScale := mon.window.Bounds().H() / 144
 	scale := math.Min(yScale, xScale)
@@ -69,12 +74,12 @@ func (mon *PixelsIOBinding) updateCamera() {
 
 // IsRunning returns if the game should still be running. When
 // the window is closed this will be false so the game stops.
-func (mon *PixelsIOBinding) IsRunning() bool {
+func (mon *pixelsIOBinding) IsRunning() bool {
 	return !mon.window.Closed()
 }
 
 // Render renders the pixels on the screen.
-func (mon *PixelsIOBinding) Render(screen *[160][144][3]uint8) {
+func (mon *pixelsIOBinding) Render(screen *[160][144][3]uint8) {
 	for y := 0; y < gb.ScreenHeight; y++ {
 		for x := 0; x < gb.ScreenWidth; x++ {
 			col := screen[x][y]
@@ -95,20 +100,20 @@ func (mon *PixelsIOBinding) Render(screen *[160][144][3]uint8) {
 }
 
 // SetTitle sets the title of the game window.
-func (mon *PixelsIOBinding) SetTitle(title string) {
+func (mon *pixelsIOBinding) SetTitle(title string) {
 	mon.window.SetTitle(title)
 }
 
 // Toggle the fullscreen window on the main monitor.
-func (mon *PixelsIOBinding) toggleFullscreen() {
+func (mon *pixelsIOBinding) toggleFullscreen() {
 	if mon.window.Monitor() == nil {
 		monitor := pixelgl.PrimaryMonitor()
 		_, height := monitor.Size()
 		mon.window.SetMonitor(monitor)
-		PixelScale = height / 144
+		defaultPixelScale = height / 144
 	} else {
 		mon.window.SetMonitor(nil)
-		PixelScale = 3
+		defaultPixelScale = 3
 	}
 }
 
@@ -135,14 +140,12 @@ var keyMap = map[pixelgl.Button]gb.Button{
 }
 
 // ProcessInput checks the input and process it.
-func (mon *PixelsIOBinding) ButtonInput() gb.ButtonInput {
-
+func (mon *pixelsIOBinding) ButtonInput() gb.ButtonInput {
 	if mon.window.JustPressed(pixelgl.KeyF) {
 		mon.toggleFullscreen()
 	}
 
 	var buttonInput gb.ButtonInput
-
 	for handledKey, button := range keyMap {
 		if mon.window.JustPressed(handledKey) {
 			buttonInput.Pressed = append(buttonInput.Pressed, button)
@@ -151,6 +154,5 @@ func (mon *PixelsIOBinding) ButtonInput() gb.ButtonInput {
 			buttonInput.Released = append(buttonInput.Released, button)
 		}
 	}
-
 	return buttonInput
 }

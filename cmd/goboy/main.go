@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"runtime/pprof"
@@ -10,11 +11,8 @@ import (
 	"github.com/faiface/mainthread"
 	"github.com/sqweek/dialog"
 
-	"fmt"
-
 	"github.com/Humpheh/goboy/pkg/gb"
-	"github.com/Humpheh/goboy/pkg/gb/io"
-	"github.com/faiface/pixel/pixelgl"
+	"github.com/Humpheh/goboy/pkg/io/ebitenio"
 )
 
 // The version of GoBoy
@@ -41,11 +39,11 @@ var (
 
 func main() {
 	flag.Parse()
-	pixelgl.Run(start)
+	//pixelio.New(start)
+	ebitenio.New(start)
 }
 
-func start() {
-
+func start(io gb.IOBinding) {
 	// Load the rom from the flag argument, or prompt with file select
 	rom := getROM()
 
@@ -53,6 +51,11 @@ func start() {
 	if *cpuprofile != "" {
 		startCPUProfiling()
 		defer pprof.StopCPUProfile()
+		go func() {
+			time.Sleep(time.Second * 10)
+			pprof.StopCPUProfile()
+			log.Fatal("CPU profile timed out")
+		}()
 	}
 
 	if *unlocked {
@@ -81,9 +84,9 @@ func start() {
 	}
 
 	// Create the monitor for pixels
-	enableVSync := !(*vsyncOff || *unlocked)
-	monitor := io.NewPixelsIOBinding(enableVSync, gameboy)
-	startGBLoop(gameboy, monitor)
+	io.SetVSync(!(*vsyncOff || *unlocked))
+	io.Start()
+	startGBLoop(gameboy, io)
 }
 
 func startGBLoop(gameboy *gb.Gameboy, monitor gb.IOBinding) {
