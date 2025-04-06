@@ -181,7 +181,7 @@ func (gb *Gameboy) renderTiles(lcdControl byte, scanline byte) {
 	scrollY := gb.Memory.ReadHighRam(0xFF42)
 	scrollX := gb.Memory.ReadHighRam(0xFF43)
 	windowY := gb.Memory.ReadHighRam(0xFF4A)
-	windowX := gb.Memory.ReadHighRam(0xFF4B) - 7
+	windowX := int(gb.Memory.ReadHighRam(0xFF4B)) - 7
 
 	usingWindow, unsigned, tileData, backgroundMemory := gb.getTileSettings(lcdControl, windowY)
 
@@ -205,8 +205,8 @@ func (gb *Gameboy) renderTiles(lcdControl byte, scanline byte) {
 		xPos := pixel + scrollX
 
 		// Translate the current x pos to window space if necessary
-		if usingWindow && pixel >= windowX {
-			xPos = pixel - windowX
+		if usingWindow && int(pixel) >= windowX {
+			xPos = byte(int(pixel) - windowX)
 		}
 
 		// Which of the 32 horizontal tiles does this x_pox fall within?
