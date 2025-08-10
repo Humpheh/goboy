@@ -2,19 +2,18 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"runtime/pprof"
 	"time"
 
 	"github.com/faiface/mainthread"
+	"github.com/faiface/pixel/pixelgl"
 	"github.com/sqweek/dialog"
 
-	"fmt"
-
 	"github.com/Humpheh/goboy/pkg/gb"
-	"github.com/Humpheh/goboy/pkg/gb/io"
-	"github.com/faiface/pixel/pixelgl"
+	"github.com/Humpheh/goboy/pkg/io"
 )
 
 // The version of GoBoy
@@ -72,7 +71,7 @@ func start() {
 	}
 
 	// Initialise the GameBoy with the flag options
-	gameboy, err := gb.NewGameboy(rom, opts...)
+	gameboy, err := gb.New(rom, opts...)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -97,8 +96,8 @@ func startGBLoop(gameboy *gb.Gameboy, monitor gb.IOBinding) {
 	frames := 0
 
 	var cartName string
-	if gameboy.IsGameLoaded() {
-		cartName = gameboy.Memory.Cart.GetName()
+	if gameboy.IsCartLoaded() {
+		cartName = gameboy.GetLoadedCart().GetName()
 	}
 
 	for range ticker.C {
@@ -108,7 +107,7 @@ func startGBLoop(gameboy *gb.Gameboy, monitor gb.IOBinding) {
 
 		frames++
 
-		buttons := monitor.ButtonInput()
+		buttons := monitor.ProcessButtonInput()
 		gameboy.ProcessInput(buttons)
 
 		_ = gameboy.Update()

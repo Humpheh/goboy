@@ -1,9 +1,5 @@
 package gb
 
-import (
-	"github.com/Humpheh/goboy/pkg/bits"
-)
-
 // Button represents the button on a GameBoy.
 type Button byte
 
@@ -29,7 +25,7 @@ const (
 	ButtonChangePallete       = 9
 	ButtonToggleBackground    = 10
 	ButtonToggleSprites       = 11
-	ButttonToggleOutputOpCode = 12
+	ButtonToggleOutputOpCode  = 12
 	ButtonPrintBGMap          = 13
 	ButtonToggleSoundChannel1 = 14
 	ButtonToggleSoundChannel2 = 15
@@ -37,7 +33,7 @@ const (
 	ButtonToggleSoundChannel4 = 17
 )
 
-// IsGameBoyInput checks whether a button value represents a physical button on a gameboy
+// IsGameBoyButton checks whether a button value represents a physical button on a GameBoy
 func (button Button) IsGameBoyButton() bool {
 	return button <= ButtonDown
 }
@@ -49,12 +45,15 @@ type ButtonInput struct {
 
 // IOBinding provides an interface for display and input bindings.
 type IOBinding interface {
-	// RenderScreen renders a frame of the game.
+	// Render renders a frame of the game.
 	Render(screen *[160][144][3]uint8)
-	// ButtonInput returns which buttons were pressed and released
-	ButtonInput() ButtonInput
+
+	// ProcessButtonInput returns which buttons were pressed and released
+	ProcessButtonInput() ButtonInput
+
 	// SetTitle sets the title of the window.
 	SetTitle(title string)
+
 	// IsRunning returns if the monitor is still running.
 	IsRunning() bool
 }
@@ -62,26 +61,24 @@ type IOBinding interface {
 // pressButton notifies the GameBoy that a button has just been pressed
 // and requests a joypad interrupt.
 func (gb *Gameboy) pressButton(button Button) {
-
-	if gb.paused || !gb.IsGameLoaded() {
+	if gb.paused || !gb.IsCartLoaded() {
 		return
 	}
 
-	gb.inputMask = bits.Reset(gb.inputMask, byte(button))
+	gb.inputMask = bitReset(gb.inputMask, byte(button))
 	gb.requestInterrupt(4) // Request the joypad interrupt
 }
 
 // releaseButton notifies the GameBoy that a button has just been released.
 func (gb *Gameboy) releaseButton(button Button) {
-	if gb.paused || !gb.IsGameLoaded() {
+	if gb.paused || !gb.IsCartLoaded() {
 		return
 	}
 
-	gb.inputMask = bits.Set(gb.inputMask, byte(button))
+	gb.inputMask = bitSet(gb.inputMask, byte(button))
 }
 
 func (gb *Gameboy) ProcessInput(buttons ButtonInput) {
-
 	for _, button := range buttons.Pressed {
 		if button.IsGameBoyButton() {
 			gb.pressButton(button)

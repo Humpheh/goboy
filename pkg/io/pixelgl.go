@@ -3,12 +3,12 @@ package io
 import (
 	"image/color"
 	"log"
-
 	"math"
 
-	"github.com/Humpheh/goboy/pkg/gb"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
+
+	"github.com/Humpheh/goboy/pkg/gb"
 )
 
 // PixelScale is the multiplier on the pixels on display
@@ -126,7 +126,7 @@ var keyMap = map[pixelgl.Button]gb.Button{
 	pixelgl.KeyEqual:  gb.ButtonChangePallete,
 	pixelgl.KeyQ:      gb.ButtonToggleBackground,
 	pixelgl.KeyW:      gb.ButtonToggleSprites,
-	pixelgl.KeyE:      gb.ButttonToggleOutputOpCode,
+	pixelgl.KeyE:      gb.ButtonToggleOutputOpCode,
 	pixelgl.KeyD:      gb.ButtonPrintBGMap,
 	pixelgl.Key7:      gb.ButtonToggleSoundChannel1,
 	pixelgl.Key8:      gb.ButtonToggleSoundChannel2,
@@ -134,15 +134,13 @@ var keyMap = map[pixelgl.Button]gb.Button{
 	pixelgl.Key0:      gb.ButtonToggleSoundChannel4,
 }
 
-// ProcessInput checks the input and process it.
-func (mon *PixelsIOBinding) ButtonInput() gb.ButtonInput {
-
+// ProcessButtonInput checks the input and process it.
+func (mon *PixelsIOBinding) ProcessButtonInput() gb.ButtonInput {
 	if mon.window.JustPressed(pixelgl.KeyF) {
 		mon.toggleFullscreen()
 	}
 
 	var buttonInput gb.ButtonInput
-
 	for handledKey, button := range keyMap {
 		if mon.window.JustPressed(handledKey) {
 			buttonInput.Pressed = append(buttonInput.Pressed, button)
@@ -151,6 +149,5 @@ func (mon *PixelsIOBinding) ButtonInput() gb.ButtonInput {
 			buttonInput.Released = append(buttonInput.Released, button)
 		}
 	}
-
 	return buttonInput
 }

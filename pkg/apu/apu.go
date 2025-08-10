@@ -2,10 +2,9 @@ package apu
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"time"
-
-	"log"
 
 	"github.com/hajimehoshi/oto"
 )

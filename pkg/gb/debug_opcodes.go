@@ -1,4 +1,4 @@
-package debug
+package gb
 
 // Mapping of the opcode to their names
 var names = map[byte]string{

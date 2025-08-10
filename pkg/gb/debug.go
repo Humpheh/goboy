@@ -8,26 +8,24 @@ import (
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/Humpheh/goboy/pkg/debug"
 )
 
 // LogOpcode is a debug function to log the the current state of the gameboys CPU and next memory.
 func LogOpcode(gb *Gameboy, short bool) {
-	pc := gb.CPU.PC
-	opcode := gb.Memory.Read(pc)
+	pc := gb.cpu.PC
+	opcode := gb.memory.Read(pc)
 
-	next := gb.Memory.Read(pc + 1)
-	fmt.Printf("[%0#2x]: %3v %-20v %0#4x", opcode, gb.scanlineCounter, debug.GetOpcodeName(opcode, next), pc)
+	next := gb.memory.Read(pc + 1)
+	fmt.Printf("[%0#2x]: %3v %-20v %0#4x", opcode, gb.scanlineCounter, GetOpcodeName(opcode, next), pc)
 
 	if !short {
 		fmt.Printf("  [[")
 		for i := math.Max(0, float64(pc)-5); i < float64(pc); i++ {
-			fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
+			fmt.Printf(" %02x", gb.memory.Read(uint16(i)))
 		}
 		fmt.Printf(" \033[1;31m%02x\033[0m", opcode)
 		for i := float64(pc) + 1; i < float64(pc)+6; i++ {
-			fmt.Printf(" %02x", gb.Memory.Read(uint16(i)))
+			fmt.Printf(" %02x", gb.memory.Read(uint16(i)))
 		}
 		fmt.Print(" ]]\n")
 	}
@@ -37,7 +35,7 @@ func LogOpcode(gb *Gameboy, short bool) {
 func LogMemory(gb *Gameboy, start uint16, len uint16) {
 	fmt.Printf(" [[")
 	for i := start; i < start+len; i++ {
-		fmt.Printf(" %02x", gb.Memory.Read(i))
+		fmt.Printf(" %02x", gb.memory.Read(i))
 	}
 	fmt.Print(" ]]\n")
 }

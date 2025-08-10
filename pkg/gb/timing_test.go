@@ -13,7 +13,7 @@ func cpuTimingTest(t *testing.T, options ...GameboyOption) {
 		output += string(val)
 	})
 	options = append(options, transferOption)
-	gb, err := NewGameboy("./../../roms/blargg/instr_timing.gb", options...)
+	gb, err := New("./../../roms/blargg/instr_timing.gb", options...)
 	require.NoError(t, err, "error in init gb %v", err)
 
 	expected := "instr_timing\n\n\nPassed"

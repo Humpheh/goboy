@@ -1,10 +1,9 @@
 package gb
 
 import (
-	"testing"
-
 	"os"
 	"path/filepath"
+	"testing"
 
 	"github.com/stretchr/testify/require"
 )
@@ -35,20 +34,20 @@ func _TestAcceptance(t *testing.T) {
 }
 
 func inFinishLoop(gb *Gameboy) bool {
-	return gb.Memory.Read(gb.CPU.PC) == 0x00 &&
-		gb.Memory.Read(gb.CPU.PC+1) == 0x18 &&
-		gb.Memory.Read(gb.CPU.PC+2) == 0xFD
+	return gb.memory.Read(gb.cpu.PC) == 0x00 &&
+		gb.memory.Read(gb.cpu.PC+1) == 0x18 &&
+		gb.memory.Read(gb.cpu.PC+2) == 0xFD
 }
 
 func passedTest(gb *Gameboy) bool {
-	return gb.CPU.AF.Hi() == 0x00 &&
-		gb.CPU.BC.HiLo() == 0x0305 &&
-		gb.CPU.DE.HiLo() == 0x080D &&
-		gb.CPU.HL.HiLo() == 0x1522
+	return gb.cpu.AF.Hi() == 0x00 &&
+		gb.cpu.BC.HiLo() == 0x0305 &&
+		gb.cpu.DE.HiLo() == 0x080D &&
+		gb.cpu.HL.HiLo() == 0x1522
 }
 
 func runMooneyeTest(t *testing.T, file string) {
-	gb, err := NewGameboy(file)
+	gb, err := New(file)
 	require.NoError(t, err, "error in init gb %v", err)
 
 	// Run the CPU until the output has matched the expected

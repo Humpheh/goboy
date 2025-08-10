@@ -1,9 +1,5 @@
 package gb
 
-import (
-	"github.com/Humpheh/goboy/pkg/bits"
-)
-
 const (
 	// PaletteGreyscale is the default greyscale gameboy colour palette.
 	PaletteGreyscale = byte(iota)
@@ -60,7 +56,7 @@ func NewPalette() *cgbPalette {
 	return &cgbPalette{Palette: pal}
 }
 
-func changePallete() {
+func changePalette() {
 	CurrentPalette = (CurrentPalette + 1) % byte(len(Palettes))
 }
 
@@ -78,7 +74,7 @@ type cgbPalette struct {
 // auto increment if bit 7 is set.
 func (pal *cgbPalette) updateIndex(value byte) {
 	pal.Index = value & 0x3F
-	pal.Inc = bits.Test(value, 7)
+	pal.Inc = bitTest(value, 7)
 }
 
 // Read the palette information stored at the current index.
