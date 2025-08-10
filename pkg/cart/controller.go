@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"log"
+	"log/slog"
 	"strings"
 	"time"
 )
@@ -208,7 +209,8 @@ func NewCart(rom []byte, filename string) *Cart {
 			cartridge.BankingController = NewMBC1(rom)
 		}
 	}
-	log.Printf("Cart type: %#02x (%v)", mbcFlag, cartType)
+
+	slog.Debug("Loaded ROM type", slog.String("type", cartType), slog.Int("mbcFlag", int(mbcFlag)))
 
 	switch mbcFlag {
 	case 0x3, 0x6, 0x9, 0xD, 0xF, 0x10, 0x13, 0x17, 0x1B, 0x1E, 0xFF:

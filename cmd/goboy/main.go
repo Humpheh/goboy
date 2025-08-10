@@ -8,25 +8,12 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/faiface/mainthread"
-	"github.com/faiface/pixel/pixelgl"
-	"github.com/sqweek/dialog"
-
 	"github.com/Humpheh/goboy/pkg/gb"
-	"github.com/Humpheh/goboy/pkg/io"
+	"github.com/Humpheh/goboy/pkg/pixelbinding"
 )
 
 // The version of GoBoy
 var version = "develop"
-
-const logo = `
-    ______      ____
-   / ____/___  / __ )____  __  __
-  / / __/ __ \/ __  / __ \/ / / /
- / /_/ / /_/ / /_/ / /_/ / /_/ /
- \____/\____/_____/\____/\__, /
-%23s /____/
-`
 
 var (
 	mute    = flag.Bool("mute", false, "mute sound output")
@@ -40,13 +27,14 @@ var (
 
 func main() {
 	flag.Parse()
-	pixelgl.Run(start)
+	pixelbinding.Run(start)
 }
 
-func start() {
-
-	// Load the rom from the flag argument, or prompt with file select
-	rom := getROM()
+func start(binding gb.IOBinding) {
+	rom := flag.Arg(0)
+	if rom == "" {
+		log.Fatal("No ROM file specified. Please provide a ROM file as an argument.")
+	}
 
 	// If the CPU profile flag is set, then setup the profiling
 	if *cpuprofile != "" {
@@ -59,8 +47,7 @@ func start() {
 	}
 
 	// Print the logo and the run settings to the console
-	fmt.Println(fmt.Sprintf(logo, version))
-	fmt.Printf("APU: %v\nCGB: %v\nROM: %v\n", !*mute, !*dmgMode, rom)
+	fmt.Printf("[\u001B[1;32mGoBoy\u001B[0m] %v :: apu=%v cgb=%v\n", version, !*mute, !*dmgMode)
 
 	var opts []gb.GameboyOption
 	if !*dmgMode {
@@ -81,8 +68,8 @@ func start() {
 
 	// Create the monitor for pixels
 	enableVSync := !(*vsyncOff || *unlocked)
-	monitor := io.NewPixelsIOBinding(enableVSync, gameboy)
-	startGBLoop(gameboy, monitor)
+	binding.SetEnableVSync(enableVSync)
+	startGBLoop(gameboy, binding)
 }
 
 func startGBLoop(gameboy *gb.Gameboy, monitor gb.IOBinding) {
@@ -122,24 +109,6 @@ func startGBLoop(gameboy *gb.Gameboy, monitor gb.IOBinding) {
 			frames = 0
 		}
 	}
-}
-
-// Determine the ROM location. If the string in the flag value is empty then it
-// should prompt the user to select a rom file using the OS dialog.
-func getROM() string {
-	rom := flag.Arg(0)
-	if rom == "" {
-		mainthread.Call(func() {
-			var err error
-			rom, err = dialog.File().
-				Filter("GameBoy ROM", "zip", "gb", "gbc", "bin").
-				Title("Load GameBoy ROM File").Load()
-			if err != nil {
-				os.Exit(1)
-			}
-		})
-	}
-	return rom
 }
 
 // Start the CPU profile to a the file passed in from the flag.

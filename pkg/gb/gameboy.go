@@ -311,6 +311,7 @@ func (gb *Gameboy) init(romFile string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open rom file: %s", err)
 	}
+	fmt.Printf("Loaded ROM: %s\n", gb.memory.Cart.GetName())
 	gb.cgbMode = gb.options.cgbMode && hasCGB
 	return nil
 }
