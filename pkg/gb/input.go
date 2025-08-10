@@ -45,6 +45,9 @@ type ButtonInput struct {
 
 // IOBinding provides an interface for display and input bindings.
 type IOBinding interface {
+	// SetEnableVSync sets whether vertical sync is enabled.
+	SetEnableVSync(enable bool)
+
 	// Render renders a frame of the game.
 	Render(screen *[160][144][3]uint8)
 
