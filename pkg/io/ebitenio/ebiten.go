@@ -2,7 +2,6 @@ package ebitenio
 
 import (
 	"fmt"
-	"image/color"
 	"sync"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -17,25 +16,24 @@ type ebitenIOBinding struct {
 	imageMutex sync.Mutex
 	image      *ebiten.Image
 
+	step                     func(binding gb.IOBinding)
 	previouslyPressedButtons []ebiten.Key
 }
 
-func New(start func(iob gb.IOBinding)) {
+func New() gb.IOBinding {
 	ebiten.SetWindowSize(160*defaultScale, 144*defaultScale)
 	ebiten.SetWindowTitle("GoBoy")
+	ebiten.SetTPS(ebiten.SyncWithFPS)
 
-	binding := &ebitenIOBinding{
+	return &ebitenIOBinding{
 		image:   ebiten.NewImage(160, 144),
-		running: true,
-	}
-	go start(binding)
-	if err := ebiten.RunGame(binding); err != nil {
-		binding.running = false
-		panic(err)
+		running: false,
 	}
 }
 
 func (g *ebitenIOBinding) Update() error {
+	g.step(g)
+	//g.SetTitle(fmt.Sprintf("GoBoy (FPS: %0.2f)", ebiten.ActualFPS()))
 	return nil
 }
 
@@ -51,7 +49,14 @@ func (e *ebitenIOBinding) Layout(outsideWidth, outsideHeight int) (screenWidth, 
 	return 160, 144
 }
 
-func (e *ebitenIOBinding) Start() {}
+func (e *ebitenIOBinding) Start(step func(binding gb.IOBinding)) {
+	e.step = step
+	e.running = true
+	if err := ebiten.RunGame(e); err != nil {
+		e.running = false
+		panic(err)
+	}
+}
 
 func (e *ebitenIOBinding) SetVSync(enabled bool) {
 	ebiten.SetVsyncEnabled(enabled)
@@ -64,13 +69,23 @@ func (e *ebitenIOBinding) IsRunning() bool {
 func (e *ebitenIOBinding) Render(screen *[160][144][3]uint8) {
 	e.imageMutex.Lock()
 	defer e.imageMutex.Unlock()
-	for y := 0; y < gb.ScreenHeight; y++ {
-		for x := 0; x < gb.ScreenWidth; x++ {
-			col := screen[x][y]
-			rgb := color.RGBA{R: col[0], G: col[1], B: col[2], A: 0xFF}
-			e.image.Set(x, y, rgb)
+	//for y := 0; y < gb.ScreenHeight; y++ {
+	//	for x := 0; x < gb.ScreenWidth; x++ {
+	//		col := screen[x][y]
+	//		rgb := color.RGBA{R: col[0], G: col[1], B: col[2], A: 0xFF}
+	//		e.image.Set(x, y, rgb)
+	//	}
+	//}
+	pix := make([]byte, 160*144*4)
+	for y := 0; y < 144; y++ {
+		for x := 0; x < 160; x++ {
+			pix[(y*160+x)*4] = screen[x][y][0]
+			pix[(y*160+x)*4+1] = screen[x][y][1]
+			pix[(y*160+x)*4+2] = screen[x][y][2]
+			pix[(y*160+x)*4+3] = 0xff
 		}
 	}
+	e.image.WritePixels(pix)
 }
 
 func (e *ebitenIOBinding) SetTitle(title string) {

@@ -40,10 +40,9 @@ var (
 func main() {
 	flag.Parse()
 	//pixelio.New(start)
-	ebitenio.New(start)
-}
 
-func start(io gb.IOBinding) {
+	binding := ebitenio.New()
+
 	// Load the rom from the flag argument, or prompt with file select
 	rom := getROM()
 
@@ -84,9 +83,19 @@ func start(io gb.IOBinding) {
 	}
 
 	// Create the monitor for pixels
-	io.SetVSync(!(*vsyncOff || *unlocked))
-	io.Start()
-	startGBLoop(gameboy, io)
+	g
+	binding.SetVSync(!(*vsyncOff || *unlocked))
+	binding.Start(update(gameboy))
+}
+
+func update(gameboy *gb.Gameboy) func(monitor gb.IOBinding) {
+	return func(monitor gb.IOBinding) {
+		buttons := monitor.ButtonInput()
+		gameboy.ProcessInput(buttons)
+
+		_ = gameboy.Update()
+		monitor.Render(&gameboy.PreparedData)
+	}
 }
 
 func startGBLoop(gameboy *gb.Gameboy, monitor gb.IOBinding) {

@@ -50,7 +50,7 @@ type ButtonInput struct {
 // IOBinding provides an interface for display and input bindings.
 type IOBinding interface {
 	// Start starts the io.
-	Start()
+	Start(step func(binding IOBinding))
 	// SetVSync sets the vsync value
 	SetVSync(enabled bool)
 	// Render renders a frame of the game.
