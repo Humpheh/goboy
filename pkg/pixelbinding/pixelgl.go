@@ -11,7 +11,7 @@ import (
 	"github.com/Humpheh/goboy/pkg/gb"
 )
 
-// DefaultPixelScale is thed default multiplier on the pixels on display
+// DefaultPixelScale is the default multiplier on the pixels on display
 const DefaultPixelScale float64 = 3
 
 // pixelsIOBinding binds screen output and input using the pixels library.
