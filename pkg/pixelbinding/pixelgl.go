@@ -100,7 +100,7 @@ func (mon *pixelsIOBinding) SetTitle(title string) {
 	mon.window.SetTitle(title)
 }
 
-// Toggle the fullscreen window on the main monitor.
+// toggleFullscreen toggles the fullscreen window on the main monitor.
 func (mon *pixelsIOBinding) toggleFullscreen() {
 	if mon.window.Monitor() == nil {
 		monitor := opengl.PrimaryMonitor()
