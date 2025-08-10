@@ -2,3 +2,5 @@
 vendor/
 main
 goboy
+
+.DS_Store
