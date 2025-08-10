@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Humpheh/goboy/pkg/apu"
-	"github.com/Humpheh/goboy/pkg/bits"
+	"github.com/Humpheh/goboy/pkg/cart"
 )
 
 const (
@@ -21,9 +21,10 @@ const (
 type Gameboy struct {
 	options gameboyOptions
 
-	Memory *Memory
-	CPU    *CPU
-	Sound  *apu.APU
+	// Core components of the Gameboy.
+	memory *Memory
+	cpu    *CPU
+	sound  *apu.APU
 
 	Debug  DebugFlags
 	paused bool
@@ -56,8 +57,8 @@ type Gameboy struct {
 	// Flag if the game is running in cgb mode. For this to be true the game
 	// rom must support cgb mode and the option be true.
 	cgbMode       bool
-	BGPalette     *cgbPalette
-	SpritePalette *cgbPalette
+	bgPalette     *cgbPalette
+	spritePalette *cgbPalette
 
 	currentSpeed byte
 	prepareSpeed bool
@@ -89,7 +90,7 @@ func (gb *Gameboy) Update() int {
 		gb.updateTimers(cyclesOp)
 		cycles += gb.doInterrupts()
 
-		gb.Sound.Buffer(cyclesOp, gb.getSpeed())
+		gb.sound.Buffer(cyclesOp, gb.getSpeed())
 	}
 	return cycles
 }
@@ -101,11 +102,11 @@ func (gb *Gameboy) togglePaused() {
 
 // ToggleSoundChannel toggles a sound channel for debugging.
 func (gb *Gameboy) ToggleSoundChannel(channel int) {
-	gb.Sound.ToggleSoundChannel(channel)
+	gb.sound.ToggleSoundChannel(channel)
 }
 
 func (gb *Gameboy) SoundString() {
-	gb.Sound.LogSoundState()
+	gb.sound.LogSoundState()
 }
 
 // BGMapString returns a string of the values in the background map.
@@ -114,7 +115,7 @@ func (gb *Gameboy) BGMapString() string {
 	for y := uint16(0); y < 0x20; y++ {
 		out += fmt.Sprintf("%2x: ", y)
 		for x := uint16(0); x < 0x20; x++ {
-			out += fmt.Sprintf("%2x ", gb.Memory.Read(0x9800+(y*0x20)+x))
+			out += fmt.Sprintf("%2x ", gb.memory.Read(0x9800+(y*0x20)+x))
 		}
 		out += "\n"
 	}
@@ -152,23 +153,23 @@ func (gb *Gameboy) updateTimers(cycles int) {
 		freq := gb.getClockFreqCount()
 		for gb.timerCounter >= freq {
 			gb.timerCounter -= freq
-			tima := gb.Memory.HighRAM[0x05] /* TIMA */
+			tima := gb.memory.HighRAM[0x05] /* TIMA */
 			if tima == 0xFF {
-				gb.Memory.HighRAM[TIMA-0xFF00] = gb.Memory.HighRAM[0x06] /* TMA */
+				gb.memory.HighRAM[TIMA-0xFF00] = gb.memory.HighRAM[0x06] /* TMA */
 				gb.requestInterrupt(2)
 			} else {
-				gb.Memory.HighRAM[TIMA-0xFF00] = tima + 1
+				gb.memory.HighRAM[TIMA-0xFF00] = tima + 1
 			}
 		}
 	}
 }
 
 func (gb *Gameboy) isClockEnabled() bool {
-	return bits.Test(gb.Memory.HighRAM[0x07] /* TAC */, 2)
+	return bitTest(gb.memory.HighRAM[0x07] /* TAC */, 2)
 }
 
 func (gb *Gameboy) getClockFreq() byte {
-	return gb.Memory.HighRAM[0x07] /* TAC */ & 0x3
+	return gb.memory.HighRAM[0x07] /* TAC */ & 0x3
 }
 
 func (gb *Gameboy) getClockFreqCount() int {
@@ -189,18 +190,18 @@ func (gb *Gameboy) setClockFreq() {
 }
 
 func (gb *Gameboy) dividerRegister(cycles int) {
-	gb.CPU.Divider += cycles
-	if gb.CPU.Divider >= 255 {
-		gb.CPU.Divider -= 255
-		gb.Memory.HighRAM[DIV-0xFF00]++
+	gb.cpu.Divider += cycles
+	if gb.cpu.Divider >= 255 {
+		gb.cpu.Divider -= 255
+		gb.memory.HighRAM[DIV-0xFF00]++
 	}
 }
 
 // Request the Gameboy to perform an interrupt.
 func (gb *Gameboy) requestInterrupt(interrupt byte) {
-	req := gb.Memory.HighRAM[0x0F] | 0xE0
-	req = bits.Set(req, interrupt)
-	gb.Memory.Write(0xFF0F, req)
+	req := gb.memory.HighRAM[0x0F] | 0xE0
+	req = bitSet(req, interrupt)
+	gb.memory.Write(0xFF0F, req)
 }
 
 func (gb *Gameboy) doInterrupts() (cycles int) {
@@ -213,13 +214,13 @@ func (gb *Gameboy) doInterrupts() (cycles int) {
 		return 0
 	}
 
-	req := gb.Memory.HighRAM[0x0F] | 0xE0
-	enabled := gb.Memory.HighRAM[0xFF]
+	req := gb.memory.HighRAM[0x0F] | 0xE0
+	enabled := gb.memory.HighRAM[0xFF]
 
 	if req > 0 {
 		var i byte
 		for i = 0; i < 5; i++ {
-			if bits.Test(req, i) && bits.Test(enabled, i) {
+			if bitTest(req, i) && bitTest(enabled, i) {
 				gb.serviceInterrupt(i)
 				return 20
 			}
@@ -248,44 +249,52 @@ func (gb *Gameboy) serviceInterrupt(interrupt byte) {
 	gb.interruptsOn = false
 	gb.halted = false
 
-	req := gb.Memory.ReadHighRam(0xFF0F)
-	req = bits.Reset(req, interrupt)
-	gb.Memory.Write(0xFF0F, req)
+	req := gb.memory.ReadHighRam(0xFF0F)
+	req = bitReset(req, interrupt)
+	gb.memory.Write(0xFF0F, req)
 
-	gb.pushStack(gb.CPU.PC)
-	gb.CPU.PC = interruptAddresses[interrupt]
+	gb.pushStack(gb.cpu.PC)
+	gb.cpu.PC = interruptAddresses[interrupt]
 }
 
 // Push a 16 bit value onto the stack and decrement SP.
 func (gb *Gameboy) pushStack(address uint16) {
-	sp := gb.CPU.SP.HiLo()
-	gb.Memory.Write(sp-1, byte(uint16(address&0xFF00)>>8))
-	gb.Memory.Write(sp-2, byte(address&0xFF))
-	gb.CPU.SP.Set(gb.CPU.SP.HiLo() - 2)
+	sp := gb.cpu.SP.HiLo()
+	gb.memory.Write(sp-1, byte(uint16(address&0xFF00)>>8))
+	gb.memory.Write(sp-2, byte(address&0xFF))
+	gb.cpu.SP.Set(gb.cpu.SP.HiLo() - 2)
 }
 
 // Pop the next 16 bit value off the stack and increment SP.
 func (gb *Gameboy) popStack() uint16 {
-	sp := gb.CPU.SP.HiLo()
-	byte1 := uint16(gb.Memory.Read(sp))
-	byte2 := uint16(gb.Memory.Read(sp+1)) << 8
-	gb.CPU.SP.Set(gb.CPU.SP.HiLo() + 2)
+	sp := gb.cpu.SP.HiLo()
+	byte1 := uint16(gb.memory.Read(sp))
+	byte2 := uint16(gb.memory.Read(sp+1)) << 8
+	gb.cpu.SP.Set(gb.cpu.SP.HiLo() + 2)
 	return byte1 | byte2
 }
 
 func (gb *Gameboy) joypadValue(current byte) byte {
 	var in byte = 0xF
-	if bits.Test(current, 4) {
+	if bitTest(current, 4) {
 		in = gb.inputMask & 0xF
-	} else if bits.Test(current, 5) {
+	} else if bitTest(current, 5) {
 		in = (gb.inputMask >> 4) & 0xF
 	}
 	return current | 0xc0 | in
 }
 
-// IsGameLoaded returns if there is a game loaded in the gameboy or not.
-func (gb *Gameboy) IsGameLoaded() bool {
-	return gb.Memory != nil && gb.Memory.Cart != nil
+// GetLoadedCart returns the currently loaded cartridge, or nil if no cartridge is loaded.
+func (gb *Gameboy) GetLoadedCart() *cart.Cart {
+	if gb.memory == nil || gb.memory.Cart == nil {
+		return nil
+	}
+	return gb.memory.Cart
+}
+
+// IsCartLoaded returns if there is a game loaded in the gameboy.
+func (gb *Gameboy) IsCartLoaded() bool {
+	return gb.memory != nil && gb.memory.Cart != nil
 }
 
 // IsCGB returns if we are using CGB features.
@@ -298,7 +307,7 @@ func (gb *Gameboy) init(romFile string) error {
 	gb.setup()
 
 	// Load the ROM file
-	hasCGB, err := gb.Memory.LoadCart(romFile)
+	hasCGB, err := gb.memory.LoadCart(romFile)
 	if err != nil {
 		return fmt.Errorf("failed to open rom file: %s", err)
 	}
@@ -309,10 +318,10 @@ func (gb *Gameboy) init(romFile string) error {
 func (gb *Gameboy) initKeyHandlers() {
 	gb.keyHandlers = map[Button]func(){
 		ButtonPause:               gb.togglePaused,
-		ButtonChangePallete:       changePallete,
+		ButtonChangePallete:       changePalette,
 		ButtonToggleBackground:    gb.Debug.toggleBackGround,
 		ButtonToggleSprites:       gb.Debug.toggleSprites,
-		ButttonToggleOutputOpCode: gb.Debug.toggleOutputOpCode,
+		ButtonToggleOutputOpCode:  gb.Debug.toggleOutputOpCode,
 		ButtonPrintBGMap:          gb.printBGMap,
 		ButtonToggleSoundChannel1: func() { gb.ToggleSoundChannel(1) },
 		ButtonToggleSoundChannel2: func() { gb.ToggleSoundChannel(2) },
@@ -321,18 +330,18 @@ func (gb *Gameboy) initKeyHandlers() {
 	}
 }
 
-// Setup and instantitate the gameboys components.
+// Setup and instantiate the GameBoys components.
 func (gb *Gameboy) setup() {
 	// Initialise the CPU
-	gb.CPU = &CPU{}
-	gb.CPU.Init(gb.options.cgbMode)
+	gb.cpu = &CPU{}
+	gb.cpu.Init(gb.options.cgbMode)
 
 	// Initialise the memory
-	gb.Memory = &Memory{}
-	gb.Memory.Init(gb)
+	gb.memory = &Memory{}
+	gb.memory.Init(gb)
 
-	gb.Sound = &apu.APU{}
-	gb.Sound.Init(gb.options.sound)
+	gb.sound = &apu.APU{}
+	gb.sound.Init(gb.options.sound)
 
 	gb.Debug = DebugFlags{}
 	gb.scanlineCounter = 456
@@ -340,14 +349,14 @@ func (gb *Gameboy) setup() {
 
 	gb.cbInst = gb.cbInstructions()
 
-	gb.SpritePalette = NewPalette()
-	gb.BGPalette = NewPalette()
+	gb.spritePalette = NewPalette()
+	gb.bgPalette = NewPalette()
 
 	gb.initKeyHandlers()
 }
 
-// NewGameboy returns a new Gameboy instance.
-func NewGameboy(romFile string, opts ...GameboyOption) (*Gameboy, error) {
+// New returns a new Gameboy instance.
+func New(romFile string, opts ...GameboyOption) (*Gameboy, error) {
 	// Build the gameboy
 	gameboy := Gameboy{}
 	for _, opt := range opts {

@@ -33,7 +33,7 @@ func TestSpritePriority(t *testing.T) {
 	}
 
 	// Load the test ROM and iterate a few frames to load the image
-	gb, err := NewGameboy("./../../roms/mooneye/runnable/sprite_priority.gb")
+	gb, err := New("./../../roms/mooneye/runnable/sprite_priority.gb")
 	require.NoError(t, err, "error in init gb %v", err)
 	for i := 0; i < maxPPUIterations; i++ {
 		gb.Update()

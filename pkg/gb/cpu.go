@@ -1,9 +1,5 @@
 package gb
 
-import (
-	"github.com/Humpheh/goboy/pkg/bits"
-)
-
 // Register represents a GB CPU 16bit register which provides functions
 // for setting and getting the higher and lower bytes.
 type register struct {
@@ -89,9 +85,9 @@ func (cpu *CPU) Init(cgb bool) {
 // Internally set the value of a flag on the flag register.
 func (cpu *CPU) setFlag(index byte, on bool) {
 	if on {
-		cpu.AF.SetLo(bits.Set(cpu.AF.Lo(), index))
+		cpu.AF.SetLo(bitSet(cpu.AF.Lo(), index))
 	} else {
-		cpu.AF.SetLo(bits.Reset(cpu.AF.Lo(), index))
+		cpu.AF.SetLo(bitReset(cpu.AF.Lo(), index))
 	}
 }
 

@@ -18,7 +18,7 @@ func cpuInstTest(t *testing.T, options ...GameboyOption) {
 		output += string(val)
 	})
 	options = append(options, transferOption)
-	gb, err := NewGameboy("./../../roms/blargg/cpu_instrs.gb", options...)
+	gb, err := New("./../../roms/blargg/cpu_instrs.gb", options...)
 	require.NoError(t, err, "error in init gb %v", err)
 
 	// Run the CPU until maxIterations iterations have passed.
@@ -52,7 +52,7 @@ func TestInstructionsCGB(t *testing.T) {
 }
 
 func BenchmarkGameboy_ExecuteNextOpcode(b *testing.B) {
-	gb, err := NewGameboy("./../../roms/blargg/cpu_instrs.gb")
+	gb, err := New("./../../roms/blargg/cpu_instrs.gb")
 	require.NoError(b, err, "error in init gb %v", err)
 	for i := 0; i < b.N; i++ {
 		gb.ExecuteNextOpcode()

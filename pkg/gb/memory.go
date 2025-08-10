@@ -3,7 +3,6 @@ package gb
 import (
 	"log"
 
-	"github.com/Humpheh/goboy/pkg/bits"
 	"github.com/Humpheh/goboy/pkg/cart"
 )
 
@@ -109,11 +108,11 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 		return
 
 	case address >= 0xFF10 && address <= 0xFF26:
-		mem.gb.Sound.Write(address, value)
+		mem.gb.sound.Write(address, value)
 
 	case address >= 0xFF30 && address <= 0xFF3F:
 		// Writing to channel 3 waveform RAM.
-		mem.gb.Sound.WriteWaveform(address, value)
+		mem.gb.sound.WriteWaveform(address, value)
 
 	case address == 0xFF02:
 		// Serial transfer control
@@ -127,7 +126,7 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 	case address == DIV:
 		// Trap divider register
 		mem.gb.setClockFreq()
-		mem.gb.CPU.Divider = 0
+		mem.gb.cpu.Divider = 0
 		mem.HighRAM[DIV-0xFF00] = 0
 
 	case address == TIMA:
@@ -160,7 +159,7 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 	case address == 0xFF4D:
 		// CGB speed change
 		if mem.gb.IsCGB() {
-			mem.gb.prepareSpeed = bits.Test(value, 0)
+			mem.gb.prepareSpeed = bitTest(value, 0)
 		}
 
 	case address == 0xFF4F:
@@ -178,25 +177,25 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 	case address == 0xFF68:
 		// BG palette index
 		if mem.gb.IsCGB() {
-			mem.gb.BGPalette.updateIndex(value)
+			mem.gb.bgPalette.updateIndex(value)
 		}
 
 	case address == 0xFF69:
 		// BG Palette data
 		if mem.gb.IsCGB() {
-			mem.gb.BGPalette.write(value)
+			mem.gb.bgPalette.write(value)
 		}
 
 	case address == 0xFF6A:
 		// Sprite palette index
 		if mem.gb.IsCGB() {
-			mem.gb.SpritePalette.updateIndex(value)
+			mem.gb.spritePalette.updateIndex(value)
 		}
 
 	case address == 0xFF6B:
 		// Sprite Palette data
 		if mem.gb.IsCGB() {
-			mem.gb.SpritePalette.write(value)
+			mem.gb.spritePalette.write(value)
 		}
 
 	case address == 0xFF70:
@@ -317,11 +316,11 @@ func (mem *Memory) ReadHighRam(address uint16) byte {
 		return mem.gb.joypadValue(mem.HighRAM[0x00])
 
 	case address >= 0xFF10 && address <= 0xFF26:
-		return mem.gb.Sound.Read(address)
+		return mem.gb.sound.Read(address)
 
 	case address >= 0xFF30 && address <= 0xFF3F:
 		// Writing to channel 3 waveform RAM.
-		return mem.gb.Sound.Read(address)
+		return mem.gb.sound.Read(address)
 
 	case address == 0xFF0F:
 		return mem.HighRAM[0x0F] | 0xE0
@@ -333,34 +332,34 @@ func (mem *Memory) ReadHighRam(address uint16) byte {
 	case address == 0xFF68:
 		// BG palette index
 		if mem.gb.IsCGB() {
-			return mem.gb.BGPalette.readIndex()
+			return mem.gb.bgPalette.readIndex()
 		}
 		return 0
 
 	case address == 0xFF69:
 		// BG Palette data
 		if mem.gb.IsCGB() {
-			return mem.gb.BGPalette.read()
+			return mem.gb.bgPalette.read()
 		}
 		return 0
 
 	case address == 0xFF6A:
 		// Sprite palette index
 		if mem.gb.IsCGB() {
-			return mem.gb.SpritePalette.readIndex()
+			return mem.gb.spritePalette.readIndex()
 		}
 		return 0
 
 	case address == 0xFF6B:
 		// Sprite Palette data
 		if mem.gb.IsCGB() {
-			return mem.gb.SpritePalette.read()
+			return mem.gb.spritePalette.read()
 		}
 		return 0
 
 	case address == 0xFF4D:
 		// Speed switch data
-		return mem.gb.currentSpeed<<7 | bits.B(mem.gb.prepareSpeed)
+		return mem.gb.currentSpeed<<7 | boolToBitByte(mem.gb.prepareSpeed)
 
 	case address == 0xFF4F:
 		return mem.VRAMBank
@@ -387,7 +386,7 @@ func (mem *Memory) doDMATransfer(value byte) {
 
 // Start a CGB DMA transfer.
 func (mem *Memory) doNewDMATransfer(value byte) {
-	if mem.hdmaActive && bits.Val(value, 7) == 0 {
+	if mem.hdmaActive && bitGet(value, 7) == 0 {
 		// Abort a HDMA transfer
 		mem.hdmaActive = false
 		mem.HighRAM[0x55] |= 0x80 // Set bit 7
