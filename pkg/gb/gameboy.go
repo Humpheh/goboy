@@ -85,13 +85,22 @@ func (gb *Gameboy) Update() int {
 		} else {
 			// TODO: This is incorrect
 		}
-		cycles += cyclesOp
-		gb.updateGraphics(cyclesOp)
-		gb.updateTimers(cyclesOp)
-		cycles += gb.doInterrupts()
+		cycles += gb.tick(cyclesOp)
 
-		gb.sound.Buffer(cyclesOp, gb.getSpeed())
+		// Interrupt dispatch takes time, so the rest of the hardware must advance with it
+		if intCycles := gb.doInterrupts(); intCycles > 0 {
+			cycles += gb.tick(intCycles)
+		}
 	}
+	return cycles
+}
+
+// tick advances the graphics, timers and sound by the given number of cycles
+// and returns the cycles.
+func (gb *Gameboy) tick(cycles int) int {
+	gb.updateGraphics(cycles)
+	gb.updateTimers(cycles)
+	gb.sound.Buffer(cycles, gb.getSpeed())
 	return cycles
 }
 
