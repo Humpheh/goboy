@@ -200,12 +200,12 @@ func (gb *Gameboy) setClockFreq() {
 
 func (gb *Gameboy) dividerRegister(cycles int) {
 	gb.cpu.Divider += cycles
-	if gb.cpu.Divider >= 255 {
-		gb.cpu.Divider -= 255
+	for gb.cpu.Divider >= 256 {
+		gb.cpu.Divider -= 256
 		gb.memory.HighRAM[DIV-0xFF00]++
 	}
 }
-
+f
 // Request the Gameboy to perform an interrupt.
 func (gb *Gameboy) requestInterrupt(interrupt byte) {
 	req := gb.memory.HighRAM[0x0F] | 0xE0
