@@ -205,7 +205,7 @@ func (gb *Gameboy) dividerRegister(cycles int) {
 		gb.memory.HighRAM[DIV-0xFF00]++
 	}
 }
-f
+
 // Request the Gameboy to perform an interrupt.
 func (gb *Gameboy) requestInterrupt(interrupt byte) {
 	req := gb.memory.HighRAM[0x0F] | 0xE0
