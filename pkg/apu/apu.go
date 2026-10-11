@@ -15,6 +15,7 @@ const (
 	perSample  = 1 / float64(sampleRate)
 
 	cpuTicksPerSample    = float64(4194304) / sampleRate
+	cpuTicksPerLength    = 4194304 / 256
 	maxFrameBufferLength = 5000
 )
 
@@ -32,6 +33,7 @@ type APU struct {
 	player                 *oto.Player
 	chn1, chn2, chn3, chn4 *Channel
 	tickCounter            float64
+	lengthCounter          int
 	lVol, rVol             float64
 
 	audioBuffer chan [2]byte
@@ -99,6 +101,16 @@ func (a *APU) playSound(bufferSeconds int) {
 }
 
 func (a *APU) Buffer(cpuTicks int, speed int) {
+	// Length counters are clocked at 256Hz even when sound output is off
+	a.lengthCounter += cpuTicks / speed
+	for a.lengthCounter >= cpuTicksPerLength {
+		a.lengthCounter -= cpuTicksPerLength
+		a.chn1.clockLength()
+		a.chn2.clockLength()
+		a.chn3.clockLength()
+		a.chn4.clockLength()
+	}
+
 	if !a.playing {
 		return
 	}
@@ -141,6 +153,9 @@ func (a *APU) Read(address uint16) byte {
 	if address >= 0xFF30 {
 		return a.waveformRam[address-0xFF30]
 	}
+	if address == 0xFF26 {
+		return a.memory[0x26]&0x80 | 0x70 | a.channelStatus()
+	}
 	// TODO: we should modify the sound memory as we're sampling
 	return a.memory[address-0xFF00] & soundMask[address-0xFF10]
 }
@@ -160,7 +175,7 @@ func (a *APU) Write(address uint16, value byte) {
 		// DDLL LLLL Duty, Length load
 		duty := (value & 0b1100_0000) >> 6
 		a.chn1.generator = Square(squareLimits[duty])
-		a.chn1.length = int(value & 0b0011_1111)
+		a.chn1.length = 64 - int(value&0b0011_1111)
 	case 0xFF12:
 		// VVVV APPP - Starting volume, Envelop add mode, period
 		envVolume, envDirection, envSweep := a.extractEnvelope(value)
@@ -175,15 +190,13 @@ func (a *APU) Write(address uint16, value byte) {
 		// TL-- -FFF Trigger, Length Enable, Frequencu MSB
 		frequencyValue := uint16(value&0b111)<<8 | uint16(a.memory[0x13])
 		a.chn1.frequency = 131072 / (2048 - float64(frequencyValue))
+		a.chn1.lengthEnabled = value&0x40 != 0
 		if value&0b1000_0000 != 0 {
 			if a.chn1.length == 0 {
 				a.chn1.length = 64
 			}
-			duration := -1
-			if value&0b100_0000 != 0 { // 1 = use length
-				duration = int(float64(a.chn1.length)*(1/64)) * sampleRate
-			}
-			a.chn1.Reset(duration)
+			a.chn1.Reset()
+			a.chn1.enabled = a.memory[0x12]&0xF8 != 0
 			a.chn1.envelopeSteps = a.chn1.envelopeVolume
 			a.chn1.envelopeStepsInit = a.chn1.envelopeVolume
 			// TODO: Square 1's sweep does several things (see frequency sweep).
@@ -196,7 +209,7 @@ func (a *APU) Write(address uint16, value byte) {
 		// DDLL LLLL Duty, Length load (64-L)
 		pattern := (value & 0b1100_0000) >> 6
 		a.chn2.generator = Square(squareLimits[pattern])
-		a.chn2.length = int(value & 0b11_1111)
+		a.chn2.length = 64 - int(value&0b11_1111)
 	case 0xFF17:
 		// VVVV APPP Starting volume, Envelope add mode, period
 		envVolume, envDirection, envSweep := a.extractEnvelope(value)
@@ -209,15 +222,13 @@ func (a *APU) Write(address uint16, value byte) {
 		a.chn2.frequency = 131072 / (2048 - float64(frequencyValue))
 	case 0xFF19:
 		// TL-- -FFF Trigger, Length enable, Frequency MSB
+		a.chn2.lengthEnabled = value&0x40 != 0
 		if value&0b1000_0000 != 0 {
 			if a.chn2.length == 0 {
 				a.chn2.length = 64
 			}
-			duration := -1
-			if value&0b100_0000 != 0 {
-				duration = int(float64(a.chn2.length)*(1/64)) * sampleRate
-			}
-			a.chn2.Reset(duration)
+			a.chn2.Reset()
+			a.chn2.enabled = a.memory[0x17]&0xF8 != 0
 			a.chn2.envelopeSteps = a.chn2.envelopeVolume
 			a.chn2.envelopeStepsInit = a.chn2.envelopeVolume
 		}
@@ -230,7 +241,7 @@ func (a *APU) Write(address uint16, value byte) {
 		a.chn3.envelopeStepsInit = int((value & 0b1000_0000) >> 7)
 	case 0xFF1B:
 		// LLLL LLLL Length load
-		a.chn3.length = int(value)
+		a.chn3.length = 256 - int(value)
 	case 0xFF1C:
 		// -VV- ---- Volume code
 		selection := (value & 0b110_0000) >> 5
@@ -241,16 +252,13 @@ func (a *APU) Write(address uint16, value byte) {
 		a.chn3.frequency = 65536 / (2048 - float64(frequencyValue))
 	case 0xFF1E:
 		// TL-- -FFF Trigger, Length enable, Frequency MSB
+		a.chn3.lengthEnabled = value&0x40 != 0
 		if value&0b1000_0000 != 0 {
 			if a.chn3.length == 0 {
 				a.chn3.length = 256
 			}
-			duration := -1
-			if value&0b100_0000 != 0 { // 1 = use length
-				duration = int((256-float64(a.chn3.length))*(1/256)) * sampleRate
-			}
 			a.chn3.generator = Waveform(func(i int) byte { return a.waveformRam[i] })
-			a.chn3.duration = duration
+			a.chn3.enabled = a.memory[0x1A]&0x80 != 0
 		}
 		frequencyValue := uint16(value&0b111)<<8 | uint16(a.memory[0x1D])
 		a.chn3.frequency = 65536 / (2048 - float64(frequencyValue))
@@ -260,7 +268,7 @@ func (a *APU) Write(address uint16, value byte) {
 		// ---- ---- Not used
 	case 0xFF20:
 		// --LL LLLL Length load
-		a.chn4.length = int(value & 0b11_1111)
+		a.chn4.length = 64 - int(value&0b11_1111)
 	case 0xFF21:
 		// VVVV APPP Starting volume, Envelope add mode, period
 		envVolume, envDirection, envSweep := a.extractEnvelope(value)
@@ -278,13 +286,14 @@ func (a *APU) Write(address uint16, value byte) {
 		a.chn4.frequency = 524288 / divRatio / math.Pow(2, shiftClock+1)
 	case 0xFF23:
 		// TL-- ---- Trigger, Length enable
+		a.chn4.lengthEnabled = value&0x40 != 0
 		if value&0x80 == 0x80 {
-			duration := -1
-			if value&0b100_0000 != 0 { // 1 = use length
-				duration = int(float64(61-a.chn4.length)*(1/256)) * sampleRate
+			if a.chn4.length == 0 {
+				a.chn4.length = 64
 			}
 			a.chn4.generator = Noise()
-			a.chn4.Reset(duration)
+			a.chn4.Reset()
+			a.chn4.enabled = a.memory[0x21]&0xF8 != 0
 			a.chn4.envelopeSteps = a.chn4.envelopeVolume
 			a.chn4.envelopeStepsInit = a.chn4.envelopeVolume
 		}
@@ -306,6 +315,17 @@ func (a *APU) Write(address uint16, value byte) {
 		a.chn4.onL = value&0x80 != 0
 	}
 	// TODO: if writing to FF26 bit 7 destroy all contents (also cannot access)
+}
+
+// channelStatus returns the on flags of the four channels in the low bits of NR52.
+func (a *APU) channelStatus() byte {
+	var status byte
+	for i, chn := range []*Channel{a.chn1, a.chn2, a.chn3, a.chn4} {
+		if chn.enabled {
+			status |= 1 << i
+		}
+	}
+	return status
 }
 
 // WriteWaveform writes a value to the waveform ram.
