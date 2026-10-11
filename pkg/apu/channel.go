@@ -14,9 +14,12 @@ type Channel struct {
 	time      float64
 	amplitude float64
 
-	// Duration in samples
-	duration int
-	length   int
+	// Length counter, which turns the channel off when it is clocked to zero
+	// while lengthEnabled is set.
+	length        int
+	lengthEnabled bool
+	// Whether the channel is on, as reported in NR52.
+	enabled bool
 
 	envelopeVolume     int
 	envelopeTime       int
@@ -48,9 +51,6 @@ func (chn *Channel) Sample() (outputL, outputR uint16) {
 		if !chn.debugOff {
 			output = uint16(float64(chn.generator(chn.time)) * chn.amplitude)
 		}
-		if chn.duration > 0 {
-			chn.duration--
-		}
 	}
 	chn.updateEnvelope()
 	chn.updateSweep()
@@ -63,20 +63,29 @@ func (chn *Channel) Sample() (outputL, outputR uint16) {
 	return
 }
 
-// Reset the channel to some default variables for the sweep, amplitude,
-// envelope and duration.
-func (chn *Channel) Reset(duration int) {
+// Reset the channel to some default variables for the sweep, amplitude
+// and envelope.
+func (chn *Channel) Reset() {
 	chn.amplitude = 1
 	chn.envelopeTime = 0
 	chn.sweepTime = 0
 	chn.sweepStep = 0
-	chn.duration = duration
+}
+
+// clockLength decrements the length counter if it is enabled, turning the
+// channel off when it reaches zero.
+func (chn *Channel) clockLength() {
+	if chn.lengthEnabled && chn.length > 0 {
+		chn.length--
+		if chn.length == 0 {
+			chn.enabled = false
+		}
+	}
 }
 
 // Returns if the channel should be playing or not.
 func (chn *Channel) shouldPlay() bool {
-	return (chn.duration == -1 || chn.duration > 0) &&
-		chn.generator != nil && chn.envelopeStepsInit > 0
+	return chn.enabled && chn.generator != nil && chn.envelopeStepsInit > 0
 }
 
 // Update the state of the channels envelope.
