@@ -6,23 +6,6 @@ import (
 	"github.com/Humpheh/goboy/pkg/cart"
 )
 
-const (
-	// DIV is the divider register which is incremented periodically by
-	// the Gameboy.
-	DIV = 0xFF04
-	// TIMA is the timer counter register which is incremented by a clock
-	// frequency specified in the TAC register.
-	TIMA = 0xFF05
-	// TMA is the timer modulo register. When the TIMA overflows, this data
-	// will be loaded into the TIMA register.
-	TMA = 0xFF06
-	// TAC is the timer control register. Writing to this register will
-	// start and stop the timer, and select the clock speed for the timer.
-	TAC = 0xFF07
-
-	// TODO: move more hardware registers up here.
-)
-
 // memory stores gameboy ROM, RAM and cartridge data. It manages the
 // banking of these data banks.
 type memory struct {
@@ -133,26 +116,17 @@ func (mem *memory) WriteHighRam(address uint16, value byte) {
 		}
 
 	case address == DIV:
-		// Trap divider register
-		mem.gb.setClockFreq()
-		mem.gb.cpu.Divider = 0
-		mem.HighRAM[DIV-0xFF00] = 0
+		// Writing to DIV resets the whole internal counter
+		mem.gb.setTimerCounter(0)
 
 	case address == TIMA:
-		mem.HighRAM[TIMA-0xFF00] = value
+		mem.gb.writeTIMA(value)
 
 	case address == TMA:
-		mem.HighRAM[TMA-0xFF00] = value
+		mem.gb.writeTMA(value)
 
 	case address == TAC:
-		// Timer control
-		currentFreq := mem.gb.getClockFreq()
-		mem.HighRAM[TAC-0xFF00] = value | 0xF8
-		newFreq := mem.gb.getClockFreq()
-
-		if currentFreq != newFreq {
-			mem.gb.setClockFreq()
-		}
+		mem.gb.writeTAC(value)
 
 	case address == LCDC:
 		wasEnabled := mem.gb.isLCDEnabled()
@@ -469,7 +443,7 @@ func (mem *memory) performNewDMATransfer(length uint16) {
 	destination += 0x8000
 
 	// Transfer the data from the source to the destination
-	for i := uint16(0); i < length; i++ {
+	for range length {
 		mem.Write(destination, mem.Read(source))
 		destination++
 		source++

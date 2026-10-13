@@ -14,7 +14,7 @@ const romPath = "../../roms/mooneye/acceptance"
 // Currently these do not all pass, so the function is renamed as to not
 // run on CI.
 //
-// 46 passed
+// 53 passed
 func _TestAcceptance(t *testing.T) {
 	err := filepath.Walk(romPath, func(path string, _ os.FileInfo, _ error) error {
 		if filepath.Ext(path) == ".gb" {
