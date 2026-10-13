@@ -19,7 +19,7 @@ func cpuTimingTest(t *testing.T, options ...GameboyOption) {
 	expected := "instr_timing\n\n\nPassed"
 
 	// Run the CPU until maxIterations iterations have passed.
-	for i := 0; i < maxIterations; i++ {
+	for range maxIterations {
 		gb.Update()
 		if output == expected {
 			break
@@ -32,4 +32,10 @@ func cpuTimingTest(t *testing.T, options ...GameboyOption) {
 // in the instr_timing rom in CGB mode.
 func TestInstructionTimingCGB(t *testing.T) {
 	cpuTimingTest(t, WithCGBEnabled())
+}
+
+// TestMemoryTimingCGB tests that the CPU passess all the memory timing tests
+// in the mem_timing rom in GCB mode. It uses mem_timing 2 blargg rom.
+func TestMemoryTimingCGB(t *testing.T) {
+	runBlarrgTestRomWithMemoryOutput(t, "./../../roms/blargg/mem_timing.gb")
 }

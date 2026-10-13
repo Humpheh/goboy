@@ -22,7 +22,7 @@ func cpuInstTest(t *testing.T, options ...GameboyOption) {
 	require.NoError(t, err, "error in init gb %v", err)
 
 	// Run the CPU until maxIterations iterations have passed.
-	for i := 0; i < maxIterations; i++ {
+	for range maxIterations {
 		gb.Update()
 	}
 
@@ -30,7 +30,7 @@ func cpuInstTest(t *testing.T, options ...GameboyOption) {
 	trimmed := strings.TrimSpace(strings.TrimPrefix(output, "cpu_instrs"))
 	require.True(t, len(trimmed) >= 94, "did not finish getting output in %v iterations: %v", maxIterations, trimmed)
 
-	for i := int64(0); i < 11; i++ {
+	for i := range int64(11) {
 		t.Run(fmt.Sprintf("Test %02v", i), func(t *testing.T) {
 			testString := trimmed[0:7]
 			trimmed = trimmed[7:]
@@ -49,12 +49,4 @@ func cpuInstTest(t *testing.T, options ...GameboyOption) {
 // in the cpu_instrs rom in CGB mode (includes speed switches).
 func TestInstructionsCGB(t *testing.T) {
 	cpuInstTest(t, WithCGBEnabled())
-}
-
-func BenchmarkGameboy_ExecuteNextOpcode(b *testing.B) {
-	gb, err := New("./../../roms/blargg/cpu_instrs.gb")
-	require.NoError(b, err, "error in init gb %v", err)
-	for i := 0; i < b.N; i++ {
-		gb.ExecuteNextOpcode()
-	}
 }

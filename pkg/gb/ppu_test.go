@@ -35,7 +35,7 @@ func TestSpritePriority(t *testing.T) {
 	// Load the test ROM and iterate a few frames to load the image
 	gb, err := New("./../../roms/mooneye/runnable/sprite_priority.gb")
 	require.NoError(t, err, "error in init gb %v", err)
-	for i := 0; i < maxPPUIterations; i++ {
+	for range maxPPUIterations {
 		gb.Update()
 	}
 
@@ -46,8 +46,8 @@ func TestSpritePriority(t *testing.T) {
 	}
 
 	// Iterate over the image and assert each pixel matches the expected image
-	for x := 0; x < ScreenWidth; x++ {
-		for y := 0; y < ScreenHeight; y++ {
+	for x := range ScreenWidth {
+		for y := range ScreenHeight {
 			actual := gb.PreparedData[x][y]
 			expected, ok := imageMap[img.At(x, y)]
 			require.True(t, ok, "unexpected colour in expected image: %v", img.At(x, y))
