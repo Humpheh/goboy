@@ -33,3 +33,9 @@ func cpuTimingTest(t *testing.T, options ...GameboyOption) {
 func TestInstructionTimingCGB(t *testing.T) {
 	cpuTimingTest(t, WithCGBEnabled())
 }
+
+// TestMemoryTimingCGB tests that the CPU passess all the memory timing tests
+// in the mem_timing rom in GCB mode. It uses mem_timing 2 blargg rom.
+func TestMemoryTimingCGB(t *testing.T) {
+	runBlarrgTestRomWithMemoryOutput(t, "./../../roms/blargg/mem_timing.gb")
+}

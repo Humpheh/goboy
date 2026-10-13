@@ -25,10 +25,10 @@ func blarggResult(gb *Gameboy) (status byte, text string, ok bool) {
 	return status, text, true
 }
 
-// TestInterruptTimingCGB tests that the CPU passes the blargg interrupt_time
-// rom in CGB mode.
-func TestInterruptTimingCGB(t *testing.T) {
-	gb, err := New("./../../roms/blargg/interrupt_time.gb", WithCGBEnabled())
+// Run a blarrg test rom that outputs to memory until it finishes or til
+// maxIterations.
+func runBlarrgTestRomWithMemoryOutput(t *testing.T, rom string) {
+	gb, err := New(rom, WithCGBEnabled())
 	require.NoError(t, err, "error in init gb %v", err)
 
 	// Run until the rom reports a result
@@ -41,4 +41,10 @@ func TestInterruptTimingCGB(t *testing.T) {
 	}
 	require.True(t, done, "test rom did not finish")
 	assert.Equal(t, byte(0), status, "test rom failed with output:\n%v", text)
+}
+
+// TestInterruptTimingCGB tests that the CPU passes the blargg interrupt_time
+// rom in CGB mode.
+func TestInterruptTimingCGB(t *testing.T) {
+	runBlarrgTestRomWithMemoryOutput(t, "./../../roms/blargg/interrupt_time.gb")
 }
