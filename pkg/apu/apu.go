@@ -47,7 +47,7 @@ func (a *APU) Init(sound bool) {
 
 	// Sets waveform ram to:
 	// 00 FF 00 FF  00 FF 00 FF  00 FF 00 FF  00 FF 00 FF
-	for x := 0x0; x < 0x20; x++ {
+	for x := range 0x20 {
 		if x&2 == 0 {
 			a.waveformRam[x] = 0x00
 		} else {

@@ -2,8 +2,8 @@ package gb
 
 import "log"
 
-// OpcodeCycles is the number of cpu cycles for each normal opcode.
-var OpcodeCycles = []int{
+// opcodeCycles is the number of cpu cycles for each normal opcode.
+var opcodeCycles = [0x100]int{
 	1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1, // 0
 	0, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1, // 1
 	2, 3, 2, 2, 1, 1, 2, 1, 2, 2, 2, 2, 1, 1, 2, 1, // 2
@@ -22,8 +22,8 @@ var OpcodeCycles = []int{
 	3, 3, 2, 1, 0, 4, 2, 4, 3, 2, 4, 1, 0, 0, 2, 4, // f
 } //0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 
-// CBOpcodeCycles is the number of cpu cycles for each CB opcode.
-var CBOpcodeCycles = []int{
+// cbOpcodeCycles is the number of cpu cycles for each CB opcode.
+var cbOpcodeCycles = [0x100]int{
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 1
 	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 2
@@ -49,7 +49,7 @@ var CBOpcodeCycles = []int{
 func (gb *Gameboy) ExecuteNextOpcode() int {
 	gb.tickedCpuTicks = 0
 	opcode := gb.popPC()
-	gb.thisCpuTicks = OpcodeCycles[opcode] * 4
+	gb.thisCpuTicks = opcodeCycles[opcode] * 4
 	instructions[opcode](gb)
 	if remaining := gb.thisCpuTicks - gb.tickedCpuTicks; remaining > 0 {
 		gb.tick(remaining)
@@ -57,16 +57,23 @@ func (gb *Gameboy) ExecuteNextOpcode() int {
 	return gb.tickedCpuTicks
 }
 
-// read ticks the hardware for a memory access cycle and then reads the address.
+// read ticks the hardware for a memory access cycle and then reads the address,
+// unless the PPU is blocking access to it.
 func (gb *Gameboy) read(address uint16) byte {
 	gb.tick(4)
+	if gb.ppuLocked(address) {
+		return 0xFF
+	}
 	return gb.memory.Read(address)
 }
 
 // write ticks the hardware for a memory access cycle and then writes the value
-// to the address.
+// to the address, unless the PPU is blocking access to it.
 func (gb *Gameboy) write(address uint16, value byte) {
 	gb.tick(4)
+	if gb.ppuLocked(address) {
+		return
+	}
 	gb.memory.Write(address, value)
 }
 
@@ -1268,7 +1275,7 @@ var instructions = [0x100]func(*Gameboy){
 	0xCB: func(gb *Gameboy) {
 		// CB
 		nextInst := gb.popPC()
-		gb.thisCpuTicks += CBOpcodeCycles[nextInst] * 4
+		gb.thisCpuTicks += cbOpcodeCycles[nextInst] * 4
 		gb.cbInst[nextInst]()
 	},
 }

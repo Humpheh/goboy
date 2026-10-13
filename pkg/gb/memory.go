@@ -23,9 +23,9 @@ const (
 	// TODO: move more hardware registers up here.
 )
 
-// Memory stores gameboy ROM, RAM and cartridge data. It manages the
+// memory stores gameboy ROM, RAM and cartridge data. It manages the
 // banking of these data banks.
-type Memory struct {
+type memory struct {
 	gb      *Gameboy
 	Cart    *cart.Cart
 	HighRAM [0x100]byte
@@ -56,8 +56,8 @@ type Memory struct {
 }
 
 // Init the gb memory to the post-boot values.
-func (mem *Memory) Init(gameboy *Gameboy) {
-	mem.gb = gameboy
+func (mem *memory) Init(gameboy *Gameboy) {
+	mem.gb = gameboy // TODO: this is a bit dirty
 
 	// Set the default values
 	mem.HighRAM[0x04] = 0x1E
@@ -99,7 +99,7 @@ func (mem *Memory) Init(gameboy *Gameboy) {
 }
 
 // LoadCart load a cart rom into memory.
-func (mem *Memory) LoadCart(loc string) (bool, error) {
+func (mem *memory) LoadCart(loc string) (bool, error) {
 	var err error
 	mem.Cart, err = cart.NewCartFromFile(loc)
 	if err != nil {
@@ -110,7 +110,7 @@ func (mem *Memory) LoadCart(loc string) (bool, error) {
 
 // WriteHighRam writes to the range 0xFF00-0xFFFF in the memory address
 // space. The range includes both HRAM and the hardware registers.
-func (mem *Memory) WriteHighRam(address uint16, value byte) {
+func (mem *memory) WriteHighRam(address uint16, value byte) {
 	switch {
 	case address >= 0xFEA0 && address < 0xFEFF:
 		// Restricted RAM
@@ -154,12 +154,21 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 			mem.gb.setClockFreq()
 		}
 
+	case address == LCDC:
+		wasEnabled := mem.gb.isLCDEnabled()
+		mem.HighRAM[0x40] = value
+		if enabled := mem.gb.isLCDEnabled(); enabled && !wasEnabled {
+			mem.gb.lcdOn()
+		} else if !enabled && wasEnabled {
+			mem.gb.lcdOff()
+		}
+
 	case address == 0xFF41:
-		mem.HighRAM[0x41] = value | 0x80
+		// The mode and LY=LYC flag are read only
+		mem.HighRAM[0x41] = value&0x78 | mem.HighRAM[0x41]&0x07 | 0x80
 
 	case address == 0xFF44:
-		// Trap scanline register
-		mem.HighRAM[0x44] = 0
+		// LY is read only
 
 	case address == 0xFF46:
 		// OAM DMA transfer, which starts two M-cycles after the write. Any
@@ -230,7 +239,7 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 // Write a value at an address to the relevant location based on the
 // current state of the gameboy. This handles banking and side effects
 // of writing to certain addresses.
-func (mem *Memory) Write(address uint16, value byte) {
+func (mem *memory) Write(address uint16, value byte) {
 	switch {
 	case address < 0x8000:
 		// Write to the cartridge ROM (banking)
@@ -275,7 +284,7 @@ func (mem *Memory) Write(address uint16, value byte) {
 
 // Read from memory. Will go and read from cartridge memory if the
 // requested address is mapped to that space.
-func (mem *Memory) Read(address uint16) byte {
+func (mem *memory) Read(address uint16) byte {
 	switch {
 	case address < 0x8000:
 		// Cartridge ROM
@@ -321,7 +330,7 @@ func (mem *Memory) Read(address uint16) byte {
 
 // ReadHighRam reads from 0xFF00-0xFFFF in the memory address space. The range
 // includes both HRAM and the hardware registers.
-func (mem *Memory) ReadHighRam(address uint16) byte {
+func (mem *memory) ReadHighRam(address uint16) byte {
 	switch {
 	// Joypad address
 	case address == 0xFF00:
@@ -385,7 +394,7 @@ func (mem *Memory) ReadHighRam(address uint16) byte {
 }
 
 // stepDMACycles advances the OAM DMA transfer by a number of cycles.
-func (mem *Memory) stepDMACycles(cycles int) {
+func (mem *memory) stepDMACycles(cycles int) {
 	for c := 0; c < cycles && (mem.dmaActive || mem.dmaStartDelay > 0); c += 4 {
 		mem.stepDMA()
 	}
@@ -393,7 +402,7 @@ func (mem *Memory) stepDMACycles(cycles int) {
 
 // stepDMA advances the OAM DMA transfer by one M-cycle, starting a requested
 // transfer once its delay has passed and copying one byte per cycle.
-func (mem *Memory) stepDMA() {
+func (mem *memory) stepDMA() {
 	// OAM stays inaccessible until the cycle after the last byte is copied
 	if mem.dmaActive && mem.dmaIndex == 0xA0 {
 		mem.dmaActive = false
@@ -413,7 +422,7 @@ func (mem *Memory) stepDMA() {
 }
 
 // Start a CGB DMA transfer.
-func (mem *Memory) doNewDMATransfer(value byte) {
+func (mem *memory) doNewDMATransfer(value byte) {
 	if mem.hdmaActive && bitGet(value, 7) == 0 {
 		// Abort a HDMA transfer
 		mem.hdmaActive = false
@@ -436,7 +445,7 @@ func (mem *Memory) doNewDMATransfer(value byte) {
 }
 
 // Perform a HDMA transfer during a HBlank period.
-func (mem *Memory) doHDMATransfer() {
+func (mem *memory) doHDMATransfer() {
 	if !mem.hdmaActive {
 		return
 	}
@@ -453,7 +462,7 @@ func (mem *Memory) doHDMATransfer() {
 }
 
 // Transfer a set amount of DMA data based on the current register values.
-func (mem *Memory) performNewDMATransfer(length uint16) {
+func (mem *memory) performNewDMATransfer(length uint16) {
 	// Load the source and destination from RAM
 	source := (uint16(mem.HighRAM[0x51])<<8 | uint16(mem.HighRAM[0x52])) & 0xFFF0
 	destination := (uint16(mem.HighRAM[0x53])<<8 | uint16(mem.HighRAM[0x54])) & 0x1FF0
