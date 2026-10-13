@@ -19,7 +19,7 @@ func cpuTimingTest(t *testing.T, options ...GameboyOption) {
 	expected := "instr_timing\n\n\nPassed"
 
 	// Run the CPU until maxIterations iterations have passed.
-	for i := 0; i < maxIterations; i++ {
+	for range maxIterations {
 		gb.Update()
 		if output == expected {
 			break
