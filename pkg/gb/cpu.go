@@ -1,6 +1,6 @@
 package gb
 
-// Register represents a GB CPU 16bit register which provides functions
+// Register represents a GB cpu 16bit register which provides functions
 // for setting and getting the higher and lower bytes.
 type register struct {
 	// The value of the register.
@@ -33,7 +33,7 @@ func (reg *register) SetHi(val byte) {
 	reg.updateMask()
 }
 
-// SetLog sets the lower byte of the register.
+// SetLo sets the lower byte of the register.
 func (reg *register) SetLo(val byte) {
 	reg.value = uint16(val) | (uint16(reg.value) & 0xFF00)
 	reg.updateMask()
@@ -52,9 +52,9 @@ func (reg *register) updateMask() {
 	}
 }
 
-// CPU contains the registers used for program execution and
+// cpu contains the registers used for program execution and
 // provides methods for setting flags.
-type CPU struct {
+type cpu struct {
 	AF register
 	BC register
 	DE register
@@ -66,8 +66,8 @@ type CPU struct {
 	Divider int
 }
 
-// Init CPU and its registers to the initial values.
-func (cpu *CPU) Init(cgb bool) {
+// Init cpu and its registers to the initial values.
+func (cpu *cpu) Init(cgb bool) {
 	cpu.PC = 0x100
 	if cgb {
 		cpu.AF.Set(0x1180)
@@ -83,7 +83,7 @@ func (cpu *CPU) Init(cgb bool) {
 }
 
 // Internally set the value of a flag on the flag register.
-func (cpu *CPU) setFlag(index byte, on bool) {
+func (cpu *cpu) setFlag(index byte, on bool) {
 	if on {
 		cpu.AF.SetLo(bitSet(cpu.AF.Lo(), index))
 	} else {
@@ -92,41 +92,41 @@ func (cpu *CPU) setFlag(index byte, on bool) {
 }
 
 // SetZ sets the value of the Z flag.
-func (cpu *CPU) SetZ(on bool) {
+func (cpu *cpu) SetZ(on bool) {
 	cpu.setFlag(7, on)
 }
 
 // SetN sets the value of the N flag.
-func (cpu *CPU) SetN(on bool) {
+func (cpu *cpu) SetN(on bool) {
 	cpu.setFlag(6, on)
 }
 
 // SetH sets the value of the H flag.
-func (cpu *CPU) SetH(on bool) {
+func (cpu *cpu) SetH(on bool) {
 	cpu.setFlag(5, on)
 }
 
 // SetC sets the value of the C flag.
-func (cpu *CPU) SetC(on bool) {
+func (cpu *cpu) SetC(on bool) {
 	cpu.setFlag(4, on)
 }
 
 // Z gets the value of the Z flag.
-func (cpu *CPU) Z() bool {
+func (cpu *cpu) Z() bool {
 	return cpu.AF.HiLo()>>7&1 == 1
 }
 
 // N gets the value of the N flag.
-func (cpu *CPU) N() bool {
+func (cpu *cpu) N() bool {
 	return cpu.AF.HiLo()>>6&1 == 1
 }
 
 // H gets the value of the H flag.
-func (cpu *CPU) H() bool {
+func (cpu *cpu) H() bool {
 	return cpu.AF.HiLo()>>5&1 == 1
 }
 
 // C gets the value of the C flag.
-func (cpu *CPU) C() bool {
+func (cpu *cpu) C() bool {
 	return cpu.AF.HiLo()>>4&1 == 1
 }

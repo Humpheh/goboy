@@ -1,5 +1,7 @@
 package gb
 
+import "sort"
+
 const (
 	// ScreenWidth is the number of pixels width on the GameBoy LCD panel.
 	ScreenWidth = 160
@@ -11,111 +13,282 @@ const (
 	LCDC = 0xFF40
 )
 
-// Update the state of the graphics.
-func (gb *Gameboy) updateGraphics(cycles int) {
-	gb.setLCDStatus()
+// PPU timings, in dots from the start of a scanline.
+const (
+	dotsPerLine = 456
+	// Dot at which mode 2 shows in STAT on lines 0-143. The mode 2 STAT
+	// interrupt is raised at the start of the line, before this.
+	mode2StartDot = 1
+	// Dot at which mode 3 starts on lines 0-143.
+	mode3StartDot = mode2StartDot + 80
+	// Length of mode 3 before it is extended by scrolling, the window and sprites.
+	mode3BaseLength = 172
+	// The STAT mode 0 interrupt is raised this many dots before mode 0 shows in STAT.
+	mode0IrqLead = 1
+	// Dot at which LY=LYC is compared after LY changes.
+	lycCompareDot = 4
+	// Dot on the first line after the LCD is turned on that the PPU starts from.
+	lcdOnStartDot = 4
+)
 
+// ppu holds the PPU timing and rendering state.
+type ppu struct {
+	// Matrix of pixel data which is used while the screen is rendering. When a
+	// frame has been completed, this data is copied into the PreparedData matrix.
+	screenData [ScreenWidth][ScreenHeight][3]uint8
+	bgPriority [ScreenWidth][ScreenHeight]bool
+
+	// Track colour of tiles in scanline for priority management.
+	tileScanline  [ScreenWidth]uint8
+	screenCleared bool
+
+	// Scanline being processed, which only differs from LY on line 153.
+	line int
+	// Dot within the current scanline.
+	dot int
+	// Dot of the next event on the current scanline.
+	eventDot int
+	// Dot on the current line at which mode 3 ends.
+	mode3End int
+	// Set for the first line after the LCD is turned on.
+	lcdFirstLine bool
+	// LY value being compared with LYC, or -1 if no comparison is being made.
+	lycCompareLY int
+	// STAT interrupt conditions which don't match the mode shown in STAT.
+	statMode0Irq bool
+	statMode2Irq bool
+	// Level of the STAT interrupt line. An interrupt is requested when it rises.
+	statIrqLine bool
+}
+
+// Init sets the default PPU values.
+func (ppu *ppu) Init() {
+	// The boot ROM hands over on line 153, after LY has started reading 0
+	ppu.line = 153
+	ppu.dot = 400
+	ppu.eventDot = dotsPerLine
+}
+
+// Update the state of the graphics by advancing the PPU one dot at a time.
+func (gb *Gameboy) updateGraphics(cycles int) {
 	if !gb.isLCDEnabled() {
 		return
 	}
-	gb.scanlineCounter -= cycles
+	for dots := cycles / gb.getSpeed(); dots > 0; dots-- {
+		gb.ppu.dot++
+		if gb.ppu.dot == gb.ppu.eventDot {
+			gb.ppuEvent()
+		}
+	}
+	gb.updateStat()
+}
 
-	if gb.scanlineCounter <= 0 {
-		gb.memory.HighRAM[0x44]++
-		if gb.memory.HighRAM[0x44] > 153 {
-			gb.PreparedData = gb.screenData
-			gb.screenData = [ScreenWidth][ScreenHeight][3]uint8{}
-			gb.bgPriority = [ScreenWidth][ScreenHeight]bool{}
+// ppuEvent handles the PPU reaching ppuEventDot on the current line, and then
+// schedules the next event.
+func (gb *Gameboy) ppuEvent() {
+	if gb.ppu.dot == dotsPerLine {
+		gb.startLine()
+	}
+
+	dot := gb.ppu.dot
+	switch {
+	case gb.ppu.line < ScreenHeight:
+		if dot == lycCompareDot {
+			gb.ppu.lycCompareLY = int(gb.memory.HighRAM[0x44])
+		}
+		if dot == mode2StartDot && !gb.ppu.lcdFirstLine {
+			gb.setMode(2)
+		}
+		if dot == mode3StartDot {
+			gb.ppu.statMode2Irq = false
+			gb.setMode(3)
+			gb.ppu.mode3End = mode3StartDot + gb.mode3Length()
+			// Draw the whole scanline at the start of mode 3. In the real
+			// GameBoy this is done throughout mode 3 by reading OAM and VRAM.
+			gb.drawScanline(byte(gb.ppu.line))
+		}
+		if dot == gb.ppu.mode3End-mode0IrqLead {
+			gb.ppu.statMode0Irq = true
+		}
+		if dot == gb.ppu.mode3End {
+			gb.setMode(0)
+			gb.memory.doHDMATransfer()
+		}
+
+	case dot == lycCompareDot:
+		gb.ppu.lycCompareLY = int(gb.memory.HighRAM[0x44])
+		gb.ppu.statMode2Irq = false
+		if gb.ppu.line == 153 {
+			// LY reads 0 for the rest of line 153, but is compared with LYC
+			// as 153 for one more M-cycle
 			gb.memory.HighRAM[0x44] = 0
 		}
 
-		currentLine := gb.memory.ReadHighRam(0xFF44)
-		gb.scanlineCounter += 456 * gb.getSpeed()
+	case dot == lycCompareDot+4:
+		gb.ppu.lycCompareLY = int(gb.memory.HighRAM[0x44])
+	}
 
-		if currentLine == ScreenHeight {
-			gb.requestInterrupt(0)
-		}
+	gb.updateStat()
+	gb.ppu.eventDot = gb.nextPPUEventDot()
+}
+
+// startLine moves the PPU on to the start of the next scanline.
+func (gb *Gameboy) startLine() {
+	gb.ppu.dot = 0
+	gb.ppu.lcdFirstLine = false
+	gb.ppu.statMode0Irq = false
+	gb.ppu.line++
+	if gb.ppu.line == 154 {
+		gb.ppu.line = 0
+		gb.PreparedData = gb.ppu.screenData
+		gb.ppu.screenData = [ScreenWidth][ScreenHeight][3]uint8{}
+		gb.ppu.bgPriority = [ScreenWidth][ScreenHeight]bool{}
+	}
+
+	// LY=LYC isn't compared for a few dots after LY changes
+	if gb.memory.HighRAM[0x44] != byte(gb.ppu.line) {
+		gb.memory.HighRAM[0x44] = byte(gb.ppu.line)
+		gb.ppu.lycCompareLY = -1
+	}
+
+	switch {
+	case gb.ppu.line < ScreenHeight:
+		gb.ppu.statMode2Irq = true
+	case gb.ppu.line == ScreenHeight:
+		gb.setMode(1)
+		gb.requestInterrupt(0)
+		// On DMG the mode 2 STAT interrupt is also raised when VBlank starts
+		gb.ppu.statMode2Irq = !gb.IsCGB()
 	}
 }
 
-const (
-	lcdMode2Bounds = 456 - 80
-	lcdMode3Bounds = lcdMode2Bounds - 172
-)
-
-// Set the status of the LCD based on the current state of memory.
-func (gb *Gameboy) setLCDStatus() {
-	status := gb.memory.HighRAM[0x41]
-
-	if !gb.isLCDEnabled() {
-		// set the screen to white
-		gb.clearScreen()
-
-		gb.scanlineCounter = 456
-		gb.memory.HighRAM[0x44] = 0
-		status &= 252
-		// TODO: Check this is correct
-		// We aren't in a mode so reset the values
-		status = bitReset(status, 0)
-		status = bitReset(status, 1)
-		gb.memory.Write(0xFF41, status)
-		return
-	}
-	gb.screenCleared = false
-
-	currentLine := gb.memory.HighRAM[0x44]
-	currentMode := status & 0x3
-
-	var mode byte
-	requestInterrupt := false
-
-	switch {
-	case currentLine >= 144:
-		mode = 1
-		status = bitSet(status, 0)
-		status = bitReset(status, 1)
-		requestInterrupt = bitTest(status, 4)
-	case gb.scanlineCounter >= lcdMode2Bounds:
-		mode = 2
-		status = bitReset(status, 0)
-		status = bitSet(status, 1)
-		requestInterrupt = bitTest(status, 5)
-	case gb.scanlineCounter >= lcdMode3Bounds:
-		mode = 3
-		status = bitSet(status, 0)
-		status = bitSet(status, 1)
-		if mode != currentMode {
-			// Draw the scanline when we start mode 3. In the real GameBoy
-			// this would be done throughout mode 3 by reading OAM and VRAM
-			// to generate the picture.
-			gb.drawScanline(currentLine)
-		}
-	default:
-		mode = 0
-		status = bitReset(status, 0)
-		status = bitReset(status, 1)
-		requestInterrupt = bitTest(status, 3)
-		if mode != currentMode {
-			gb.memory.doHDMATransfer()
+// nextPPUEventDot returns the dot of the next PPU event on the current line.
+func (gb *Gameboy) nextPPUEventDot() int {
+	next := dotsPerLine
+	events := [...]int{mode2StartDot, lycCompareDot, lycCompareDot + 4, mode3StartDot, gb.ppu.mode3End - mode0IrqLead, gb.ppu.mode3End}
+	for _, event := range events {
+		if event > gb.ppu.dot && event < next {
+			next = event
 		}
 	}
+	return next
+}
 
-	if requestInterrupt && mode != currentMode {
+// mode3Length returns the number of dots mode 3 takes on the current line,
+// which is extended by fine scrolling, the window and each sprite drawn.
+func (gb *Gameboy) mode3Length() int {
+	control := gb.memory.HighRAM[0x40]
+	scx := int(gb.memory.HighRAM[0x43] & 7)
+	length := mode3BaseLength + scx
+
+	// The window being drawn pauses the pixel fetcher
+	if bitTest(control, 5) && int(gb.memory.HighRAM[0x4A]) <= gb.ppu.line && gb.memory.HighRAM[0x4B] <= 166 {
+		length += 6
+	}
+
+	if !bitTest(control, 1) {
+		return length
+	}
+
+	// Find the sprites on this line, as selected by the OAM scan
+	height := 8
+	if bitTest(control, 2) {
+		height = 16
+	}
+	var spriteXs []int
+	for i := 0; i < 0xA0 && len(spriteXs) < 10; i += 4 {
+		y := int(gb.memory.OAM[i]) - 16
+		if gb.ppu.line >= y && gb.ppu.line < y+height {
+			spriteXs = append(spriteXs, int(gb.memory.OAM[i+1]))
+		}
+	}
+	sort.Ints(spriteXs)
+
+	// Each sprite costs 6 dots, plus up to 5 more for the first sprite in each
+	// background tile depending on how far into the tile it starts
+	var tileFetched [22]bool
+	for _, x := range spriteXs {
+		if x >= 168 {
+			continue
+		}
+		pixel := x + scx
+		if x == 0 {
+			pixel = 0
+		}
+		length += 6
+		if tile := pixel / 8; !tileFetched[tile] {
+			tileFetched[tile] = true
+			if extra := 5 - pixel%8; extra > 0 {
+				length += extra
+			}
+		}
+	}
+	return length
+}
+
+// setMode sets the PPU mode shown in STAT.
+func (gb *Gameboy) setMode(mode byte) {
+	gb.memory.HighRAM[0x41] = gb.memory.HighRAM[0x41]&^0x03 | mode
+}
+
+// updateStat updates the LY=LYC flag in STAT and requests a STAT interrupt on
+// the rising edge of the STAT interrupt line.
+func (gb *Gameboy) updateStat() {
+	stat := gb.memory.HighRAM[0x41]
+	if gb.ppu.lycCompareLY == int(gb.memory.HighRAM[0x45]) {
+		stat = bitSet(stat, 2)
+	} else {
+		stat = bitReset(stat, 2)
+	}
+	gb.memory.HighRAM[0x41] = stat
+
+	mode := stat & 0x03
+	line := (gb.ppu.statMode0Irq && bitTest(stat, 3)) ||
+		(mode == 1 && bitTest(stat, 4)) ||
+		(gb.ppu.statMode2Irq && bitTest(stat, 5)) ||
+		(bitTest(stat, 2) && bitTest(stat, 6))
+	if line && !gb.ppu.statIrqLine {
 		gb.requestInterrupt(1)
 	}
+	gb.ppu.statIrqLine = line
+}
 
-	// Check if LYC == LY (coincidence flag)
-	if currentLine == gb.memory.HighRAM[0x45] {
-		status = bitSet(status, 2)
-		// If enabled request an interrupt for this
-		if bitTest(status, 6) {
-			gb.requestInterrupt(1)
-		}
-	} else {
-		status = bitReset(status, 2)
+// lcdOn starts the PPU from the first line when the LCD is turned on. The
+// first line skips mode 2.
+func (gb *Gameboy) lcdOn() {
+	gb.ppu.line = 0
+	gb.ppu.dot = lcdOnStartDot
+	gb.ppu.lcdFirstLine = true
+	gb.ppu.lycCompareLY = 0
+	gb.ppu.screenCleared = false
+	gb.ppu.eventDot = gb.nextPPUEventDot()
+	gb.updateStat()
+}
+
+// lcdOff stops the PPU when the LCD is turned off. The LY=LYC flag keeps the
+// value it had.
+func (gb *Gameboy) lcdOff() {
+	gb.ppu.line = 0
+	gb.ppu.dot = 0
+	gb.memory.HighRAM[0x44] = 0
+	gb.setMode(0)
+	gb.ppu.statMode0Irq = false
+	gb.ppu.statMode2Irq = false
+	gb.clearScreen()
+}
+
+// ppuLocked returns if the PPU is blocking the cpu from accessing the address,
+// which happens for OAM during modes 2 and 3 and for VRAM during mode 3.
+func (gb *Gameboy) ppuLocked(address uint16) bool {
+	if address < 0x8000 || address >= 0xFEA0 || (address >= 0xA000 && address < 0xFE00) {
+		return false
 	}
-
-	gb.memory.Write(0xFF41, status)
+	mode := gb.memory.HighRAM[0x41] & 0x03
+	if address < 0xA000 {
+		return mode == 3
+	}
+	// OAM is locked from the start of the line, slightly before mode 2 shows
+	return mode >= 2 || (gb.ppu.statMode2Irq && gb.ppu.line < ScreenHeight)
 }
 
 // Checks if the LCD is enabled by examining 0xFF40.
@@ -196,8 +369,8 @@ func (gb *Gameboy) renderTiles(lcdControl byte, scanline byte) {
 	var palette = gb.memory.ReadHighRam(0xFF47)
 
 	// start drawing the 160 horizontal pixels for this scanline
-	gb.tileScanline = [160]uint8{}
-	for pixel := byte(0); pixel < 160; pixel++ {
+	gb.ppu.tileScanline = [ScreenWidth]uint8{}
+	for pixel := range byte(ScreenWidth) {
 		xPos := pixel + scrollX
 
 		// Translate the current x pos to window space if necessary
@@ -264,14 +437,14 @@ func (gb *Gameboy) setTilePixel(x, y, tileAttr, colourNum, palette byte, priorit
 		cgbPalette := tileAttr & 0x7
 		red, green, blue := gb.bgPalette.get(cgbPalette, colourNum)
 		gb.setPixel(x, y, red, green, blue, true)
-		gb.bgPriority[x][y] = priority
+		gb.ppu.bgPriority[x][y] = priority
 	} else {
 		red, green, blue := gb.getColour(colourNum, palette)
 		gb.setPixel(x, y, red, green, blue, true)
 	}
 
 	// Store for the current scanline so sprite priority can be managed
-	gb.tileScanline[x] = colourNum
+	gb.ppu.tileScanline[x] = colourNum
 }
 
 // Get the RGB colour value for a colour num at an address using the current palette.
@@ -390,30 +563,30 @@ func (gb *Gameboy) renderSprites(lcdControl byte, scanline int32) {
 // Set a pixel in the graphics screen data.
 func (gb *Gameboy) setPixel(x byte, y byte, r uint8, g uint8, b uint8, priority bool) {
 	// If priority is false then sprite pixel is only set if tile colour is 0
-	if (priority && !gb.bgPriority[x][y]) || gb.tileScanline[x] == 0 {
-		gb.screenData[x][y][0] = r
-		gb.screenData[x][y][1] = g
-		gb.screenData[x][y][2] = b
+	if (priority && !gb.ppu.bgPriority[x][y]) || gb.ppu.tileScanline[x] == 0 {
+		gb.ppu.screenData[x][y][0] = r
+		gb.ppu.screenData[x][y][1] = g
+		gb.ppu.screenData[x][y][2] = b
 	}
 }
 
 // Clear the screen by setting every pixel to white.
 func (gb *Gameboy) clearScreen() {
 	// Check if we have cleared the screen already
-	if gb.screenCleared {
+	if gb.ppu.screenCleared {
 		return
 	}
 
 	// Set every pixel to white
-	for x := 0; x < len(gb.screenData); x++ {
-		for y := 0; y < len(gb.screenData[x]); y++ {
-			gb.screenData[x][y][0] = 255
-			gb.screenData[x][y][1] = 255
-			gb.screenData[x][y][2] = 255
+	for x := 0; x < len(gb.ppu.screenData); x++ {
+		for y := 0; y < len(gb.ppu.screenData[x]); y++ {
+			gb.ppu.screenData[x][y][0] = 255
+			gb.ppu.screenData[x][y][1] = 255
+			gb.ppu.screenData[x][y][2] = 255
 		}
 	}
 
 	// Push the cleared data right now
-	gb.PreparedData = gb.screenData
-	gb.screenCleared = true
+	gb.PreparedData = gb.ppu.screenData
+	gb.ppu.screenCleared = true
 }

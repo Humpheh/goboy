@@ -9,11 +9,11 @@ import (
 )
 
 const (
-	// ClockSpeed is the number of cycles the GameBoy CPU performs each second.
+	// ClockSpeed is the number of cycles the GameBoy cpu performs each second.
 	ClockSpeed = 4194304
 	// FramesSecond is the target number of frames for each frame of GameBoy output.
 	FramesSecond = 60
-	// CyclesFrame is the number of CPU cycles in each frame.
+	// CyclesFrame is the number of cpu cycles in each frame.
 	CyclesFrame = ClockSpeed / FramesSecond
 )
 
@@ -23,24 +23,15 @@ type Gameboy struct {
 	options gameboyOptions
 
 	// Core components of the Gameboy.
-	memory *Memory
-	cpu    *CPU
-	sound  *apu.APU
+	memory memory
+	cpu    cpu
+	sound  apu.APU
+	ppu    ppu
 
 	Debug  DebugFlags
 	paused bool
 
 	timerCounter int
-
-	// Matrix of pixel data which is used while the screen is rendering. When a
-	// frame has been completed, this data is copied into the PreparedData matrix.
-	screenData [ScreenWidth][ScreenHeight][3]uint8
-	bgPriority [ScreenWidth][ScreenHeight]bool
-
-	// Track colour of tiles in scanline for priority management.
-	tileScanline    [ScreenWidth]uint8
-	scanlineCounter int
-	screenCleared   bool
 
 	// PreparedData is a matrix of screen pixel data for a single frame which has
 	// been fully rendered.
@@ -135,7 +126,7 @@ func (gb *Gameboy) printBGMap() {
 	fmt.Printf("BG Map:\n%s", gb.BGMapString())
 }
 
-// Get the current CPU speed multiplier (either 1 or 2).
+// Get the current cpu speed multiplier (either 1 or 2).
 func (gb *Gameboy) getSpeed() int {
 	return int(gb.currentSpeed + 1)
 }
@@ -301,15 +292,12 @@ func (gb *Gameboy) joypadValue(current byte) byte {
 
 // GetLoadedCart returns the currently loaded cartridge, or nil if no cartridge is loaded.
 func (gb *Gameboy) GetLoadedCart() *cart.Cart {
-	if gb.memory == nil || gb.memory.Cart == nil {
-		return nil
-	}
 	return gb.memory.Cart
 }
 
 // IsCartLoaded returns if there is a game loaded in the gameboy.
 func (gb *Gameboy) IsCartLoaded() bool {
-	return gb.memory != nil && gb.memory.Cart != nil
+	return gb.memory.Cart != nil
 }
 
 // IsCGB returns if we are using CGB features.
@@ -348,19 +336,12 @@ func (gb *Gameboy) initKeyHandlers() {
 
 // Setup and instantiate the GameBoys components.
 func (gb *Gameboy) setup() {
-	// Initialise the CPU
-	gb.cpu = &CPU{}
+	// Initialise components
 	gb.cpu.Init(gb.options.cgbMode)
-
-	// Initialise the memory
-	gb.memory = &Memory{}
 	gb.memory.Init(gb)
-
-	gb.sound = &apu.APU{}
 	gb.sound.Init(gb.options.sound)
+	gb.ppu.Init()
 
-	gb.Debug = DebugFlags{}
-	gb.scanlineCounter = 456
 	gb.inputMask = 0xFF
 
 	gb.cbInst = gb.cbInstructions()

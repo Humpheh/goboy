@@ -10,13 +10,13 @@ import (
 	"strings"
 )
 
-// LogOpcode is a debug function to log the the current state of the gameboys CPU and next memory.
+// LogOpcode is a debug function to log the the current state of the gameboys cpu and next memory.
 func LogOpcode(gb *Gameboy, short bool) {
 	pc := gb.cpu.PC
 	opcode := gb.memory.Read(pc)
 
 	next := gb.memory.Read(pc + 1)
-	fmt.Printf("[%0#2x]: %3v %-20v %0#4x", opcode, gb.scanlineCounter, GetOpcodeName(opcode, next), pc)
+	fmt.Printf("[%0#2x]: %3v %-20v %0#4x", opcode, gb.ppu.dot, GetOpcodeName(opcode, next), pc)
 
 	if !short {
 		fmt.Printf("  [[")
