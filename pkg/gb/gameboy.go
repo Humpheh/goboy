@@ -27,11 +27,10 @@ type Gameboy struct {
 	cpu    cpu
 	sound  apu.APU
 	ppu    ppu
+	timer  timer
 
 	Debug  DebugFlags
 	paused bool
-
-	timerCounter int
 
 	// PreparedData is a matrix of screen pixel data for a single frame which has
 	// been fully rendered.
@@ -142,58 +141,6 @@ func (gb *Gameboy) checkSpeedSwitch() {
 			gb.currentSpeed = 0
 		}
 		gb.halted = false
-	}
-}
-
-func (gb *Gameboy) updateTimers(cycles int) {
-	gb.dividerRegister(cycles)
-	if gb.isClockEnabled() {
-		gb.timerCounter += cycles
-
-		freq := gb.getClockFreqCount()
-		for gb.timerCounter >= freq {
-			gb.timerCounter -= freq
-			tima := gb.memory.HighRAM[0x05] /* TIMA */
-			if tima == 0xFF {
-				gb.memory.HighRAM[TIMA-0xFF00] = gb.memory.HighRAM[0x06] /* TMA */
-				gb.requestInterrupt(2)
-			} else {
-				gb.memory.HighRAM[TIMA-0xFF00] = tima + 1
-			}
-		}
-	}
-}
-
-func (gb *Gameboy) isClockEnabled() bool {
-	return bitTest(gb.memory.HighRAM[0x07] /* TAC */, 2)
-}
-
-func (gb *Gameboy) getClockFreq() byte {
-	return gb.memory.HighRAM[0x07] /* TAC */ & 0x3
-}
-
-func (gb *Gameboy) getClockFreqCount() int {
-	switch gb.getClockFreq() {
-	case 0:
-		return 1024
-	case 1:
-		return 16
-	case 2:
-		return 64
-	default:
-		return 256
-	}
-}
-
-func (gb *Gameboy) setClockFreq() {
-	gb.timerCounter = 0
-}
-
-func (gb *Gameboy) dividerRegister(cycles int) {
-	gb.cpu.Divider += cycles
-	for gb.cpu.Divider >= 256 {
-		gb.cpu.Divider -= 256
-		gb.memory.HighRAM[DIV-0xFF00]++
 	}
 }
 
@@ -341,6 +288,7 @@ func (gb *Gameboy) setup() {
 	gb.memory.Init(gb)
 	gb.sound.Init(gb.options.sound)
 	gb.ppu.Init()
+	gb.timer.counter = uint16(gb.memory.HighRAM[DIV-0xFF00]) << 8
 
 	gb.inputMask = 0xFF
 

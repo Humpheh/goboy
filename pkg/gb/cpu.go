@@ -62,8 +62,6 @@ type cpu struct {
 
 	PC uint16
 	SP register
-
-	Divider int
 }
 
 // Init cpu and its registers to the initial values.
