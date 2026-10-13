@@ -44,6 +44,15 @@ type Memory struct {
 	// CGB HDMA transfer variables
 	hdmaLength byte
 	hdmaActive bool
+
+	// OAM DMA transfer state. A requested transfer starts once dmaStartDelay
+	// has counted down to zero, and copies the byte at dmaIndex each M-cycle
+	// while dmaActive is set.
+	dmaPendingSource uint16
+	dmaStartDelay    int
+	dmaSource        uint16
+	dmaIndex         uint16
+	dmaActive        bool
 }
 
 // Init the gb memory to the post-boot values.
@@ -153,8 +162,11 @@ func (mem *Memory) WriteHighRam(address uint16, value byte) {
 		mem.HighRAM[0x44] = 0
 
 	case address == 0xFF46:
-		// DMA transfer
-		mem.doDMATransfer(value)
+		// OAM DMA transfer, which starts two M-cycles after the write. Any
+		// transfer already running carries on until then.
+		mem.HighRAM[0x46] = value
+		mem.dmaPendingSource = uint16(value) << 8
+		mem.dmaStartDelay = 2
 
 	case address == 0xFF4D:
 		// CGB speed change
@@ -243,13 +255,13 @@ func (mem *Memory) Write(address uint16, value byte) {
 
 	case address < 0xFE00:
 		// Echo RAM
-		// TODO: re-enable echo RAM?
-		//mem.Data[address] = value
-		//mem.Write(address-0x2000, value)
+		mem.Write(address-0x2000, value)
 
 	case address < 0xFEA0:
-		// Object Attribute Memory
-		mem.OAM[address-0xFE00] = value
+		// Object Attribute Memory, which can't be accessed during OAM DMA
+		if !mem.dmaActive {
+			mem.OAM[address-0xFE00] = value
+		}
 
 	case address < 0xFF00:
 		// Unusable memory
@@ -289,13 +301,13 @@ func (mem *Memory) Read(address uint16) byte {
 
 	case address < 0xFE00:
 		// Echo RAM
-		// TODO: re-enable echo RAM?
-		//mem.Data[address] = value
-		//mem.Write(address-0x2000, value)
-		return 0xFF
+		return mem.Read(address - 0x2000)
 
 	case address < 0xFEA0:
-		// Object Attribute Memory
+		// Object Attribute Memory, which can't be accessed during OAM DMA
+		if mem.dmaActive {
+			return 0xFF
+		}
 		return mem.OAM[address-0xFE00]
 
 	case address < 0xFF00:
@@ -372,15 +384,31 @@ func (mem *Memory) ReadHighRam(address uint16) byte {
 	}
 }
 
-// Perform a DMA transfer.
-func (mem *Memory) doDMATransfer(value byte) {
-	// TODO: This may need to be done instead of CPU ticks
-	address := uint16(value) << 8 // (data * 100)
+// stepDMACycles advances the OAM DMA transfer by a number of cycles.
+func (mem *Memory) stepDMACycles(cycles int) {
+	for c := 0; c < cycles && (mem.dmaActive || mem.dmaStartDelay > 0); c += 4 {
+		mem.stepDMA()
+	}
+}
 
-	var i uint16
-	for i = 0; i < 0xA0; i++ {
-		// TODO: Check this doesn't prevent
-		mem.Write(0xFE00+i, mem.Read(address+i))
+// stepDMA advances the OAM DMA transfer by one M-cycle, starting a requested
+// transfer once its delay has passed and copying one byte per cycle.
+func (mem *Memory) stepDMA() {
+	// OAM stays inaccessible until the cycle after the last byte is copied
+	if mem.dmaActive && mem.dmaIndex == 0xA0 {
+		mem.dmaActive = false
+	}
+	if mem.dmaStartDelay > 0 {
+		mem.dmaStartDelay--
+		if mem.dmaStartDelay == 0 {
+			mem.dmaActive = true
+			mem.dmaSource = mem.dmaPendingSource
+			mem.dmaIndex = 0
+		}
+	}
+	if mem.dmaActive {
+		mem.OAM[mem.dmaIndex] = mem.Read(mem.dmaSource + mem.dmaIndex)
+		mem.dmaIndex++
 	}
 }
 

@@ -14,7 +14,7 @@ const romPath = "../../roms/mooneye/acceptance"
 // Currently these do not all pass, so the function is renamed as to not
 // run on CI.
 //
-// 16 passed
+// 39 passed
 func _TestAcceptance(t *testing.T) {
 	err := filepath.Walk(romPath, func(path string, _ os.FileInfo, _ error) error {
 		if filepath.Ext(path) == ".gb" {
@@ -52,7 +52,7 @@ func runMooneyeTest(t *testing.T, file string) {
 
 	// Run the CPU until the output has matched the expected
 	// or until 4000 iterations have passed.
-	for i := 0; i < 4000; i++ {
+	for range 4000 {
 		gb.Update()
 		if inFinishLoop(gb) {
 			break

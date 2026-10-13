@@ -2,6 +2,7 @@ package gb
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Humpheh/goboy/pkg/apu"
 	"github.com/Humpheh/goboy/pkg/cart"
@@ -64,6 +65,8 @@ type Gameboy struct {
 	prepareSpeed bool
 
 	thisCpuTicks int
+	// Cycles ticked so far while executing the current opcode.
+	tickedCpuTicks int
 
 	keyHandlers map[Button]func()
 }
@@ -76,21 +79,16 @@ func (gb *Gameboy) Update() int {
 
 	cycles := 0
 	for cycles < CyclesFrame*gb.getSpeed() {
-		cyclesOp := 4
 		if !gb.halted {
 			if gb.Debug.OutputOpcodes {
 				LogOpcode(gb, false)
 			}
-			cyclesOp = gb.ExecuteNextOpcode()
+			cycles += gb.ExecuteNextOpcode()
 		} else {
 			// TODO: This is incorrect
+			cycles += gb.tick(4)
 		}
-		cycles += gb.tick(cyclesOp)
-
-		// Interrupt dispatch takes time, so the rest of the hardware must advance with it
-		if intCycles := gb.doInterrupts(); intCycles > 0 {
-			cycles += gb.tick(intCycles)
-		}
+		cycles += gb.doInterrupts()
 	}
 	return cycles
 }
@@ -98,6 +96,8 @@ func (gb *Gameboy) Update() int {
 // tick advances the graphics, timers and sound by the given number of cycles
 // and returns the cycles.
 func (gb *Gameboy) tick(cycles int) int {
+	gb.tickedCpuTicks += cycles
+	gb.memory.stepDMACycles(cycles)
 	gb.updateGraphics(cycles)
 	gb.updateTimers(cycles)
 	gb.sound.Buffer(cycles, gb.getSpeed())
@@ -120,15 +120,15 @@ func (gb *Gameboy) SoundString() {
 
 // BGMapString returns a string of the values in the background map.
 func (gb *Gameboy) BGMapString() string {
-	out := ""
-	for y := uint16(0); y < 0x20; y++ {
-		out += fmt.Sprintf("%2x: ", y)
-		for x := uint16(0); x < 0x20; x++ {
-			out += fmt.Sprintf("%2x ", gb.memory.Read(0x9800+(y*0x20)+x))
+	var out strings.Builder
+	for y := range uint16(0x20) {
+		out.WriteString(fmt.Sprintf("%2x: ", y))
+		for x := range uint16(0x20) {
+			out.WriteString(fmt.Sprintf("%2x ", gb.memory.Read(0x9800+(y*0x20)+x)))
 		}
-		out += "\n"
+		out.WriteString("\n")
 	}
-	return out
+	return out.String()
 }
 
 func (gb *Gameboy) printBGMap() {
@@ -228,10 +228,9 @@ func (gb *Gameboy) doInterrupts() (cycles int) {
 
 	if req > 0 {
 		var i byte
-		for i = 0; i < 5; i++ {
+		for i = range 5 {
 			if bitTest(req, i) && bitTest(enabled, i) {
-				gb.serviceInterrupt(i)
-				return 20
+				return gb.serviceInterrupt(i)
 			}
 		}
 	}
@@ -248,12 +247,13 @@ var interruptAddresses = map[byte]uint16{
 }
 
 // Called if an interrupt has been raised. Will check if interrupts are
-// enabled and will jump to the interrupt address.
-func (gb *Gameboy) serviceInterrupt(interrupt byte) {
+// enabled and will jump to the interrupt address, returning the number of
+// cycles taken.
+func (gb *Gameboy) serviceInterrupt(interrupt byte) int {
 	// If was halted without interrupts, do not jump or reset IF
 	if !gb.interruptsOn && gb.halted {
 		gb.halted = false
-		return
+		return 0
 	}
 	gb.interruptsOn = false
 	gb.halted = false
@@ -262,23 +262,29 @@ func (gb *Gameboy) serviceInterrupt(interrupt byte) {
 	req = bitReset(req, interrupt)
 	gb.memory.Write(0xFF0F, req)
 
+	// Dispatch takes 5 cycles: two internal, two to push PC and one to set PC
+	gb.tick(4)
 	gb.pushStack(gb.cpu.PC)
 	gb.cpu.PC = interruptAddresses[interrupt]
+	gb.tick(4)
+	return 20
 }
 
-// Push a 16 bit value onto the stack and decrement SP.
+// Push a 16 bit value onto the stack and decrement SP. Every push is preceded
+// by an internal cycle, so this ticks the hardware for that and the two writes.
 func (gb *Gameboy) pushStack(address uint16) {
+	gb.tick(4)
 	sp := gb.cpu.SP.HiLo()
-	gb.memory.Write(sp-1, byte(uint16(address&0xFF00)>>8))
-	gb.memory.Write(sp-2, byte(address&0xFF))
+	gb.write(sp-1, byte(uint16(address&0xFF00)>>8))
+	gb.write(sp-2, byte(address&0xFF))
 	gb.cpu.SP.Set(gb.cpu.SP.HiLo() - 2)
 }
 
 // Pop the next 16 bit value off the stack and increment SP.
 func (gb *Gameboy) popStack() uint16 {
 	sp := gb.cpu.SP.HiLo()
-	byte1 := uint16(gb.memory.Read(sp))
-	byte2 := uint16(gb.memory.Read(sp+1)) << 8
+	byte1 := uint16(gb.read(sp))
+	byte2 := uint16(gb.read(sp+1)) << 8
 	gb.cpu.SP.Set(gb.cpu.SP.HiLo() + 2)
 	return byte1 | byte2
 }
