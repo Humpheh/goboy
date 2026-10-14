@@ -13,13 +13,14 @@ const (
 	twoPi      = 2 * math.Pi
 	perSample  = 1 / float64(sampleRate)
 
-	cpuTicksPerSample    = float64(4194304) / sampleRate
-	cpuTicksPerLength    = 4194304 / 256
-	maxFrameBufferLength = 5000
+	cpuTicksPerSample = float64(4194304) / sampleRate
+	cpuTicksPerLength = 4194304 / 256
 
-	// playerBufferBytes is the oto player's buffer size, about 66ms of
-	// 8-bit stereo audio.
-	playerBufferBytes = sampleRate * 2 / 15
+	// audioBufferSamples is the number of stereo samples (about 66ms) held
+	// by both the sample queue and the oto player's buffer. It must cover
+	// at least one frame (~735 samples), as the emulator produces a frame
+	// of samples in a burst and drops any that don't fit.
+	audioBufferSamples = sampleRate / 15
 )
 
 // APU is the GameBoy's audio processing unit. Audio comprises four
@@ -38,6 +39,7 @@ type APU struct {
 	tickCounter            float64
 	lengthCounter          int
 	lVol, rVol             float64
+	highPassL, highPassR   highPass
 
 	audioBuffer chan [2]byte
 }
@@ -46,7 +48,7 @@ type APU struct {
 func (a *APU) Init(sound bool) {
 	a.playing = sound
 	a.waveformRam = make([]byte, 0x20)
-	a.audioBuffer = make(chan [2]byte, maxFrameBufferLength)
+	a.audioBuffer = make(chan [2]byte, audioBufferSamples)
 
 	// Sets waveform ram to:
 	// 00 FF 00 FF  00 FF 00 FF  00 FF 00 FF  00 FF 00 FF
@@ -78,7 +80,9 @@ func (a *APU) Init(sound bool) {
 		a.player = ctx.NewPlayer(sampleReader(a.audioBuffer))
 		// The default player buffer is 0.5s, which is too much latency for
 		// an emulator.
-		a.player.SetBufferSize(playerBufferBytes)
+		a.player.SetBufferSize(audioBufferSamples * 2)
+		// 100% volume is loud
+		a.player.SetVolume(0.5)
 		a.player.Play()
 	}
 }
@@ -132,7 +136,17 @@ func (a *APU) Buffer(cpuTicks int, speed int) {
 	valL := (chn1l + chn2l + chn3l + chn4l) / 4
 	valR := (chn1r + chn2r + chn3r + chn4r) / 4
 
-	a.audioBuffer <- [2]byte{byte(float64(valL) * a.lVol), byte(float64(valR) * a.rVol)}
+	sample := [2]byte{
+		a.highPassL.filter(float64(valL) * a.lVol),
+		a.highPassR.filter(float64(valR) * a.rVol),
+	}
+
+	// Drop the sample when the player has fallen behind so audio never
+	// throttles the emulation speed.
+	select {
+	case a.audioBuffer <- sample:
+	default:
+	}
 }
 
 var soundMask = []byte{

@@ -43,10 +43,6 @@ func start(binding gb.IOBinding) {
 		defer pprof.StopCPUProfile()
 	}
 
-	if *unlocked {
-		*mute = true
-	}
-
 	// Print the logo and the run settings to the console
 	fmt.Printf("[\u001B[1;32mGoBoy\u001B[0m] %v :: apu=%v cgb=%v\n", version, !*mute, !*dmgMode)
 
