@@ -4,8 +4,9 @@ package gb
 type GameboyOption func(o *gameboyOptions)
 
 type gameboyOptions struct {
-	sound   bool
-	cgbMode bool
+	sound        bool
+	cgbMode      bool
+	debugEnabled bool
 
 	// Callback when the serial port is written to
 	transferFunction func(byte)
@@ -13,6 +14,9 @@ type gameboyOptions struct {
 
 // DebugFlags are flags which can be set to alter the execution of the Gameboy.
 type DebugFlags struct {
+	// Enabled determines if debug functionality is enabled.
+	Enabled bool
+
 	// HideSprites turns off rendering of sprites to the display.
 	HideSprites bool
 
@@ -35,6 +39,13 @@ func (flags *DebugFlags) toggleSprites() {
 
 func (flags *DebugFlags) toggleOutputOpCode() {
 	flags.OutputOpcodes = !flags.OutputOpcodes
+}
+
+// WithDebugEnabled enables debug functionality on startup.
+func WithDebugEnabled() GameboyOption {
+	return func(o *gameboyOptions) {
+		o.debugEnabled = true
+	}
 }
 
 // WithCGBEnabled runs the Gameboy with cgb mode enabled.

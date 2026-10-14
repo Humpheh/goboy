@@ -21,16 +21,17 @@ const (
 	// ButtonDown is the down dpad direction on the GameBoy.
 	ButtonDown = 7
 
-	ButtonPause               = 8
-	ButtonChangePallete       = 9
-	ButtonToggleBackground    = 10
-	ButtonToggleSprites       = 11
-	ButtonToggleOutputOpCode  = 12
-	ButtonPrintBGMap          = 13
-	ButtonToggleSoundChannel1 = 14
-	ButtonToggleSoundChannel2 = 15
-	ButtonToggleSoundChannel3 = 16
-	ButtonToggleSoundChannel4 = 17
+	ButtonDebugToggle         = 8
+	ButtonPause               = 9
+	ButtonChangePallete       = 10
+	ButtonToggleBackground    = 11
+	ButtonToggleSprites       = 12
+	ButtonToggleOutputOpCode  = 13
+	ButtonPrintBGMap          = 14
+	ButtonToggleSoundChannel1 = 15
+	ButtonToggleSoundChannel2 = 16
+	ButtonToggleSoundChannel3 = 17
+	ButtonToggleSoundChannel4 = 18
 )
 
 // IsGameBoyButton checks whether a button value represents a physical button on a GameBoy
@@ -85,6 +86,8 @@ func (gb *Gameboy) ProcessInput(buttons ButtonInput) {
 	for _, button := range buttons.Pressed {
 		if button.IsGameBoyButton() {
 			gb.pressButton(button)
+		} else if button == ButtonDebugToggle {
+			gb.configureDebugKeys(!gb.Debug.Enabled)
 		} else if handler, ok := gb.keyHandlers[button]; ok {
 			handler()
 		}

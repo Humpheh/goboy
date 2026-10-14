@@ -8,8 +8,8 @@ import (
 	"runtime/pprof"
 	"time"
 
+	"github.com/Humpheh/goboy/pkg/ebitenbinding"
 	"github.com/Humpheh/goboy/pkg/gb"
-	"github.com/Humpheh/goboy/pkg/pixelbinding"
 )
 
 // The version of GoBoy
@@ -19,15 +19,16 @@ var (
 	mute    = flag.Bool("mute", false, "mute sound output")
 	dmgMode = flag.Bool("dmg", false, "set to force dmg mode")
 
-	cpuprofile  = flag.String("cpuprofile", "", "write cpu profile to file (debugging)")
-	vsyncOff    = flag.Bool("disableVsync", false, "set to disable vsync (debugging)")
-	stepThrough = flag.Bool("stepthrough", false, "step through opcodes (debugging)")
-	unlocked    = flag.Bool("unlocked", false, "if to unlock the cpu speed (debugging)")
+	debugEnabled = flag.Bool("debug", false, "enable debug functionality on startup")
+	cpuprofile   = flag.String("cpuprofile", "", "write cpu profile to file (debugging)")
+	vsyncOff     = flag.Bool("disableVsync", false, "set to disable vsync (debugging)")
+	stepThrough  = flag.Bool("stepthrough", false, "step through opcodes (debugging)")
+	unlocked     = flag.Bool("unlocked", false, "if to unlock the cpu speed (debugging)")
 )
 
 func main() {
 	flag.Parse()
-	pixelbinding.Run(start)
+	ebitenbinding.Run(start)
 }
 
 func start(binding gb.IOBinding) {
@@ -55,6 +56,9 @@ func start(binding gb.IOBinding) {
 	}
 	if !*mute {
 		opts = append(opts, gb.WithSound())
+	}
+	if *debugEnabled {
+		opts = append(opts, gb.WithDebugEnabled())
 	}
 
 	// Initialise the GameBoy with the flag options

@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"time"
 
-	"github.com/hajimehoshi/oto"
+	"github.com/ebitengine/oto/v3"
 )
 
 const (
@@ -17,6 +16,10 @@ const (
 	cpuTicksPerSample    = float64(4194304) / sampleRate
 	cpuTicksPerLength    = 4194304 / 256
 	maxFrameBufferLength = 5000
+
+	// playerBufferBytes is the oto player's buffer size, about 66ms of
+	// 8-bit stereo audio.
+	playerBufferBytes = sampleRate * 2 / 15
 )
 
 // APU is the GameBoy's audio processing unit. Audio comprises four
@@ -61,43 +64,44 @@ func (a *APU) Init(sound bool) {
 	a.chn3 = NewChannel()
 	a.chn4 = NewChannel()
 
-	const bufferSeconds = 120
-
 	if sound {
-		ctx, err := oto.NewContext(sampleRate, 2, 1, sampleRate/bufferSeconds)
+		ctx, ready, err := oto.NewContext(&oto.NewContextOptions{
+			SampleRate:      sampleRate,
+			ChannelCount:    2,
+			Format:          oto.FormatUnsignedInt8,
+			ApplicationName: "GoBoy",
+		})
 		if err != nil {
 			log.Fatalf("failed to start audio: %v", err)
 		}
-		a.player = ctx.NewPlayer()
-		a.playSound(bufferSeconds)
+		<-ready
+		a.player = ctx.NewPlayer(sampleReader(a.audioBuffer))
+		// The default player buffer is 0.5s, which is too much latency for
+		// an emulator.
+		a.player.SetBufferSize(playerBufferBytes)
+		a.player.Play()
 	}
 }
 
-// Starts a goroutine which plays the sound
-func (a *APU) playSound(bufferSeconds int) {
-	frameTime := time.Second / time.Duration(bufferSeconds)
-	ticker := time.NewTicker(frameTime)
-	targetSamples := sampleRate / bufferSeconds
-	go func() {
-		var reading [2]byte
-		var buffer []byte
-		for range ticker.C {
-			fbLen := len(a.audioBuffer)
-			if fbLen >= targetSamples/2 {
-				newBuffer := make([]byte, fbLen*2)
-				for i := 0; i < fbLen*2; i += 2 {
-					reading = <-a.audioBuffer
-					newBuffer[i], newBuffer[i+1] = reading[0], reading[1]
-				}
-				buffer = newBuffer
-			}
+// sampleReader is the oto player's source, reading stereo samples queued
+// by the APU.
+type sampleReader chan [2]byte
 
-			_, err := a.player.Write(buffer)
-			if err != nil {
-				log.Printf("error sampling: %v", err)
-			}
+// Read drains whatever samples are queued without blocking. It returns 0
+// bytes when none are queued, which oto treats as a retry rather than the
+// end of the stream.
+func (r sampleReader) Read(p []byte) (int, error) {
+	n := 0
+	for n+1 < len(p) {
+		select {
+		case s := <-r:
+			p[n], p[n+1] = s[0], s[1]
+			n += 2
+		default:
+			return n, nil
 		}
-	}()
+	}
+	return n, nil
 }
 
 func (a *APU) Buffer(cpuTicks int, speed int) {

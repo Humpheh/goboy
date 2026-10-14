@@ -266,18 +266,24 @@ func (gb *Gameboy) init(romFile string) error {
 	return nil
 }
 
-func (gb *Gameboy) initKeyHandlers() {
-	gb.keyHandlers = map[Button]func(){
-		ButtonPause:               gb.togglePaused,
-		ButtonChangePallete:       changePalette,
-		ButtonToggleBackground:    gb.Debug.toggleBackGround,
-		ButtonToggleSprites:       gb.Debug.toggleSprites,
-		ButtonToggleOutputOpCode:  gb.Debug.toggleOutputOpCode,
-		ButtonPrintBGMap:          gb.printBGMap,
-		ButtonToggleSoundChannel1: func() { gb.ToggleSoundChannel(1) },
-		ButtonToggleSoundChannel2: func() { gb.ToggleSoundChannel(2) },
-		ButtonToggleSoundChannel3: func() { gb.ToggleSoundChannel(3) },
-		ButtonToggleSoundChannel4: func() { gb.ToggleSoundChannel(4) },
+func (gb *Gameboy) configureDebugKeys(enabled bool) {
+	if enabled {
+		fmt.Println("Debug enabled")
+		gb.keyHandlers = map[Button]func(){
+			ButtonPause:               gb.togglePaused,
+			ButtonChangePallete:       changePalette,
+			ButtonToggleBackground:    gb.Debug.toggleBackGround,
+			ButtonToggleSprites:       gb.Debug.toggleSprites,
+			ButtonToggleOutputOpCode:  gb.Debug.toggleOutputOpCode,
+			ButtonPrintBGMap:          gb.printBGMap,
+			ButtonToggleSoundChannel1: func() { gb.ToggleSoundChannel(1) },
+			ButtonToggleSoundChannel2: func() { gb.ToggleSoundChannel(2) },
+			ButtonToggleSoundChannel3: func() { gb.ToggleSoundChannel(3) },
+			ButtonToggleSoundChannel4: func() { gb.ToggleSoundChannel(4) },
+		}
+	} else {
+		fmt.Println("Debug disabled")
+		gb.keyHandlers = map[Button]func(){}
 	}
 }
 
@@ -296,8 +302,6 @@ func (gb *Gameboy) setup() {
 
 	gb.spritePalette = NewPalette()
 	gb.bgPalette = NewPalette()
-
-	gb.initKeyHandlers()
 }
 
 // New returns a new Gameboy instance.
