@@ -266,9 +266,11 @@ func (gb *Gameboy) init(romFile string) error {
 	return nil
 }
 
+// configureDebugKeys enables or disables debug functionality, which
+// controls whether the non-GameBoy buttons have any effect.
 func (gb *Gameboy) configureDebugKeys(enabled bool) {
+	gb.Debug.Enabled = enabled
 	if enabled {
-		fmt.Println("Debug enabled")
 		gb.keyHandlers = map[Button]func(){
 			ButtonPause:               gb.togglePaused,
 			ButtonChangePallete:       changePalette,
@@ -282,7 +284,6 @@ func (gb *Gameboy) configureDebugKeys(enabled bool) {
 			ButtonToggleSoundChannel4: func() { gb.ToggleSoundChannel(4) },
 		}
 	} else {
-		fmt.Println("Debug disabled")
 		gb.keyHandlers = map[Button]func(){}
 	}
 }
@@ -302,6 +303,8 @@ func (gb *Gameboy) setup() {
 
 	gb.spritePalette = NewPalette()
 	gb.bgPalette = NewPalette()
+
+	gb.configureDebugKeys(gb.options.debugEnabled)
 }
 
 // New returns a new Gameboy instance.

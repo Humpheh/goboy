@@ -1,6 +1,9 @@
 package gb
 
-import "slices"
+import (
+	"fmt"
+	"slices"
+)
 
 // Button represents the button on a GameBoy.
 type Button byte
@@ -102,6 +105,7 @@ func (gb *Gameboy) ProcessInput(buttons ButtonInput) {
 			gb.pressButton(button)
 		} else if button == ButtonDebugToggle {
 			gb.configureDebugKeys(!gb.Debug.Enabled)
+			fmt.Printf("Debug enabled: %v\n", gb.Debug.Enabled)
 		} else if handler, ok := gb.keyHandlers[button]; ok {
 			handler()
 		}
