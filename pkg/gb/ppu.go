@@ -470,12 +470,12 @@ func (gb *Gameboy) renderSprites(lcdControl byte, scanline int32) {
 
 	var minx [ScreenWidth]int32
 	var lineSprites = 0
-	for sprite := uint16(0); sprite < 40; sprite++ {
+	for sprite := range uint16(40) {
 		// Load sprite data from memory.
 		index := sprite * 4
 
 		// If this is true the scanline is out of the area we care about
-		yPos := int32(gb.memory.Read(uint16(0xFE00+index))) - 16
+		yPos := int32(gb.memory.Read(0xFE00+index)) - 16
 		if scanline < yPos || scanline >= (yPos+ySize) {
 			continue
 		}
@@ -486,9 +486,12 @@ func (gb *Gameboy) renderSprites(lcdControl byte, scanline int32) {
 		}
 		lineSprites++
 
-		xPos := int32(gb.memory.Read(uint16(0xFE00+index+1))) - 8
-		tileLocation := gb.memory.Read(uint16(0xFE00 + index + 2))
-		attributes := gb.memory.Read(uint16(0xFE00 + index + 3))
+		xPos := int32(gb.memory.Read(0xFE00+index+1)) - 8
+		tileLocation := gb.memory.Read(0xFE00 + index + 2)
+		if ySize == 16 {
+			tileLocation &^= 1
+		}
+		attributes := gb.memory.Read(0xFE00 + index + 3)
 
 		yFlip := bitTest(attributes, 6)
 		xFlip := bitTest(attributes, 5)
@@ -512,7 +515,7 @@ func (gb *Gameboy) renderSprites(lcdControl byte, scanline int32) {
 		data2 := gb.memory.VRAM[dataAddress+1]
 
 		// Draw the line of the sprite
-		for tilePixel := byte(0); tilePixel < 8; tilePixel++ {
+		for tilePixel := range byte(8) {
 			pixel := int16(xPos) + int16(7-tilePixel)
 			if pixel < 0 || pixel >= ScreenWidth {
 				continue
