@@ -1,27 +1,19 @@
 module github.com/Humpheh/goboy
 
-go 1.23.0
-
-toolchain go1.24.5
+go 1.26.0
 
 require (
-	github.com/gopxl/pixel/v2 v2.3.0
-	github.com/hajimehoshi/oto v1.0.1
-	github.com/stretchr/testify v1.10.0
+	github.com/ebitengine/oto/v3 v3.5.1
+	github.com/hajimehoshi/ebiten/v2 v2.10.5
+	github.com/stretchr/testify v1.12.1
 )
 
 require (
-	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/go-gl/gl v0.0.0-20231021071112-07e5d0ea2e71 // indirect
-	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20250301202403-da16c1255728 // indirect
-	github.com/go-gl/mathgl v1.2.0 // indirect
-	github.com/gopxl/glhf/v2 v2.1.0 // indirect
-	github.com/gopxl/mainthread/v2 v2.1.1 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
-	golang.org/x/exp/shiny v0.0.0-20250808145144-a408d31f581a // indirect
-	golang.org/x/image v0.30.0 // indirect
-	golang.org/x/mobile v0.0.0-20250808145247-395d808d53cd // indirect
-	golang.org/x/sys v0.35.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	github.com/ebitengine/gomobile v0.0.0-20260820040257-d11f821a26a6 // indirect
+	github.com/ebitengine/hideconsole v1.0.0 // indirect
+	github.com/ebitengine/purego v0.11.1 // indirect
+	github.com/jfreymuth/pulse v0.1.3 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
+	golang.org/x/sync v0.24.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 )

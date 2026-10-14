@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"time"
 
-	"github.com/hajimehoshi/oto"
+	"github.com/ebitengine/oto/v3"
 )
 
 const (
@@ -14,9 +13,14 @@ const (
 	twoPi      = 2 * math.Pi
 	perSample  = 1 / float64(sampleRate)
 
-	cpuTicksPerSample    = float64(4194304) / sampleRate
-	cpuTicksPerLength    = 4194304 / 256
-	maxFrameBufferLength = 5000
+	cpuTicksPerSample = float64(4194304) / sampleRate
+	cpuTicksPerLength = 4194304 / 256
+
+	// audioBufferSamples is the number of stereo samples (about 66ms) held
+	// by both the sample queue and the oto player's buffer. It must cover
+	// at least one frame (~735 samples), as the emulator produces a frame
+	// of samples in a burst and drops any that don't fit.
+	audioBufferSamples = sampleRate / 15
 )
 
 // APU is the GameBoy's audio processing unit. Audio comprises four
@@ -35,6 +39,7 @@ type APU struct {
 	tickCounter            float64
 	lengthCounter          int
 	lVol, rVol             float64
+	highPassL, highPassR   highPass
 
 	audioBuffer chan [2]byte
 }
@@ -43,7 +48,7 @@ type APU struct {
 func (a *APU) Init(sound bool) {
 	a.playing = sound
 	a.waveformRam = make([]byte, 0x20)
-	a.audioBuffer = make(chan [2]byte, maxFrameBufferLength)
+	a.audioBuffer = make(chan [2]byte, audioBufferSamples)
 
 	// Sets waveform ram to:
 	// 00 FF 00 FF  00 FF 00 FF  00 FF 00 FF  00 FF 00 FF
@@ -61,43 +66,46 @@ func (a *APU) Init(sound bool) {
 	a.chn3 = NewChannel()
 	a.chn4 = NewChannel()
 
-	const bufferSeconds = 120
-
 	if sound {
-		ctx, err := oto.NewContext(sampleRate, 2, 1, sampleRate/bufferSeconds)
+		ctx, ready, err := oto.NewContext(&oto.NewContextOptions{
+			SampleRate:      sampleRate,
+			ChannelCount:    2,
+			Format:          oto.FormatUnsignedInt8,
+			ApplicationName: "GoBoy",
+		})
 		if err != nil {
 			log.Fatalf("failed to start audio: %v", err)
 		}
-		a.player = ctx.NewPlayer()
-		a.playSound(bufferSeconds)
+		<-ready
+		a.player = ctx.NewPlayer(sampleReader(a.audioBuffer))
+		// The default player buffer is 0.5s, which is too much latency for
+		// an emulator.
+		a.player.SetBufferSize(audioBufferSamples * 2)
+		// 100% volume is loud
+		a.player.SetVolume(0.5)
+		a.player.Play()
 	}
 }
 
-// Starts a goroutine which plays the sound
-func (a *APU) playSound(bufferSeconds int) {
-	frameTime := time.Second / time.Duration(bufferSeconds)
-	ticker := time.NewTicker(frameTime)
-	targetSamples := sampleRate / bufferSeconds
-	go func() {
-		var reading [2]byte
-		var buffer []byte
-		for range ticker.C {
-			fbLen := len(a.audioBuffer)
-			if fbLen >= targetSamples/2 {
-				newBuffer := make([]byte, fbLen*2)
-				for i := 0; i < fbLen*2; i += 2 {
-					reading = <-a.audioBuffer
-					newBuffer[i], newBuffer[i+1] = reading[0], reading[1]
-				}
-				buffer = newBuffer
-			}
+// sampleReader is the oto player's source, reading stereo samples queued
+// by the APU.
+type sampleReader chan [2]byte
 
-			_, err := a.player.Write(buffer)
-			if err != nil {
-				log.Printf("error sampling: %v", err)
-			}
+// Read drains whatever samples are queued without blocking. It returns 0
+// bytes when none are queued, which oto treats as a retry rather than the
+// end of the stream.
+func (r sampleReader) Read(p []byte) (int, error) {
+	n := 0
+	for n+1 < len(p) {
+		select {
+		case s := <-r:
+			p[n], p[n+1] = s[0], s[1]
+			n += 2
+		default:
+			return n, nil
 		}
-	}()
+	}
+	return n, nil
 }
 
 func (a *APU) Buffer(cpuTicks int, speed int) {
@@ -128,7 +136,17 @@ func (a *APU) Buffer(cpuTicks int, speed int) {
 	valL := (chn1l + chn2l + chn3l + chn4l) / 4
 	valR := (chn1r + chn2r + chn3r + chn4r) / 4
 
-	a.audioBuffer <- [2]byte{byte(float64(valL) * a.lVol), byte(float64(valR) * a.rVol)}
+	sample := [2]byte{
+		a.highPassL.filter(float64(valL) * a.lVol),
+		a.highPassR.filter(float64(valR) * a.rVol),
+	}
+
+	// Drop the sample when the player has fallen behind so audio never
+	// throttles the emulation speed.
+	select {
+	case a.audioBuffer <- sample:
+	default:
+	}
 }
 
 var soundMask = []byte{

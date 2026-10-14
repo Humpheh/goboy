@@ -1,5 +1,10 @@
 package gb
 
+import (
+	"fmt"
+	"slices"
+)
+
 // Button represents the button on a GameBoy.
 type Button byte
 
@@ -21,16 +26,19 @@ const (
 	// ButtonDown is the down dpad direction on the GameBoy.
 	ButtonDown = 7
 
-	ButtonPause               = 8
-	ButtonChangePallete       = 9
-	ButtonToggleBackground    = 10
-	ButtonToggleSprites       = 11
-	ButtonToggleOutputOpCode  = 12
-	ButtonPrintBGMap          = 13
-	ButtonToggleSoundChannel1 = 14
-	ButtonToggleSoundChannel2 = 15
-	ButtonToggleSoundChannel3 = 16
-	ButtonToggleSoundChannel4 = 17
+	ButtonDebugToggle         = 8
+	ButtonPause               = 9
+	ButtonChangePallete       = 10
+	ButtonToggleBackground    = 11
+	ButtonToggleSprites       = 12
+	ButtonToggleOutputOpCode  = 13
+	ButtonPrintBGMap          = 14
+	ButtonToggleSoundChannel1 = 15
+	ButtonToggleSoundChannel2 = 16
+	ButtonToggleSoundChannel3 = 17
+	ButtonToggleSoundChannel4 = 18
+	// ButtonFastForward speeds up emulation while it is held down.
+	ButtonFastForward = 19
 )
 
 // IsGameBoyButton checks whether a button value represents a physical button on a GameBoy
@@ -41,6 +49,16 @@ func (button Button) IsGameBoyButton() bool {
 type ButtonInput struct {
 	// Pressed and Released are inputs on this frame
 	Pressed, Released []Button
+}
+
+// IsPressed returns if a button is in the pressed state.
+func (b *ButtonInput) IsPressed(button Button) bool {
+	return slices.Contains(b.Pressed, button)
+}
+
+// IsReleased returns if a button is in the released state.
+func (b *ButtonInput) IsReleased(button Button) bool {
+	return slices.Contains(b.Released, button)
 }
 
 // IOBinding provides an interface for display and input bindings.
@@ -85,6 +103,9 @@ func (gb *Gameboy) ProcessInput(buttons ButtonInput) {
 	for _, button := range buttons.Pressed {
 		if button.IsGameBoyButton() {
 			gb.pressButton(button)
+		} else if button == ButtonDebugToggle {
+			gb.configureDebugKeys(!gb.Debug.Enabled)
+			fmt.Printf("Debug enabled: %v\n", gb.Debug.Enabled)
 		} else if handler, ok := gb.keyHandlers[button]; ok {
 			handler()
 		}
