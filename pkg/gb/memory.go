@@ -158,8 +158,8 @@ func (mem *memory) WriteHighRam(address uint16, value byte) {
 		}
 
 	case address == 0xFF4F:
-		// VRAM bank (CGB only), blocked when HDMA is active
-		if mem.gb.IsCGB() && !mem.hdmaActive {
+		// VRAM bank (CGB only)
+		if mem.gb.IsCGB() {
 			mem.VRAMBank = value & 0x1
 		}
 
@@ -413,8 +413,10 @@ func (mem *memory) doNewDMATransfer(value byte) {
 		mem.HighRAM[0x55] = 0xFF
 	} else {
 		// Mode 1, H-Blank DMA
-		mem.hdmaLength = byte(value)
+		// Bit 7 of HDMA5 reads 0 while the transfer is active
+		mem.hdmaLength = value & 0x7F
 		mem.hdmaActive = true
+		mem.HighRAM[0x55] = mem.hdmaLength
 	}
 }
 
