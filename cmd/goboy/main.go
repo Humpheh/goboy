@@ -72,14 +72,22 @@ func start(binding gb.IOBinding) {
 	startGBLoop(gameboy, binding)
 }
 
+const (
+	// fastForwardSpeed is the emulation speed multiplier while fast forward is active.
+	fastForwardSpeed = 2
+
+	// maxFrameLag is how far the loop may fall behind schedule before it
+	// stops trying to catch up, so a stall isn't followed by a burst of
+	// frames.
+	maxFrameLag = 100 * time.Millisecond
+)
+
 func startGBLoop(gameboy *gb.Gameboy, monitor gb.IOBinding) {
 	frameTime := time.Second / gb.FramesSecond
-	if *unlocked {
-		frameTime = 1
-	}
+	fastForward := false
 
-	ticker := time.NewTicker(frameTime)
 	start := time.Now()
+	nextFrame := start
 	frames := 0
 
 	var cartName string
@@ -87,14 +95,11 @@ func startGBLoop(gameboy *gb.Gameboy, monitor gb.IOBinding) {
 		cartName = gameboy.GetLoadedCart().GetName()
 	}
 
-	for range ticker.C {
-		if !monitor.IsRunning() {
-			return
-		}
-
+	for monitor.IsRunning() {
 		frames++
 
 		buttons := monitor.ProcessButtonInput()
+		fastForward = isFastForwarding(fastForward, buttons)
 		gameboy.ProcessInput(buttons)
 
 		_ = gameboy.Update()
@@ -104,11 +109,43 @@ func startGBLoop(gameboy *gb.Gameboy, monitor gb.IOBinding) {
 		if since > time.Second {
 			start = time.Now()
 
-			title := fmt.Sprintf("GoBoy - %s (FPS: %2v)", cartName, frames)
+			extra := ""
+			if fastForward {
+				extra = fmt.Sprintf(" (%xx)", fastForwardSpeed)
+			}
+			title := fmt.Sprintf("GoBoy - %s (FPS: %2v)%v", cartName, frames, extra)
 			monitor.SetTitle(title)
 			frames = 0
 		}
+
+		if *unlocked {
+			continue
+		}
+
+		// Wait until the next frame is due
+		interval := frameTime
+		if fastForward {
+			interval /= fastForwardSpeed
+		}
+		nextFrame = nextFrame.Add(interval)
+		if wait := time.Until(nextFrame); wait > 0 {
+			time.Sleep(wait)
+		} else if wait < -maxFrameLag {
+			nextFrame = time.Now()
+		}
 	}
+}
+
+// isFastForwarding returns whether fast forward is held after applying the
+// button changes in buttons to the current state.
+func isFastForwarding(current bool, buttons gb.ButtonInput) bool {
+	if buttons.IsPressed(gb.ButtonFastForward) {
+		current = true
+	}
+	if buttons.IsReleased(gb.ButtonFastForward) {
+		current = false
+	}
+	return current
 }
 
 // Start the CPU profile to a the file passed in from the flag.

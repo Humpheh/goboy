@@ -1,5 +1,7 @@
 package gb
 
+import "slices"
+
 // Button represents the button on a GameBoy.
 type Button byte
 
@@ -32,6 +34,8 @@ const (
 	ButtonToggleSoundChannel2 = 16
 	ButtonToggleSoundChannel3 = 17
 	ButtonToggleSoundChannel4 = 18
+	// ButtonFastForward speeds up emulation while it is held down.
+	ButtonFastForward = 19
 )
 
 // IsGameBoyButton checks whether a button value represents a physical button on a GameBoy
@@ -42,6 +46,16 @@ func (button Button) IsGameBoyButton() bool {
 type ButtonInput struct {
 	// Pressed and Released are inputs on this frame
 	Pressed, Released []Button
+}
+
+// IsPressed returns if a button is in the pressed state.
+func (b *ButtonInput) IsPressed(button Button) bool {
+	return slices.Contains(b.Pressed, button)
+}
+
+// IsReleased returns if a button is in the released state.
+func (b *ButtonInput) IsReleased(button Button) bool {
+	return slices.Contains(b.Released, button)
 }
 
 // IOBinding provides an interface for display and input bindings.

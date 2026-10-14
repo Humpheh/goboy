@@ -136,6 +136,7 @@ var keyMap = []struct {
 	{ebiten.KeyArrowUp, gb.ButtonUp},
 	{ebiten.KeyArrowDown, gb.ButtonDown},
 
+	{ebiten.KeyTab, gb.ButtonFastForward},
 	{ebiten.KeyBackslash, gb.ButtonDebugToggle},
 	{ebiten.KeyEscape, gb.ButtonPause},
 	{ebiten.KeyEqual, gb.ButtonChangePallete},
